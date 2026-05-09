@@ -1,23 +1,33 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api, jsonBody } from '../../api/client.js';
 import { Field } from '../../components/Field.jsx';
+import { useApp } from '../../context/AppContext.jsx';
+import { useAsync } from '../../hooks/useAsync.js';
+import { firstError, required } from '../../utils/validation.js';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { login } = useApp();
+  const { loading, error, setError, run } = useAsync();
   const [form, setForm] = useState({ email: 'admin@balina.local', password: 'password' });
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
 
   const submit = async (event) => {
     event.preventDefault();
-    setError('');
-    try {
-      const response = await api('/auth/login', { method: 'POST', body: jsonBody(form) });
-      localStorage.setItem('token', response.token);
-      navigate('/');
-    } catch (exception) {
-      setError(exception.message);
+    const validationErrors = {};
+    if (!required(form.email)) validationErrors.email = 'E-posta zorunludur.';
+    if (!required(form.password)) validationErrors.password = 'Sifre zorunludur.';
+    setErrors(validationErrors);
+
+    if (Object.keys(validationErrors).length > 0) {
+      setError(firstError(validationErrors));
+      return;
     }
+
+    await run(async () => {
+      await login(form);
+      navigate('/');
+    });
   };
 
   return (
@@ -26,13 +36,13 @@ export function LoginPage() {
         <h1>Balina Entegrasyon</h1>
         <p>Admin paneline giris yapin.</p>
         {error && <div className="alert">{error}</div>}
-        <Field label="E-posta">
+        <Field label="E-posta" error={errors.email}>
           <input value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
         </Field>
-        <Field label="Sifre">
+        <Field label="Sifre" error={errors.password}>
           <input type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
         </Field>
-        <button>Giris Yap</button>
+        <button disabled={loading}>{loading ? 'Giris yapiliyor...' : 'Giris Yap'}</button>
         <Link to="/register">Yeni hesap olustur</Link>
       </form>
     </div>

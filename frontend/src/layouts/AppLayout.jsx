@@ -1,5 +1,6 @@
 import { Building2, ClipboardList, FileText, Gauge, KeyRound, Link2, Package, ShieldCheck } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext.jsx';
 
 const links = [
   { to: '/', label: 'Panel', icon: Gauge },
@@ -13,9 +14,10 @@ const links = [
 
 export function AppLayout() {
   const navigate = useNavigate();
+  const { logout: logoutUser } = useApp();
 
-  const logout = () => {
-    localStorage.removeItem('token');
+  const logout = async () => {
+    await logoutUser();
     navigate('/login');
   };
 

@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Upload } from 'lucide-react';
-import { api, jsonBody } from '../../api/client.js';
+import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
+import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
+import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { useApp } from '../../context/AppContext.jsx';
+import { useAsync } from '../../hooks/useAsync.js';
+import { firstError, validateProduct } from '../../utils/validation.js';
 
 const initialForm = {
   company_id: '',
@@ -19,17 +24,22 @@ const initialForm = {
 };
 
 export function ProductsPage() {
+  const { notify } = useApp();
+  const { loading, error, setError, run } = useAsync();
   const [products, setProducts] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [form, setForm] = useState(initialForm);
+  const [errors, setErrors] = useState({});
   const [importFile, setImportFile] = useState(null);
   const [imageProductId, setImageProductId] = useState('');
   const [imageFile, setImageFile] = useState(null);
 
   const load = async () => {
-    const [productResponse, companyResponse] = await Promise.all([api('/products'), api('/companies')]);
-    setProducts(productResponse.data || []);
-    setCompanies(companyResponse.data || []);
+    await run(async () => {
+      const [productResponse, companyResponse] = await Promise.all([api.products.list(), api.companies.list()]);
+      setProducts(productResponse.data || []);
+      setCompanies(companyResponse.data || []);
+    });
   };
 
   useEffect(() => {
@@ -38,26 +48,56 @@ export function ProductsPage() {
 
   const submit = async (event) => {
     event.preventDefault();
-    await api('/products', { method: 'POST', body: jsonBody(form) });
-    setForm(initialForm);
-    load();
+    const validationErrors = validateProduct(form);
+    setErrors(validationErrors);
+
+    if (Object.keys(validationErrors).length > 0) {
+      setError(firstError(validationErrors));
+      return;
+    }
+
+    await run(async () => {
+      await api.products.create({
+        ...form,
+        price: Number(form.price),
+        stock: Number(form.stock),
+        vat_rate: Number(form.vat_rate),
+      });
+      setForm(initialForm);
+      notify('success', 'Urun kaydedildi.');
+      await load();
+    });
   };
 
   const importProducts = async (event) => {
     event.preventDefault();
+    if (!form.company_id || !importFile) {
+      setError('Toplu yukleme icin firma ve dosya secimi zorunludur.');
+      return;
+    }
     const body = new FormData();
     body.append('company_id', form.company_id);
     body.append('file', importFile);
-    await api('/products/import', { method: 'POST', body });
-    load();
+    await run(async () => {
+      const result = await api.products.import(body);
+      notify('success', `${result.created} yeni, ${result.updated} guncel urun islendi.`);
+      await load();
+    });
   };
 
   const uploadImage = async (event) => {
     event.preventDefault();
+    if (!imageProductId || !imageFile) {
+      setError('Gorsel yuklemek icin urun ve dosya secimi zorunludur.');
+      return;
+    }
     const body = new FormData();
     body.append('image', imageFile);
-    await api(`/products/${imageProductId}/images`, { method: 'POST', body });
-    load();
+    await run(async () => {
+      await api.products.uploadImage(imageProductId, body);
+      notify('success', 'Gorsel yuklendi.');
+      await load();
+    });
   };
 
   return (
@@ -65,19 +105,19 @@ export function ProductsPage() {
       <PageHeader title="Urun Yonetimi" />
       <section className="panel">
         <form className="form-grid" onSubmit={submit}>
-          <Field label="Firma">
+          <Field label="Firma" error={errors.company_id}>
             <select value={form.company_id} onChange={(event) => setForm({ ...form, company_id: event.target.value })}>
               <option value="">Seciniz</option>
               {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
             </select>
           </Field>
-          <Field label="SKU"><input value={form.sku} onChange={(event) => setForm({ ...form, sku: event.target.value })} /></Field>
+          <Field label="SKU" error={errors.sku}><input value={form.sku} onChange={(event) => setForm({ ...form, sku: event.target.value })} /></Field>
           <Field label="Barkod"><input value={form.barcode} onChange={(event) => setForm({ ...form, barcode: event.target.value })} /></Field>
-          <Field label="Urun Adi"><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
+          <Field label="Urun Adi" error={errors.name}><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
           <Field label="Marka"><input value={form.brand} onChange={(event) => setForm({ ...form, brand: event.target.value })} /></Field>
           <Field label="Kategori"><input value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} /></Field>
-          <Field label="Fiyat"><input type="number" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} /></Field>
-          <Field label="Stok"><input type="number" value={form.stock} onChange={(event) => setForm({ ...form, stock: event.target.value })} /></Field>
+          <Field label="Fiyat" error={errors.price}><input type="number" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} /></Field>
+          <Field label="Stok" error={errors.stock}><input type="number" value={form.stock} onChange={(event) => setForm({ ...form, stock: event.target.value })} /></Field>
           <Field label="KDV"><input type="number" value={form.vat_rate} onChange={(event) => setForm({ ...form, vat_rate: event.target.value })} /></Field>
           <Field label="Durum">
             <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
@@ -86,14 +126,14 @@ export function ProductsPage() {
               <option value="passive">Pasif</option>
             </select>
           </Field>
-          <button>Urun Ekle</button>
+          <button disabled={loading}>{loading ? 'Kaydediliyor...' : 'Urun Ekle'}</button>
         </form>
       </section>
       <section className="split">
         <form className="panel compact-panel" onSubmit={importProducts}>
           <h2>Excel ile Toplu Yukleme</h2>
           <input type="file" accept=".xlsx,.xls,.csv" onChange={(event) => setImportFile(event.target.files[0])} />
-          <button><Upload size={16} /> Yukle</button>
+          <button disabled={loading}><Upload size={16} /> Yukle</button>
         </form>
         <form className="panel compact-panel" onSubmit={uploadImage}>
           <h2>Gorsel Yukleme</h2>
@@ -102,9 +142,11 @@ export function ProductsPage() {
             {products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
           </select>
           <input type="file" accept="image/*" onChange={(event) => setImageFile(event.target.files[0])} />
-          <button><Upload size={16} /> Gorsel Yukle</button>
+          <button disabled={loading}><Upload size={16} /> Gorsel Yukle</button>
         </form>
       </section>
+      {error && <ErrorState message={error} onRetry={load} />}
+      {loading && products.length === 0 ? <LoadingState /> : (
       <DataTable
         rows={products}
         columns={[
@@ -116,6 +158,7 @@ export function ProductsPage() {
           { key: 'status', label: 'Durum' },
         ]}
       />
+      )}
     </>
   );
 }

@@ -1,18 +1,28 @@
 import { useEffect, useState } from 'react';
-import { api, jsonBody } from '../../api/client.js';
+import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
+import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
+import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { useApp } from '../../context/AppContext.jsx';
+import { useAsync } from '../../hooks/useAsync.js';
+import { firstError, validateCompany } from '../../utils/validation.js';
 
 const initialForm = { name: '', tax_number: '', email: '', phone: '', address: '', is_active: true };
 
 export function CompaniesPage() {
+  const { notify } = useApp();
+  const { loading, error, setError, run } = useAsync();
   const [companies, setCompanies] = useState([]);
   const [form, setForm] = useState(initialForm);
+  const [errors, setErrors] = useState({});
 
   const load = async () => {
-    const response = await api('/companies');
-    setCompanies(response.data || []);
+    await run(async () => {
+      const response = await api.companies.list();
+      setCompanies(response.data || []);
+    });
   };
 
   useEffect(() => {
@@ -21,9 +31,20 @@ export function CompaniesPage() {
 
   const submit = async (event) => {
     event.preventDefault();
-    await api('/companies', { method: 'POST', body: jsonBody(form) });
-    setForm(initialForm);
-    load();
+    const validationErrors = validateCompany(form);
+    setErrors(validationErrors);
+
+    if (Object.keys(validationErrors).length > 0) {
+      setError(firstError(validationErrors));
+      return;
+    }
+
+    await run(async () => {
+      await api.companies.create(form);
+      setForm(initialForm);
+      notify('success', 'Firma kaydedildi.');
+      await load();
+    });
   };
 
   return (
@@ -31,14 +52,16 @@ export function CompaniesPage() {
       <PageHeader title="Firma Yonetimi" />
       <section className="panel">
         <form className="form-grid" onSubmit={submit}>
-          <Field label="Firma Adi"><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
+          <Field label="Firma Adi" error={errors.name}><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
           <Field label="Vergi No"><input value={form.tax_number} onChange={(event) => setForm({ ...form, tax_number: event.target.value })} /></Field>
-          <Field label="E-posta"><input value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></Field>
+          <Field label="E-posta" error={errors.email}><input value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></Field>
           <Field label="Telefon"><input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></Field>
           <Field label="Adres"><textarea value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} /></Field>
-          <button>Firma Ekle</button>
+          <button disabled={loading}>{loading ? 'Kaydediliyor...' : 'Firma Ekle'}</button>
         </form>
       </section>
+      {error && <ErrorState message={error} onRetry={load} />}
+      {loading && companies.length === 0 ? <LoadingState /> : (
       <DataTable
         rows={companies}
         columns={[
@@ -48,6 +71,7 @@ export function CompaniesPage() {
           { key: 'is_active', label: 'Durum', render: (row) => (row.is_active ? 'Aktif' : 'Pasif') },
         ]}
       />
+      )}
     </>
   );
 }
