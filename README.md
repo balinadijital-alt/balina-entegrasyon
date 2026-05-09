@@ -1,21 +1,18 @@
 # Balina Pazaryeri Entegrasyon Sistemi
 
-Laravel backend ve React + Vite admin panelden olusan moduler pazaryeri entegrasyon iskeleti.
+Laravel backend ve React + Vite admin panelden olusan moduler pazaryeri entegrasyon sistemi.
 
 ## Moduller
 
-- Kullanici kayit/giris sistemi: Laravel Sanctum token auth
-- Firma yonetimi
-- Urun yonetimi ve manuel urun ekleme
-- Excel ile toplu urun yukleme
-- Urun gorsel yukleme
-- Trendyol servis altyapisi
-- Hepsiburada servis altyapisi
-- Siparis yonetimi
-- API log sistemi
-- Rol/yetki sistemi: Spatie Permission
+- Sanctum tabanli kullanici kayit/giris sistemi
+- Firma, urun, siparis, rol/yetki ve API log yonetimi
+- Excel/XML import merkezi, alan eslestirme, queue import ve hata raporlari
+- Trendyol ve Hepsiburada pazaryeri servis altyapilari
+- Kargo, sanal POS, e-fatura/e-arsiv, muhasebe/cari altyapilari
+- SaaS paket, abonelik, lisans ve partner yonetimi
+- Redis queue, Horizon dashboard, failed job retry ve scheduled task altyapisi
 
-## Backend
+## Backend Kurulum
 
 ```bash
 cd backend
@@ -27,6 +24,39 @@ php artisan storage:link
 php artisan serve
 ```
 
+Varsayilan seed kullanicisi:
+
+```text
+admin@balina.local
+password
+```
+
+## Frontend Kurulum
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend varsayilan olarak `http://localhost:8000/api` adresindeki backend API'yi kullanir. Farkli adres icin `frontend/.env` dosyasina sunu ekleyin:
+
+```bash
+VITE_API_URL=http://localhost:8000/api
+```
+
+## Test ve Kalite Kontrol
+
+```bash
+cd backend
+composer test
+
+cd ../frontend
+npm run build
+
+./scripts/quality-check.sh
+```
+
 ## Queue ve Worker
 
 Production queue altyapisi Redis + Laravel Horizon ile calisir.
@@ -36,7 +66,6 @@ brew install redis
 brew services start redis
 
 cd backend
-php artisan migrate
 php artisan horizon
 ```
 
@@ -60,38 +89,48 @@ stdout_logfile=/var/log/balina-horizon.log
 stopwaitsecs=3600
 ```
 
-Horizon dashboard:
+## Health Check
 
 ```text
-http://localhost:8000/horizon
+GET /api/health
 ```
 
-Admin panel Queue ekrani:
+Database, cache, queue ve storage kontrollerini dondurur.
 
-```text
-http://localhost:5173/queue
-```
+## Backup / Restore
 
-Varsayilan seed kullanicisi:
-
-```text
-admin@balina.local
-password
-```
-
-## Frontend
+SQLite kurulumlar icin:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+cd backend
+php artisan balina:backup
+php artisan balina:restore storage/app/backups/database-YYYYmmdd-HHMMSS.sqlite --force
 ```
 
-Frontend varsayilan olarak `http://localhost:8000/api` adresindeki backend API'yi kullanir. Farkli adres icin `frontend/.env` dosyasina sunu ekleyin:
+MySQL production ortaminda `mysqldump` veya managed database backup kullanin. Uygulama loglari scheduler ile her gun `balina:prune-logs --days=30` komutuyla temizlenir.
 
-```bash
-VITE_API_URL=http://localhost:8000/api
-```
+## Deployment Checklist
+
+- `APP_ENV=production`, `APP_DEBUG=false`, guclu `APP_KEY`
+- Production DB ve otomatik backup
+- Redis cache/queue/Horizon aktif
+- `php artisan migrate --force`
+- `php artisan storage:link`
+- `php artisan config:cache && php artisan route:cache`
+- Supervisor ile `php artisan horizon`
+- Cron ile `php artisan schedule:run`
+- `composer test` ve `npm run build` temiz
+- `/api/health` healthy
+- Marketplace, kargo, POS ve muhasebe credential alanlari encrypted girildi
+- HTTPS, HSTS ve reverse proxy headerlari aktif
+- Failed job retry, backup restore ve log retention proseduru test edildi
+
+## Guvenlik
+
+- Login endpointinde rate limit ve brute-force korumasi vardir.
+- API response security headerlari eklenir.
+- Hassas alanlar API loglarindan haric tutulur.
+- Token auth Laravel Sanctum ile yapilir.
 
 ## Excel Urun Sablonu
 
@@ -102,7 +141,3 @@ sku,barcode,name,description,brand,category,price,stock,vat_rate,status
 ```
 
 `status` degerleri: `draft`, `active`, `passive`.
-
-## Notlar
-
-Bu ortamda `php` ve `composer` kurulu olmadigi icin backend bagimliliklari burada indirilemedi veya migrationlar calistirilamadi. Dosya yapisi Laravel 11 akisi icin hazirlandi; PHP/Composer olan ortamda yukaridaki komutlarla kurulabilir.

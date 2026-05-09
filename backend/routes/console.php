@@ -34,3 +34,4 @@ Schedule::command('imports:dispatch-due-xml')
 
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
 Schedule::command('queue:prune-failed --hours=168')->daily();
+Schedule::command('balina:prune-logs --days=30')->daily();

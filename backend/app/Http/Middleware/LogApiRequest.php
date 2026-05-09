@@ -39,7 +39,7 @@ class LogApiRequest
             return ['files' => array_keys($request->allFiles())];
         }
 
-        $payload = $request->except(['password', 'password_confirmation', 'api_secret']);
+        $payload = $request->except(['password', 'password_confirmation', 'api_key', 'api_secret', 'client_secret', 'webhook_secret']);
 
         return $payload === [] ? null : $payload;
     }
