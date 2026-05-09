@@ -7,6 +7,7 @@ import { AppLayout } from './layouts/AppLayout.jsx';
 import { LoginPage } from './pages/Auth/LoginPage.jsx';
 import { RegisterPage } from './pages/Auth/RegisterPage.jsx';
 import { CompaniesPage } from './pages/Companies/CompaniesPage.jsx';
+import { AccountingPage } from './pages/Accounting/AccountingPage.jsx';
 import { DashboardPage } from './pages/Dashboard/DashboardPage.jsx';
 import { ApiLogsPage } from './pages/Logs/ApiLogsPage.jsx';
 import { ImportCenterPage } from './pages/Imports/ImportCenterPage.jsx';
@@ -40,6 +41,7 @@ createRoot(document.getElementById('root')).render(
           >
             <Route index element={<DashboardPage />} />
             <Route path="companies" element={<CompaniesPage />} />
+            <Route path="accounting" element={<AccountingPage />} />
             <Route path="products" element={<ProductsPage />} />
             <Route path="imports" element={<ImportCenterPage />} />
             <Route path="marketplaces" element={<MarketplacesPage />} />

@@ -1,10 +1,14 @@
 <?php
 
 use App\Http\Controllers\Api\ApiLogController;
+use App\Http\Controllers\Api\AccountingAccountController;
+use App\Http\Controllers\Api\AccountingIntegrationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryMappingController;
 use App\Http\Controllers\Api\CompanyController;
+use App\Http\Controllers\Api\CurrentAccountController;
 use App\Http\Controllers\Api\HepsiburadaController;
+use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MarketplaceSyncController;
 use App\Http\Controllers\Api\MarketplaceAccountController;
 use App\Http\Controllers\Api\OrderController;
@@ -49,6 +53,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/import-runs/{importRun}/retry', [ProductImportRunController::class, 'retry']);
 
     Route::apiResource('orders', OrderController::class)->only(['index', 'show', 'update']);
+    Route::get('/accounting-integrations', [AccountingIntegrationController::class, 'index']);
+    Route::apiResource('accounting-accounts', AccountingAccountController::class)->parameters(['accounting-accounts' => 'accountingAccount'])->except(['show', 'destroy']);
+    Route::get('/current-accounts', [CurrentAccountController::class, 'index']);
+    Route::post('/current-accounts', [CurrentAccountController::class, 'store']);
+    Route::get('/current-transactions', [CurrentAccountController::class, 'transactions']);
+    Route::post('/current-accounts/{currentAccount}/transactions', [CurrentAccountController::class, 'addTransaction']);
+    Route::get('/invoices', [InvoiceController::class, 'index']);
+    Route::get('/accounting-logs', [InvoiceController::class, 'logs']);
+    Route::post('/orders/{order}/invoices', [InvoiceController::class, 'createForOrder']);
+    Route::post('/invoices/{invoice}/return', [InvoiceController::class, 'returnInvoice']);
+    Route::post('/invoices/{invoice}/query', [InvoiceController::class, 'query']);
+    Route::post('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf']);
+    Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'download']);
     Route::get('/payment-providers', [PaymentProviderController::class, 'index']);
     Route::apiResource('payment-accounts', PaymentAccountController::class)
         ->parameters(['payment-accounts' => 'paymentAccount'])

@@ -12,7 +12,7 @@ class OrderController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json(Order::query()
-            ->with(['company:id,name', 'shipments.account.carrier:id,code,name', 'payments.account.provider:id,code,name'])
+            ->with(['company:id,name', 'shipments.account.carrier:id,code,name', 'payments.account.provider:id,code,name', 'invoices:id,order_id,status,invoice_number'])
             ->when($request->filled('company_id'), fn ($query) => $query->where('company_id', $request->integer('company_id')))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->latest()
@@ -21,7 +21,7 @@ class OrderController extends Controller
 
     public function show(Order $order): JsonResponse
     {
-        return response()->json($order->load(['company', 'shipments.account.carrier', 'payments.account.provider']));
+        return response()->json($order->load(['company', 'shipments.account.carrier', 'payments.account.provider', 'invoices']));
     }
 
     public function update(Request $request, Order $order): JsonResponse

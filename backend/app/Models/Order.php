@@ -41,4 +41,14 @@ class Order extends Model
     {
         return $this->hasMany(Payment::class)->latest();
     }
+
+    public function currentTransactions(): HasMany
+    {
+        return $this->hasMany(CurrentAccountTransaction::class);
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class)->latest();
+    }
 }

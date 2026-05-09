@@ -102,6 +102,7 @@ return [
         'redis:imports' => 180,
         'redis:shipping' => 120,
         'redis:payments' => 120,
+        'redis:accounting' => 120,
     ],
 
     /*
@@ -203,7 +204,7 @@ return [
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
-            'queue' => ['marketplace-sync', 'imports', 'shipping', 'payments', 'notifications', 'default'],
+            'queue' => ['marketplace-sync', 'imports', 'shipping', 'payments', 'accounting', 'notifications', 'default'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 3,
