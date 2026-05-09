@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductImportController;
 use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\TrendyolController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -27,6 +28,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('orders', OrderController::class)->only(['index', 'show', 'update']);
     Route::apiResource('marketplaces', MarketplaceAccountController::class);
+    Route::prefix('marketplaces/{marketplace}/trendyol')->group(function () {
+        Route::post('/test', [TrendyolController::class, 'test']);
+        Route::get('/categories', [TrendyolController::class, 'categories']);
+        Route::post('/send-products', [TrendyolController::class, 'sendProducts']);
+        Route::post('/update-price-inventory', [TrendyolController::class, 'updatePriceInventory']);
+        Route::post('/pull-orders', [TrendyolController::class, 'pullOrders']);
+    });
     Route::post('/marketplaces/{marketplace}/sync-products', [MarketplaceSyncController::class, 'syncProducts']);
     Route::post('/marketplaces/{marketplace}/sync-orders', [MarketplaceSyncController::class, 'syncOrders']);
 

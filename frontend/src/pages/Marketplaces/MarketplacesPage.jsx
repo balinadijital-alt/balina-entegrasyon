@@ -28,6 +28,8 @@ export function MarketplacesPage() {
   const [companies, setCompanies] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
+  const [syncing, setSyncing] = useState('');
+  const [categories, setCategories] = useState([]);
 
   const load = async () => {
     await run(async () => {
@@ -56,15 +58,37 @@ export function MarketplacesPage() {
       setForm(initialForm);
       notify('success', 'Entegrasyon kaydedildi.');
       await load();
-    });
+    }, { onError: (message) => notify('error', message) });
   };
 
   const sync = async (id, type) => {
+    const actionKey = `${id}:${type}`;
+    setSyncing(actionKey);
     await run(async () => {
-      const response = type === 'products' ? await api.marketplaces.syncProducts(id) : await api.marketplaces.syncOrders(id);
-      notify('success', response.message);
+      const actions = {
+        test: () => api.marketplaces.trendyolTest(id),
+        categories: () => api.marketplaces.trendyolCategories(id),
+        products: () => api.marketplaces.trendyolSendProducts(id),
+        prices: () => api.marketplaces.trendyolUpdatePriceInventory(id),
+        orders: () => api.marketplaces.trendyolPullOrders(id),
+      };
+      const response = await actions[type]();
+      const categoryCount = response.categories?.length;
+      if (response.categories) {
+        setCategories(response.categories);
+      }
+      const message = categoryCount !== undefined ? `${categoryCount} Trendyol kategorisi cekildi.` : response.message;
+      if (message) notify('success', message);
       await load();
-    });
+    }, { onError: (message) => notify('error', message) });
+    setSyncing('');
+  };
+
+  const syncLabel = (id, type, label) => syncing === `${id}:${type}` ? 'Calisiyor...' : label;
+
+  const formatDate = (value) => {
+    if (!value) return '-';
+    return new Intl.DateTimeFormat('tr-TR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
   };
 
   return (
@@ -93,6 +117,17 @@ export function MarketplacesPage() {
         </form>
       </section>
       {error && <ErrorState message={error} onRetry={load} />}
+      {syncing && <LoadingState label="Trendyol senkronizasyonu calisiyor..." />}
+      {categories.length > 0 && (
+        <section className="panel compact-panel">
+          <h2>Trendyol Kategorileri</h2>
+          <div className="category-list">
+            {categories.slice(0, 12).map((category) => (
+              <span key={category.id}>{category.name}</span>
+            ))}
+          </div>
+        </section>
+      )}
       {loading && accounts.length === 0 ? <LoadingState /> : (
       <DataTable
         rows={accounts}
@@ -100,14 +135,25 @@ export function MarketplacesPage() {
           { key: 'name', label: 'Hesap' },
           { key: 'code', label: 'Pazaryeri' },
           { key: 'company', label: 'Firma', render: (row) => row.company?.name },
-          { key: 'is_active', label: 'Durum', render: (row) => (row.is_active ? 'Aktif' : 'Pasif') },
+          { key: 'connection_status', label: 'Baglanti', render: (row) => <span className={`badge ${row.connection_status}`}>{row.connection_status || 'unknown'}</span> },
+          { key: 'last_product_sync_at', label: 'Son Urun', render: (row) => formatDate(row.last_product_sync_at) },
+          { key: 'last_price_sync_at', label: 'Son Stok/Fiyat', render: (row) => formatDate(row.last_price_sync_at) },
+          { key: 'last_order_sync_at', label: 'Son Siparis', render: (row) => formatDate(row.last_order_sync_at) },
+          { key: 'last_error', label: 'Son Hata', render: (row) => row.last_error || '-' },
           {
             key: 'actions',
             label: 'Islemler',
             render: (row) => (
               <div className="row-actions">
-                <button type="button" disabled={loading} onClick={() => sync(row.id, 'products')}><RefreshCw size={15} /> Urun</button>
-                <button type="button" disabled={loading} onClick={() => sync(row.id, 'orders')}><RefreshCw size={15} /> Siparis</button>
+                {row.code === 'trendyol' && (
+                  <>
+                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'test')}><RefreshCw size={15} /> {syncLabel(row.id, 'test', 'Test')}</button>
+                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'categories')}><RefreshCw size={15} /> {syncLabel(row.id, 'categories', 'Kategori')}</button>
+                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'products')}><RefreshCw size={15} /> {syncLabel(row.id, 'products', 'Urun')}</button>
+                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'prices')}><RefreshCw size={15} /> {syncLabel(row.id, 'prices', 'Stok/Fiyat')}</button>
+                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'orders')}><RefreshCw size={15} /> {syncLabel(row.id, 'orders', 'Siparis')}</button>
+                  </>
+                )}
               </div>
             ),
           },

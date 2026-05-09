@@ -5,7 +5,7 @@ export function useAsync() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const run = useCallback(async (callback) => {
+  const run = useCallback(async (callback, options = {}) => {
     setLoading(true);
     setError('');
 
@@ -14,6 +14,7 @@ export function useAsync() {
     } catch (exception) {
       const message = apiErrorMessage(exception);
       setError(message);
+      options.onError?.(message);
       return undefined;
     } finally {
       setLoading(false);

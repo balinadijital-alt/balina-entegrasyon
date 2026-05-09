@@ -16,6 +16,13 @@ class MarketplaceAccount extends Model
         'api_key',
         'api_secret',
         'is_active',
+        'connection_status',
+        'connection_checked_at',
+        'last_product_sync_at',
+        'last_price_sync_at',
+        'last_order_sync_at',
+        'last_error',
+        'metadata',
     ];
 
     protected $hidden = ['api_key', 'api_secret'];
@@ -26,6 +33,11 @@ class MarketplaceAccount extends Model
             'is_active' => 'boolean',
             'api_key' => 'encrypted',
             'api_secret' => 'encrypted',
+            'connection_checked_at' => 'datetime',
+            'last_product_sync_at' => 'datetime',
+            'last_price_sync_at' => 'datetime',
+            'last_order_sync_at' => 'datetime',
+            'metadata' => 'array',
         ];
     }
 

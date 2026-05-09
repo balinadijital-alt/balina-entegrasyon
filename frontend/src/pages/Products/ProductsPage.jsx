@@ -16,10 +16,15 @@ const initialForm = {
   barcode: '',
   name: '',
   brand: '',
+  trendyol_brand_id: '',
   category: '',
+  trendyol_category_id: '',
   price: 0,
+  list_price: '',
   stock: 0,
   vat_rate: 20,
+  dimensional_weight: 1,
+  trendyol_attributes: '',
   status: 'draft',
 };
 
@@ -60,13 +65,18 @@ export function ProductsPage() {
       await api.products.create({
         ...form,
         price: Number(form.price),
+        list_price: form.list_price === '' ? null : Number(form.list_price),
         stock: Number(form.stock),
         vat_rate: Number(form.vat_rate),
+        dimensional_weight: Number(form.dimensional_weight || 1),
+        trendyol_brand_id: form.trendyol_brand_id === '' ? null : Number(form.trendyol_brand_id),
+        trendyol_category_id: form.trendyol_category_id === '' ? null : Number(form.trendyol_category_id),
+        trendyol_attributes: form.trendyol_attributes ? JSON.parse(form.trendyol_attributes) : null,
       });
       setForm(initialForm);
       notify('success', 'Urun kaydedildi.');
       await load();
-    });
+    }, { onError: (message) => notify('error', message) });
   };
 
   const importProducts = async (event) => {
@@ -82,7 +92,7 @@ export function ProductsPage() {
       const result = await api.products.import(body);
       notify('success', `${result.created} yeni, ${result.updated} guncel urun islendi.`);
       await load();
-    });
+    }, { onError: (message) => notify('error', message) });
   };
 
   const uploadImage = async (event) => {
@@ -97,7 +107,7 @@ export function ProductsPage() {
       await api.products.uploadImage(imageProductId, body);
       notify('success', 'Gorsel yuklendi.');
       await load();
-    });
+    }, { onError: (message) => notify('error', message) });
   };
 
   return (
@@ -115,10 +125,17 @@ export function ProductsPage() {
           <Field label="Barkod"><input value={form.barcode} onChange={(event) => setForm({ ...form, barcode: event.target.value })} /></Field>
           <Field label="Urun Adi" error={errors.name}><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
           <Field label="Marka"><input value={form.brand} onChange={(event) => setForm({ ...form, brand: event.target.value })} /></Field>
+          <Field label="Trendyol Marka ID"><input type="number" value={form.trendyol_brand_id} onChange={(event) => setForm({ ...form, trendyol_brand_id: event.target.value })} /></Field>
           <Field label="Kategori"><input value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} /></Field>
+          <Field label="Trendyol Kategori ID"><input type="number" value={form.trendyol_category_id} onChange={(event) => setForm({ ...form, trendyol_category_id: event.target.value })} /></Field>
           <Field label="Fiyat" error={errors.price}><input type="number" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} /></Field>
+          <Field label="Liste Fiyati"><input type="number" value={form.list_price} onChange={(event) => setForm({ ...form, list_price: event.target.value })} /></Field>
           <Field label="Stok" error={errors.stock}><input type="number" value={form.stock} onChange={(event) => setForm({ ...form, stock: event.target.value })} /></Field>
           <Field label="KDV"><input type="number" value={form.vat_rate} onChange={(event) => setForm({ ...form, vat_rate: event.target.value })} /></Field>
+          <Field label="Desi"><input type="number" value={form.dimensional_weight} onChange={(event) => setForm({ ...form, dimensional_weight: event.target.value })} /></Field>
+          <Field label="Trendyol Ozellikleri JSON" error={errors.trendyol_attributes}>
+            <textarea value={form.trendyol_attributes} onChange={(event) => setForm({ ...form, trendyol_attributes: event.target.value })} placeholder='[{"attributeId":1,"attributeValueId":1}]' />
+          </Field>
           <Field label="Durum">
             <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
               <option value="draft">Taslak</option>

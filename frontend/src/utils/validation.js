@@ -16,6 +16,13 @@ export function validateProduct(form) {
   if (!required(form.name)) errors.name = 'Urun adi zorunludur.';
   if (Number(form.price) < 0) errors.price = 'Fiyat negatif olamaz.';
   if (Number(form.stock) < 0) errors.stock = 'Stok negatif olamaz.';
+  if (form.trendyol_attributes) {
+    try {
+      JSON.parse(form.trendyol_attributes);
+    } catch {
+      errors.trendyol_attributes = 'Trendyol ozellikleri gecerli JSON olmali.';
+    }
+  }
   return errors;
 }
 

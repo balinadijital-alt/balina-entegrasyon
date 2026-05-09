@@ -59,6 +59,11 @@ export const api = {
     create: (payload) => http.post('/marketplaces', payload).then((response) => response.data),
     syncProducts: (id) => http.post(`/marketplaces/${id}/sync-products`).then((response) => response.data),
     syncOrders: (id) => http.post(`/marketplaces/${id}/sync-orders`).then((response) => response.data),
+    trendyolTest: (id) => http.post(`/marketplaces/${id}/trendyol/test`).then((response) => response.data),
+    trendyolCategories: (id) => http.get(`/marketplaces/${id}/trendyol/categories`).then((response) => response.data),
+    trendyolSendProducts: (id) => http.post(`/marketplaces/${id}/trendyol/send-products`).then((response) => response.data),
+    trendyolUpdatePriceInventory: (id) => http.post(`/marketplaces/${id}/trendyol/update-price-inventory`).then((response) => response.data),
+    trendyolPullOrders: (id) => http.post(`/marketplaces/${id}/trendyol/pull-orders`).then((response) => response.data),
   },
   orders: {
     list: () => http.get('/orders').then((response) => response.data),

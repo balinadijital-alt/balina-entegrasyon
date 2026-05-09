@@ -51,6 +51,7 @@ class MarketplaceAccountController extends Controller
             'api_key' => ['nullable', 'string'],
             'api_secret' => ['nullable', 'string'],
             'is_active' => ['boolean'],
+            'metadata' => ['nullable', 'array'],
         ]);
     }
 }

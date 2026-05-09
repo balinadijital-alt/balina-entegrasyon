@@ -7,6 +7,7 @@ use App\Models\MarketplaceAccount;
 use App\Services\Marketplaces\Contracts\MarketplaceService;
 use Closure;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\RateLimiter;
 use Throwable;
 
 abstract class AbstractMarketplaceService implements MarketplaceService
@@ -28,7 +29,20 @@ abstract class AbstractMarketplaceService implements MarketplaceService
         }
     }
 
-    private function log(MarketplaceAccount $account, string $method, string $endpoint, array $request, ?int $status, mixed $response, float $startedAt, ?string $error = null): void
+    protected function throttle(MarketplaceAccount $account): void
+    {
+        $key = "marketplace:{$account->code}:{$account->id}";
+        $maxAttempts = (int) config("marketplaces.{$account->code}.rate_limit_attempts", 30);
+        $decay = (int) config("marketplaces.{$account->code}.rate_limit_decay", 60);
+
+        while (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
+            sleep(max(1, RateLimiter::availableIn($key)));
+        }
+
+        RateLimiter::hit($key, $decay);
+    }
+
+    protected function log(MarketplaceAccount $account, string $method, string $endpoint, array $request, ?int $status, mixed $response, float $startedAt, ?string $error = null): void
     {
         ApiLog::create([
             'company_id' => $account->company_id,

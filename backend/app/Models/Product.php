@@ -18,10 +18,17 @@ class Product extends Model
         'name',
         'description',
         'brand',
+        'trendyol_brand_id',
         'category',
+        'trendyol_category_id',
         'price',
+        'list_price',
         'stock',
         'vat_rate',
+        'dimensional_weight',
+        'trendyol_attributes',
+        'trendyol_batch_request_id',
+        'last_trendyol_sync_at',
         'status',
     ];
 
@@ -29,8 +36,12 @@ class Product extends Model
     {
         return [
             'price' => 'decimal:2',
+            'list_price' => 'decimal:2',
             'stock' => 'integer',
             'vat_rate' => 'integer',
+            'dimensional_weight' => 'decimal:2',
+            'trendyol_attributes' => 'array',
+            'last_trendyol_sync_at' => 'datetime',
         ];
     }
 

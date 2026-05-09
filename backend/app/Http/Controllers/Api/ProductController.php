@@ -63,10 +63,15 @@ class ProductController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'brand' => ['nullable', 'string', 'max:128'],
+            'trendyol_brand_id' => ['nullable', 'integer', 'min:1'],
             'category' => ['nullable', 'string', 'max:128'],
+            'trendyol_category_id' => ['nullable', 'integer', 'min:1'],
             'price' => ['required', 'numeric', 'min:0'],
+            'list_price' => ['nullable', 'numeric', 'min:0'],
             'stock' => ['required', 'integer', 'min:0'],
             'vat_rate' => ['required', 'integer', 'min:0', 'max:100'],
+            'dimensional_weight' => ['nullable', 'numeric', 'min:0.01'],
+            'trendyol_attributes' => ['nullable', 'array'],
             'status' => ['required', 'in:draft,active,passive'],
         ]);
     }
