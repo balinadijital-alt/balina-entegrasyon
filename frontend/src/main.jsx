@@ -1,0 +1,45 @@
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AppLayout } from './layouts/AppLayout.jsx';
+import { LoginPage } from './pages/Auth/LoginPage.jsx';
+import { RegisterPage } from './pages/Auth/RegisterPage.jsx';
+import { CompaniesPage } from './pages/Companies/CompaniesPage.jsx';
+import { DashboardPage } from './pages/Dashboard/DashboardPage.jsx';
+import { ApiLogsPage } from './pages/Logs/ApiLogsPage.jsx';
+import { MarketplacesPage } from './pages/Marketplaces/MarketplacesPage.jsx';
+import { OrdersPage } from './pages/Orders/OrdersPage.jsx';
+import { ProductsPage } from './pages/Products/ProductsPage.jsx';
+import { RolesPage } from './pages/Roles/RolesPage.jsx';
+import './styles/app.css';
+
+function Protected({ children }) {
+  return localStorage.getItem('token') ? children : <Navigate to="/login" replace />;
+}
+
+createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/"
+          element={
+            <Protected>
+              <AppLayout />
+            </Protected>
+          }
+        >
+          <Route index element={<DashboardPage />} />
+          <Route path="companies" element={<CompaniesPage />} />
+          <Route path="products" element={<ProductsPage />} />
+          <Route path="marketplaces" element={<MarketplacesPage />} />
+          <Route path="orders" element={<OrdersPage />} />
+          <Route path="api-logs" element={<ApiLogsPage />} />
+          <Route path="roles" element={<RolesPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  </React.StrictMode>,
+);
