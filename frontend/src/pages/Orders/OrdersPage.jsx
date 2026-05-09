@@ -12,14 +12,18 @@ export function OrdersPage() {
   const { loading, error, run } = useAsync();
   const [orders, setOrders] = useState([]);
   const [shippingAccounts, setShippingAccounts] = useState([]);
+  const [paymentAccounts, setPaymentAccounts] = useState([]);
   const [selectedAccountId, setSelectedAccountId] = useState('');
+  const [selectedPaymentAccountId, setSelectedPaymentAccountId] = useState('');
 
   const load = async () => {
     await run(async () => {
-      const [response, accountResponse] = await Promise.all([api.orders.list(), api.shipping.accounts()]);
+      const [response, accountResponse, paymentResponse] = await Promise.all([api.orders.list(), api.shipping.accounts(), api.payments.accounts()]);
       setOrders(response.data || []);
       setShippingAccounts(accountResponse.data || []);
+      setPaymentAccounts(paymentResponse.data || []);
       setSelectedAccountId((accountResponse.data || [])[0]?.id || '');
+      setSelectedPaymentAccountId((paymentResponse.data || [])[0]?.id || '');
     });
   };
 
@@ -40,6 +44,19 @@ export function OrdersPage() {
     }, { onError: (message) => notify('error', message) });
   };
 
+  const createPayment = async (order) => {
+    if (!selectedPaymentAccountId) {
+      notify('error', 'POS hesabi seciniz.');
+      return;
+    }
+
+    await run(async () => {
+      const payment = await api.payments.create(order.id, { payment_account_id: selectedPaymentAccountId, amount: order.total_amount, method: 'three_d' });
+      notify('success', payment.payment_url ? 'Odeme linki olusturuldu.' : 'Odeme kaydi olusturuldu.');
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
   return (
     <>
       <PageHeader title="Siparis Yonetimi" />
@@ -48,6 +65,10 @@ export function OrdersPage() {
         <select value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)}>
           <option value="">Kargo hesabi seciniz</option>
           {shippingAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} - {account.carrier?.name}</option>)}
+        </select>
+        <select value={selectedPaymentAccountId} onChange={(event) => setSelectedPaymentAccountId(event.target.value)}>
+          <option value="">POS hesabi seciniz</option>
+          {paymentAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} - {account.provider?.name}</option>)}
         </select>
       </section>
       {error && <ErrorState message={error} onRetry={load} />}
@@ -61,8 +82,9 @@ export function OrdersPage() {
           { key: 'customer_name', label: 'Musteri' },
           { key: 'total_amount', label: 'Tutar' },
           { key: 'status', label: 'Durum' },
+          { key: 'payment', label: 'Odeme', render: (row) => row.payments?.[0] ? <span className={`badge ${row.payments[0].status}`}>{row.payments[0].status}</span> : '-' },
           { key: 'shipment', label: 'Kargo', render: (row) => row.shipments?.[0] ? <span className={`badge ${row.shipments[0].status}`}>{row.shipments[0].tracking_number || row.shipments[0].status}</span> : '-' },
-          { key: 'actions', label: 'Islem', render: (row) => <div className="row-actions"><button type="button" disabled={loading} onClick={() => createShipment(row.id)}>Kargo Olustur</button></div> },
+          { key: 'actions', label: 'Islem', render: (row) => <div className="row-actions"><button type="button" disabled={loading} onClick={() => createPayment(row)}>Odeme Linki</button><button type="button" disabled={loading} onClick={() => createShipment(row.id)}>Kargo Olustur</button></div> },
         ]}
       />
       )}

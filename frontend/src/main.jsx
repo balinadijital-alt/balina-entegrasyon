@@ -12,6 +12,7 @@ import { ApiLogsPage } from './pages/Logs/ApiLogsPage.jsx';
 import { ImportCenterPage } from './pages/Imports/ImportCenterPage.jsx';
 import { MarketplacesPage } from './pages/Marketplaces/MarketplacesPage.jsx';
 import { OrdersPage } from './pages/Orders/OrdersPage.jsx';
+import { PaymentsPage } from './pages/Payments/PaymentsPage.jsx';
 import { ProductsPage } from './pages/Products/ProductsPage.jsx';
 import { QueuePage } from './pages/Queue/QueuePage.jsx';
 import { RolesPage } from './pages/Roles/RolesPage.jsx';
@@ -43,6 +44,7 @@ createRoot(document.getElementById('root')).render(
             <Route path="imports" element={<ImportCenterPage />} />
             <Route path="marketplaces" element={<MarketplacesPage />} />
             <Route path="orders" element={<OrdersPage />} />
+            <Route path="payments" element={<PaymentsPage />} />
             <Route path="shipping" element={<ShippingPage />} />
           <Route path="api-logs" element={<ApiLogsPage />} />
           <Route path="queue" element={<QueuePage />} />

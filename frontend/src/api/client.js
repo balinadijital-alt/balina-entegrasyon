@@ -92,6 +92,16 @@ export const api = {
   orders: {
     list: () => http.get('/orders').then((response) => response.data),
   },
+  payments: {
+    providers: () => http.get('/payment-providers').then((response) => response.data),
+    accounts: () => http.get('/payment-accounts').then((response) => response.data),
+    createAccount: (payload) => http.post('/payment-accounts', payload).then((response) => response.data),
+    list: () => http.get('/payments').then((response) => response.data),
+    logs: () => http.get('/payment-logs').then((response) => response.data),
+    create: (orderId, payload) => http.post(`/orders/${orderId}/payments`, payload).then((response) => response.data),
+    query: (id) => http.post(`/payments/${id}/query`).then((response) => response.data),
+    refund: (id, payload) => http.post(`/payments/${id}/refund`, payload).then((response) => response.data),
+  },
   shipping: {
     carriers: () => http.get('/shipping-carriers').then((response) => response.data),
     accounts: () => http.get('/shipping-accounts').then((response) => response.data),

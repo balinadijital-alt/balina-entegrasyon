@@ -8,6 +8,9 @@ use App\Http\Controllers\Api\HepsiburadaController;
 use App\Http\Controllers\Api\MarketplaceSyncController;
 use App\Http\Controllers\Api\MarketplaceAccountController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\PaymentAccountController;
+use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\PaymentProviderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductImportController;
 use App\Http\Controllers\Api\ProductImportRunController;
@@ -23,6 +26,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::match(['get', 'post'], '/payment-callbacks/{payment}', [PaymentController::class, 'callback']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
@@ -45,6 +49,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/import-runs/{importRun}/retry', [ProductImportRunController::class, 'retry']);
 
     Route::apiResource('orders', OrderController::class)->only(['index', 'show', 'update']);
+    Route::get('/payment-providers', [PaymentProviderController::class, 'index']);
+    Route::apiResource('payment-accounts', PaymentAccountController::class)
+        ->parameters(['payment-accounts' => 'paymentAccount'])
+        ->except(['show']);
+    Route::get('/payments', [PaymentController::class, 'index']);
+    Route::get('/payment-logs', [PaymentController::class, 'logs']);
+    Route::post('/orders/{order}/payments', [PaymentController::class, 'createForOrder']);
+    Route::post('/payments/{payment}/query', [PaymentController::class, 'query']);
+    Route::post('/payments/{payment}/refund', [PaymentController::class, 'refund']);
     Route::get('/shipping-carriers', [ShippingCarrierController::class, 'index']);
     Route::apiResource('shipping-accounts', ShippingAccountController::class)
         ->parameters(['shipping-accounts' => 'shippingAccount'])

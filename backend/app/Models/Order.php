@@ -36,4 +36,9 @@ class Order extends Model
     {
         return $this->hasMany(Shipment::class)->latest();
     }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class)->latest();
+    }
 }
