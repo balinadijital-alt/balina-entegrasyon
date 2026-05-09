@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\ProductImportRunController;
 use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\QueueDashboardController;
 use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\SaasController;
 use App\Http\Controllers\Api\ShipmentController;
 use App\Http\Controllers\Api\ShippingAccountController;
 use App\Http\Controllers\Api\ShippingCarrierController;
@@ -36,14 +37,26 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 
+    Route::get('/saas/plans', [SaasController::class, 'plans']);
+    Route::get('/saas/subscriptions', [SaasController::class, 'subscriptions']);
+    Route::get('/companies/{company}/saas-usage', [SaasController::class, 'usage']);
+    Route::post('/companies/{company}/change-plan', [SaasController::class, 'changePlan']);
+    Route::post('/companies/{company}/start-trial', [SaasController::class, 'startTrial']);
+    Route::get('/licenses', [SaasController::class, 'licenses']);
+    Route::post('/licenses', [SaasController::class, 'createLicense']);
+    Route::post('/licenses/activate', [SaasController::class, 'activateLicense']);
+    Route::get('/partners', [SaasController::class, 'partners']);
+    Route::post('/partners', [SaasController::class, 'createPartner']);
+
     Route::apiResource('companies', CompanyController::class);
-    Route::apiResource('products', ProductController::class);
-    Route::post('/products/import', ProductImportController::class);
+    Route::apiResource('products', ProductController::class)->middleware('plan.limit:products');
+    Route::post('/products/import', ProductImportController::class)->middleware('plan.limit:products');
     Route::post('/products/{product}/images', [ProductImageController::class, 'store']);
     Route::delete('/product-images/{image}', [ProductImageController::class, 'destroy']);
     Route::apiResource('xml-sources', XmlSourceController::class)
         ->parameters(['xml-sources' => 'xmlSource'])
-        ->except(['show']);
+        ->except(['show'])
+        ->middleware('plan.limit:xml_sources');
     Route::post('/xml-sources/{xmlSource}/preview', [XmlSourceController::class, 'preview']);
     Route::post('/xml-sources/{xmlSource}/import', [XmlSourceController::class, 'import']);
     Route::get('/import-runs', [ProductImportRunController::class, 'index']);
@@ -87,7 +100,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/shipments/{shipment}/label', [ShipmentController::class, 'downloadLabel']);
     Route::post('/shipments/{shipment}/return-code', [ShipmentController::class, 'returnCode']);
     Route::post('/shipments/{shipment}/retry', [ShipmentController::class, 'retry']);
-    Route::apiResource('marketplaces', MarketplaceAccountController::class);
+    Route::apiResource('marketplaces', MarketplaceAccountController::class)->middleware('plan.limit:marketplaces');
     Route::get('/category-mappings', [CategoryMappingController::class, 'index']);
     Route::post('/category-mappings', [CategoryMappingController::class, 'store']);
     Route::prefix('marketplaces/{marketplace}/trendyol')->group(function () {

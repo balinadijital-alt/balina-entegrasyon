@@ -118,6 +118,18 @@ export const api = {
     createPdf: (id) => http.post(`/invoices/${id}/pdf`).then((response) => response.data),
     downloadPdf: (id) => http.get(`/invoices/${id}/pdf`, { responseType: 'blob' }).then((response) => response.data),
   },
+  saas: {
+    plans: () => http.get('/saas/plans').then((response) => response.data),
+    subscriptions: () => http.get('/saas/subscriptions').then((response) => response.data),
+    usage: (companyId) => http.get(`/companies/${companyId}/saas-usage`).then((response) => response.data),
+    changePlan: (companyId, payload) => http.post(`/companies/${companyId}/change-plan`, payload).then((response) => response.data),
+    startTrial: (companyId, payload) => http.post(`/companies/${companyId}/start-trial`, payload).then((response) => response.data),
+    licenses: () => http.get('/licenses').then((response) => response.data),
+    createLicense: (payload) => http.post('/licenses', payload).then((response) => response.data),
+    activateLicense: (payload) => http.post('/licenses/activate', payload).then((response) => response.data),
+    partners: () => http.get('/partners').then((response) => response.data),
+    createPartner: (payload) => http.post('/partners', payload).then((response) => response.data),
+  },
   shipping: {
     carriers: () => http.get('/shipping-carriers').then((response) => response.data),
     accounts: () => http.get('/shipping-accounts').then((response) => response.data),

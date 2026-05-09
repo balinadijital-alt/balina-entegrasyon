@@ -1,4 +1,4 @@
-import { Building2, ClipboardList, CreditCard, FileText, Gauge, KeyRound, Landmark, Link2, Package, ShieldCheck, Truck, UploadCloud, Workflow } from 'lucide-react';
+import { Building2, ClipboardList, CreditCard, FileText, Gauge, KeyRound, Landmark, Link2, Package, ShieldCheck, Sparkles, Truck, UploadCloud, Workflow } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext.jsx';
 
@@ -12,6 +12,7 @@ const links = [
   { to: '/orders', label: 'Siparisler', icon: ClipboardList },
   { to: '/payments', label: 'Odemeler', icon: CreditCard },
   { to: '/shipping', label: 'Kargo', icon: Truck },
+  { to: '/saas', label: 'SaaS', icon: Sparkles },
   { to: '/api-logs', label: 'API Loglari', icon: FileText },
   { to: '/queue', label: 'Queue', icon: Workflow },
   { to: '/roles', label: 'Roller', icon: ShieldCheck },

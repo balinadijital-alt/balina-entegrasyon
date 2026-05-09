@@ -18,6 +18,7 @@ import { ProductsPage } from './pages/Products/ProductsPage.jsx';
 import { QueuePage } from './pages/Queue/QueuePage.jsx';
 import { RolesPage } from './pages/Roles/RolesPage.jsx';
 import { ShippingPage } from './pages/Shipping/ShippingPage.jsx';
+import { SaasPage } from './pages/Saas/SaasPage.jsx';
 import './styles/app.css';
 
 function Protected({ children }) {
@@ -48,6 +49,7 @@ createRoot(document.getElementById('root')).render(
             <Route path="orders" element={<OrdersPage />} />
             <Route path="payments" element={<PaymentsPage />} />
             <Route path="shipping" element={<ShippingPage />} />
+            <Route path="saas" element={<SaasPage />} />
           <Route path="api-logs" element={<ApiLogsPage />} />
           <Route path="queue" element={<QueuePage />} />
           <Route path="roles" element={<RolesPage />} />
