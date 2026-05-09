@@ -15,6 +15,7 @@ import { OrdersPage } from './pages/Orders/OrdersPage.jsx';
 import { ProductsPage } from './pages/Products/ProductsPage.jsx';
 import { QueuePage } from './pages/Queue/QueuePage.jsx';
 import { RolesPage } from './pages/Roles/RolesPage.jsx';
+import { ShippingPage } from './pages/Shipping/ShippingPage.jsx';
 import './styles/app.css';
 
 function Protected({ children }) {
@@ -42,6 +43,7 @@ createRoot(document.getElementById('root')).render(
             <Route path="imports" element={<ImportCenterPage />} />
             <Route path="marketplaces" element={<MarketplacesPage />} />
             <Route path="orders" element={<OrdersPage />} />
+            <Route path="shipping" element={<ShippingPage />} />
           <Route path="api-logs" element={<ApiLogsPage />} />
           <Route path="queue" element={<QueuePage />} />
           <Route path="roles" element={<RolesPage />} />

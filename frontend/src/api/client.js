@@ -92,6 +92,19 @@ export const api = {
   orders: {
     list: () => http.get('/orders').then((response) => response.data),
   },
+  shipping: {
+    carriers: () => http.get('/shipping-carriers').then((response) => response.data),
+    accounts: () => http.get('/shipping-accounts').then((response) => response.data),
+    createAccount: (payload) => http.post('/shipping-accounts', payload).then((response) => response.data),
+    shipments: () => http.get('/shipments').then((response) => response.data),
+    createShipment: (orderId, payload) => http.post(`/orders/${orderId}/shipments`, payload).then((response) => response.data),
+    bulkLabels: (payload) => http.post('/shipments/bulk-labels', payload).then((response) => response.data),
+    track: (id) => http.post(`/shipments/${id}/track`).then((response) => response.data),
+    label: (id) => http.post(`/shipments/${id}/label`).then((response) => response.data),
+    returnCode: (id) => http.post(`/shipments/${id}/return-code`).then((response) => response.data),
+    retry: (id) => http.post(`/shipments/${id}/retry`).then((response) => response.data),
+    downloadLabel: (id) => http.get(`/shipments/${id}/label`, { responseType: 'blob' }).then((response) => response.data),
+  },
   logs: {
     list: () => http.get('/api-logs').then((response) => response.data),
   },

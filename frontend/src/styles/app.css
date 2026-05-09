@@ -19,6 +19,11 @@ textarea {
   font: inherit;
 }
 
+input[type="checkbox"] {
+  min-height: auto;
+  width: auto;
+}
+
 button {
   align-items: center;
   background: #0f766e;
@@ -31,6 +36,18 @@ button {
   justify-content: center;
   min-height: 40px;
   padding: 0 14px;
+}
+
+.button-link {
+  align-items: center;
+  background: #0f766e;
+  border-radius: 6px;
+  color: #fff;
+  display: inline-flex;
+  gap: 8px;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 10px;
 }
 
 button:disabled {
@@ -291,6 +308,17 @@ th {
 }
 
 .badge.completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge.created,
+.badge.in_transit {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.badge.delivered {
   background: #dcfce7;
   color: #166534;
 }

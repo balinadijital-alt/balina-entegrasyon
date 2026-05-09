@@ -14,6 +14,9 @@ use App\Http\Controllers\Api\ProductImportRunController;
 use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\QueueDashboardController;
 use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\ShipmentController;
+use App\Http\Controllers\Api\ShippingAccountController;
+use App\Http\Controllers\Api\ShippingCarrierController;
 use App\Http\Controllers\Api\TrendyolController;
 use App\Http\Controllers\Api\XmlSourceController;
 use Illuminate\Support\Facades\Route;
@@ -42,6 +45,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/import-runs/{importRun}/retry', [ProductImportRunController::class, 'retry']);
 
     Route::apiResource('orders', OrderController::class)->only(['index', 'show', 'update']);
+    Route::get('/shipping-carriers', [ShippingCarrierController::class, 'index']);
+    Route::apiResource('shipping-accounts', ShippingAccountController::class)
+        ->parameters(['shipping-accounts' => 'shippingAccount'])
+        ->except(['show']);
+    Route::get('/shipments', [ShipmentController::class, 'index']);
+    Route::post('/orders/{order}/shipments', [ShipmentController::class, 'createForOrder']);
+    Route::post('/shipments/bulk-labels', [ShipmentController::class, 'bulkLabels']);
+    Route::post('/shipments/{shipment}/track', [ShipmentController::class, 'track']);
+    Route::post('/shipments/{shipment}/label', [ShipmentController::class, 'label']);
+    Route::get('/shipments/{shipment}/label', [ShipmentController::class, 'downloadLabel']);
+    Route::post('/shipments/{shipment}/return-code', [ShipmentController::class, 'returnCode']);
+    Route::post('/shipments/{shipment}/retry', [ShipmentController::class, 'retry']);
     Route::apiResource('marketplaces', MarketplaceAccountController::class);
     Route::get('/category-mappings', [CategoryMappingController::class, 'index']);
     Route::post('/category-mappings', [CategoryMappingController::class, 'store']);
