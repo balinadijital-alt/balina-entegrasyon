@@ -4,13 +4,14 @@ namespace App\Services\Imports;
 
 use App\Models\Product;
 use Illuminate\Http\UploadedFile;
-use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ProductImportService
 {
     public function import(int $companyId, UploadedFile $file): array
     {
-        $rows = Excel::toArray(new ProductRowsImport(), $file)[0] ?? [];
+        $spreadsheet = IOFactory::load($file->getRealPath());
+        $rows = $spreadsheet->getActiveSheet()->toArray();
         $header = array_map(fn ($value) => strtolower(trim((string) $value)), array_shift($rows) ?? []);
         $created = 0;
         $updated = 0;
