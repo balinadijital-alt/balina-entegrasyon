@@ -9,5 +9,10 @@ return [
     ],
     'hepsiburada' => [
         'base_url' => env('HEPSIBURADA_BASE_URL', 'https://mpop.hepsiburada.com'),
+        'listing_base_url' => env('HEPSIBURADA_LISTING_BASE_URL', 'https://listing-external.hepsiburada.com'),
+        'order_base_url' => env('HEPSIBURADA_ORDER_BASE_URL', 'https://oms-external.hepsiburada.com'),
+        'timeout' => env('HEPSIBURADA_TIMEOUT', 20),
+        'rate_limit_attempts' => env('HEPSIBURADA_RATE_LIMIT_ATTEMPTS', 80),
+        'rate_limit_decay' => env('HEPSIBURADA_RATE_LIMIT_DECAY', 1),
     ],
 ];

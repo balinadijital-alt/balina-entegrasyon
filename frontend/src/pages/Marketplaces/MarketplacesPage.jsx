@@ -18,6 +18,8 @@ const initialForm = {
   merchant_id: '',
   api_key: '',
   api_secret: '',
+  service_username: '',
+  service_password: '',
   is_active: true,
 };
 
@@ -71,13 +73,19 @@ export function MarketplacesPage() {
         products: () => api.marketplaces.trendyolSendProducts(id),
         prices: () => api.marketplaces.trendyolUpdatePriceInventory(id),
         orders: () => api.marketplaces.trendyolPullOrders(id),
+        hbTest: () => api.marketplaces.hepsiburadaTest(id),
+        hbCategories: () => api.marketplaces.hepsiburadaCategories(id),
+        hbProducts: () => api.marketplaces.hepsiburadaSendProducts(id),
+        hbPrices: () => api.marketplaces.hepsiburadaUpdatePriceInventory(id),
+        hbOrders: () => api.marketplaces.hepsiburadaPullOrders(id),
       };
       const response = await actions[type]();
       const categoryCount = response.categories?.length;
       if (response.categories) {
         setCategories(response.categories);
       }
-      const message = categoryCount !== undefined ? `${categoryCount} Trendyol kategorisi cekildi.` : response.message;
+      const marketplaceName = type.startsWith('hb') ? 'Hepsiburada' : 'Trendyol';
+      const message = categoryCount !== undefined ? `${categoryCount} ${marketplaceName} kategorisi cekildi.` : response.message;
       if (message) notify('success', message);
       await load();
     }, { onError: (message) => notify('error', message) });
@@ -111,19 +119,30 @@ export function MarketplacesPage() {
           <Field label="Hesap Adi" error={errors.name}><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
           <Field label="Supplier ID" error={errors.supplier_id}><input value={form.supplier_id} onChange={(event) => setForm({ ...form, supplier_id: event.target.value })} /></Field>
           <Field label="Merchant ID" error={errors.merchant_id}><input value={form.merchant_id} onChange={(event) => setForm({ ...form, merchant_id: event.target.value })} /></Field>
-          <Field label="API Key"><input value={form.api_key} onChange={(event) => setForm({ ...form, api_key: event.target.value })} /></Field>
-          <Field label="API Secret"><input type="password" value={form.api_secret} onChange={(event) => setForm({ ...form, api_secret: event.target.value })} /></Field>
+          <Field label="API Key / Kullanici Adi" error={errors.service_username}>
+            <input
+              value={form.api_key}
+              onChange={(event) => setForm({ ...form, api_key: event.target.value, service_username: event.target.value })}
+            />
+          </Field>
+          <Field label="API Secret / Password" error={errors.service_password}>
+            <input
+              type="password"
+              value={form.api_secret}
+              onChange={(event) => setForm({ ...form, api_secret: event.target.value, service_password: event.target.value })}
+            />
+          </Field>
           <button disabled={loading}>{loading ? 'Kaydediliyor...' : 'Entegrasyon Ekle'}</button>
         </form>
       </section>
       {error && <ErrorState message={error} onRetry={load} />}
-      {syncing && <LoadingState label="Trendyol senkronizasyonu calisiyor..." />}
+      {syncing && <LoadingState label="Senkronizasyon calisiyor..." />}
       {categories.length > 0 && (
         <section className="panel compact-panel">
-          <h2>Trendyol Kategorileri</h2>
+          <h2>Pazaryeri Kategorileri</h2>
           <div className="category-list">
             {categories.slice(0, 12).map((category) => (
-              <span key={category.id}>{category.name}</span>
+              <span key={category.id || category.categoryId || category.name}>{category.name || category.categoryName}</span>
             ))}
           </div>
         </section>
@@ -152,6 +171,15 @@ export function MarketplacesPage() {
                     <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'products')}><RefreshCw size={15} /> {syncLabel(row.id, 'products', 'Urun')}</button>
                     <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'prices')}><RefreshCw size={15} /> {syncLabel(row.id, 'prices', 'Stok/Fiyat')}</button>
                     <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'orders')}><RefreshCw size={15} /> {syncLabel(row.id, 'orders', 'Siparis')}</button>
+                  </>
+                )}
+                {row.code === 'hepsiburada' && (
+                  <>
+                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'hbTest')}><RefreshCw size={15} /> {syncLabel(row.id, 'hbTest', 'Test')}</button>
+                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'hbCategories')}><RefreshCw size={15} /> {syncLabel(row.id, 'hbCategories', 'Kategori')}</button>
+                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'hbProducts')}><RefreshCw size={15} /> {syncLabel(row.id, 'hbProducts', 'Urun')}</button>
+                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'hbPrices')}><RefreshCw size={15} /> {syncLabel(row.id, 'hbPrices', 'Stok/Fiyat')}</button>
+                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'hbOrders')}><RefreshCw size={15} /> {syncLabel(row.id, 'hbOrders', 'Siparis')}</button>
                   </>
                 )}
               </div>

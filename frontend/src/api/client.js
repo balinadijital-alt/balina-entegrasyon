@@ -64,6 +64,15 @@ export const api = {
     trendyolSendProducts: (id) => http.post(`/marketplaces/${id}/trendyol/send-products`).then((response) => response.data),
     trendyolUpdatePriceInventory: (id) => http.post(`/marketplaces/${id}/trendyol/update-price-inventory`).then((response) => response.data),
     trendyolPullOrders: (id) => http.post(`/marketplaces/${id}/trendyol/pull-orders`).then((response) => response.data),
+    hepsiburadaTest: (id) => http.post(`/marketplaces/${id}/hepsiburada/test`).then((response) => response.data),
+    hepsiburadaCategories: (id) => http.get(`/marketplaces/${id}/hepsiburada/categories`).then((response) => response.data),
+    hepsiburadaSendProducts: (id) => http.post(`/marketplaces/${id}/hepsiburada/send-products`).then((response) => response.data),
+    hepsiburadaUpdatePriceInventory: (id) => http.post(`/marketplaces/${id}/hepsiburada/update-price-inventory`).then((response) => response.data),
+    hepsiburadaPullOrders: (id) => http.post(`/marketplaces/${id}/hepsiburada/pull-orders`).then((response) => response.data),
+  },
+  categoryMappings: {
+    list: (params) => http.get('/category-mappings', { params }).then((response) => response.data),
+    create: (payload) => http.post('/category-mappings', payload).then((response) => response.data),
   },
   orders: {
     list: () => http.get('/orders').then((response) => response.data),

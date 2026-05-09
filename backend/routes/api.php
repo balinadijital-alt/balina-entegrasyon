@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Api\ApiLogController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CategoryMappingController;
 use App\Http\Controllers\Api\CompanyController;
+use App\Http\Controllers\Api\HepsiburadaController;
 use App\Http\Controllers\Api\MarketplaceSyncController;
 use App\Http\Controllers\Api\MarketplaceAccountController;
 use App\Http\Controllers\Api\OrderController;
@@ -29,12 +31,21 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('orders', OrderController::class)->only(['index', 'show', 'update']);
     Route::apiResource('marketplaces', MarketplaceAccountController::class);
+    Route::get('/category-mappings', [CategoryMappingController::class, 'index']);
+    Route::post('/category-mappings', [CategoryMappingController::class, 'store']);
     Route::prefix('marketplaces/{marketplace}/trendyol')->group(function () {
         Route::post('/test', [TrendyolController::class, 'test']);
         Route::get('/categories', [TrendyolController::class, 'categories']);
         Route::post('/send-products', [TrendyolController::class, 'sendProducts']);
         Route::post('/update-price-inventory', [TrendyolController::class, 'updatePriceInventory']);
         Route::post('/pull-orders', [TrendyolController::class, 'pullOrders']);
+    });
+    Route::prefix('marketplaces/{marketplace}/hepsiburada')->group(function () {
+        Route::post('/test', [HepsiburadaController::class, 'test']);
+        Route::get('/categories', [HepsiburadaController::class, 'categories']);
+        Route::post('/send-products', [HepsiburadaController::class, 'sendProducts']);
+        Route::post('/update-price-inventory', [HepsiburadaController::class, 'updatePriceInventory']);
+        Route::post('/pull-orders', [HepsiburadaController::class, 'pullOrders']);
     });
     Route::post('/marketplaces/{marketplace}/sync-products', [MarketplaceSyncController::class, 'syncProducts']);
     Route::post('/marketplaces/{marketplace}/sync-orders', [MarketplaceSyncController::class, 'syncOrders']);

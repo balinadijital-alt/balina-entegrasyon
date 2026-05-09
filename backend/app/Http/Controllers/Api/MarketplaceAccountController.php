@@ -50,6 +50,8 @@ class MarketplaceAccountController extends Controller
             'merchant_id' => ['nullable', 'string', 'max:255'],
             'api_key' => ['nullable', 'string'],
             'api_secret' => ['nullable', 'string'],
+            'service_username' => ['nullable', 'string'],
+            'service_password' => ['nullable', 'string'],
             'is_active' => ['boolean'],
             'metadata' => ['nullable', 'array'],
         ]);

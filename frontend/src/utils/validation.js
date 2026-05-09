@@ -31,7 +31,11 @@ export function validateMarketplace(form) {
   if (!required(form.company_id)) errors.company_id = 'Firma secimi zorunludur.';
   if (!required(form.name)) errors.name = 'Hesap adi zorunludur.';
   if (form.code === 'trendyol' && !required(form.supplier_id)) errors.supplier_id = 'Trendyol icin Supplier ID zorunludur.';
-  if (form.code === 'hepsiburada' && !required(form.merchant_id)) errors.merchant_id = 'Hepsiburada icin Merchant ID zorunludur.';
+  if (form.code === 'hepsiburada') {
+    if (!required(form.merchant_id)) errors.merchant_id = 'Hepsiburada icin Merchant ID zorunludur.';
+    if (!required(form.service_username) && !required(form.api_key)) errors.service_username = 'Hepsiburada kullanici adi zorunludur.';
+    if (!required(form.service_password) && !required(form.api_secret)) errors.service_password = 'Hepsiburada parola zorunludur.';
+  }
   return errors;
 }
 

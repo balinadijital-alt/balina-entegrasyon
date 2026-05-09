@@ -17,5 +17,15 @@ Schedule::command('trendyol:sync-price-inventory')
     ->withoutOverlapping()
     ->onOneServer();
 
+Schedule::command('hepsiburada:sync-orders')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
+Schedule::command('hepsiburada:sync-price-inventory')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
 Schedule::command('queue:prune-failed --hours=168')->daily();
