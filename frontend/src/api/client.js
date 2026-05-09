@@ -71,6 +71,10 @@ export const api = {
   logs: {
     list: () => http.get('/api-logs').then((response) => response.data),
   },
+  queue: {
+    status: () => http.get('/queue/status').then((response) => response.data),
+    retry: (uuid) => http.post(`/queue/failed/${uuid}/retry`).then((response) => response.data),
+  },
   roles: {
     list: () => http.get('/roles').then((response) => response.data),
   },

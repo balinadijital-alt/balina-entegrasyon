@@ -1,4 +1,4 @@
-import { Building2, ClipboardList, FileText, Gauge, KeyRound, Link2, Package, ShieldCheck } from 'lucide-react';
+import { Building2, ClipboardList, FileText, Gauge, KeyRound, Link2, Package, ShieldCheck, Workflow } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext.jsx';
 
@@ -9,6 +9,7 @@ const links = [
   { to: '/marketplaces', label: 'Entegrasyonlar', icon: Link2 },
   { to: '/orders', label: 'Siparisler', icon: ClipboardList },
   { to: '/api-logs', label: 'API Loglari', icon: FileText },
+  { to: '/queue', label: 'Queue', icon: Workflow },
   { to: '/roles', label: 'Roller', icon: ShieldCheck },
 ];
 

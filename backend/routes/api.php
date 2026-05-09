@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductImportController;
 use App\Http\Controllers\Api\ProductImageController;
+use App\Http\Controllers\Api\QueueDashboardController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\TrendyolController;
 use Illuminate\Support\Facades\Route;
@@ -39,6 +40,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/marketplaces/{marketplace}/sync-orders', [MarketplaceSyncController::class, 'syncOrders']);
 
     Route::get('/api-logs', [ApiLogController::class, 'index']);
+    Route::get('/queue/status', [QueueDashboardController::class, 'index']);
+    Route::post('/queue/failed/{uuid}/retry', [QueueDashboardController::class, 'retry']);
     Route::get('/roles', [RoleController::class, 'index']);
     Route::post('/users/{user}/roles', [RoleController::class, 'assign']);
 });

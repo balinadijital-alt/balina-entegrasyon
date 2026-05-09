@@ -27,6 +27,51 @@ php artisan storage:link
 php artisan serve
 ```
 
+## Queue ve Worker
+
+Production queue altyapisi Redis + Laravel Horizon ile calisir.
+
+```bash
+brew install redis
+brew services start redis
+
+cd backend
+php artisan migrate
+php artisan horizon
+```
+
+Scheduler icin production cron girdisi:
+
+```cron
+* * * * * cd /path/to/balina-entegrasyon/backend && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Supervisor ile Horizon calistirma ornegi:
+
+```ini
+[program:balina-horizon]
+process_name=%(program_name)s
+command=php /path/to/balina-entegrasyon/backend/artisan horizon
+autostart=true
+autorestart=true
+user=www-data
+redirect_stderr=true
+stdout_logfile=/var/log/balina-horizon.log
+stopwaitsecs=3600
+```
+
+Horizon dashboard:
+
+```text
+http://localhost:8000/horizon
+```
+
+Admin panel Queue ekrani:
+
+```text
+http://localhost:5173/queue
+```
+
 Varsayilan seed kullanicisi:
 
 ```text
