@@ -99,6 +99,7 @@ return [
     'waits' => [
         'redis:default' => 60,
         'redis:marketplace-sync' => 120,
+        'redis:imports' => 180,
     ],
 
     /*
@@ -200,7 +201,7 @@ return [
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
-            'queue' => ['marketplace-sync', 'notifications', 'default'],
+            'queue' => ['marketplace-sync', 'imports', 'notifications', 'default'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 3,
@@ -208,7 +209,7 @@ return [
             'maxJobs' => 0,
             'memory' => 128,
             'tries' => 3,
-            'timeout' => 240,
+            'timeout' => 900,
             'nice' => 0,
         ],
     ],

@@ -58,6 +58,7 @@ class ProductController extends Controller
     {
         return $request->validate([
             'company_id' => ['required', 'exists:companies,id'],
+            'supplier_name' => ['nullable', 'string', 'max:255'],
             'sku' => ['required', 'string', 'max:128'],
             'barcode' => ['nullable', 'string', 'max:128'],
             'name' => ['required', 'string', 'max:255'],
@@ -71,6 +72,8 @@ class ProductController extends Controller
             'stock' => ['required', 'integer', 'min:0'],
             'vat_rate' => ['required', 'integer', 'min:0', 'max:100'],
             'dimensional_weight' => ['nullable', 'numeric', 'min:0.01'],
+            'variant_group' => ['nullable', 'string', 'max:255'],
+            'variant_options' => ['nullable', 'array'],
             'trendyol_attributes' => ['nullable', 'array'],
             'status' => ['required', 'in:draft,active,passive'],
         ]);

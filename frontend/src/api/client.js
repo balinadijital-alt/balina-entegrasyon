@@ -54,6 +54,21 @@ export const api = {
     import: (payload) => http.post('/products/import', payload).then((response) => response.data),
     uploadImage: (productId, payload) => http.post(`/products/${productId}/images`, payload).then((response) => response.data),
   },
+  imports: {
+    runs: () => http.get('/import-runs').then((response) => response.data),
+    showRun: (id) => http.get(`/import-runs/${id}`).then((response) => response.data),
+    previewExcel: (payload) => http.post('/import-runs/preview-excel', payload).then((response) => response.data),
+    queueExcel: (payload) => http.post('/import-runs/excel', payload).then((response) => response.data),
+    retry: (id) => http.post(`/import-runs/${id}/retry`).then((response) => response.data),
+  },
+  xmlSources: {
+    list: () => http.get('/xml-sources').then((response) => response.data),
+    create: (payload) => http.post('/xml-sources', payload).then((response) => response.data),
+    update: (id, payload) => http.put(`/xml-sources/${id}`, payload).then((response) => response.data),
+    preview: (id, payload) => http.post(`/xml-sources/${id}/preview`, payload).then((response) => response.data),
+    import: (id, payload) => http.post(`/xml-sources/${id}/import`, payload).then((response) => response.data),
+    remove: (id) => http.delete(`/xml-sources/${id}`),
+  },
   marketplaces: {
     list: () => http.get('/marketplaces').then((response) => response.data),
     create: (payload) => http.post('/marketplaces', payload).then((response) => response.data),

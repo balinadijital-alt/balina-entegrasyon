@@ -13,6 +13,7 @@ class Product extends Model
 
     protected $fillable = [
         'company_id',
+        'supplier_name',
         'sku',
         'barcode',
         'name',
@@ -26,9 +27,13 @@ class Product extends Model
         'stock',
         'vat_rate',
         'dimensional_weight',
+        'variant_group',
+        'variant_options',
         'trendyol_attributes',
         'trendyol_batch_request_id',
         'last_trendyol_sync_at',
+        'last_import_run_id',
+        'last_imported_at',
         'status',
     ];
 
@@ -40,8 +45,10 @@ class Product extends Model
             'stock' => 'integer',
             'vat_rate' => 'integer',
             'dimensional_weight' => 'decimal:2',
+            'variant_options' => 'array',
             'trendyol_attributes' => 'array',
             'last_trendyol_sync_at' => 'datetime',
+            'last_imported_at' => 'datetime',
         ];
     }
 

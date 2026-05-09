@@ -9,6 +9,7 @@ import { RegisterPage } from './pages/Auth/RegisterPage.jsx';
 import { CompaniesPage } from './pages/Companies/CompaniesPage.jsx';
 import { DashboardPage } from './pages/Dashboard/DashboardPage.jsx';
 import { ApiLogsPage } from './pages/Logs/ApiLogsPage.jsx';
+import { ImportCenterPage } from './pages/Imports/ImportCenterPage.jsx';
 import { MarketplacesPage } from './pages/Marketplaces/MarketplacesPage.jsx';
 import { OrdersPage } from './pages/Orders/OrdersPage.jsx';
 import { ProductsPage } from './pages/Products/ProductsPage.jsx';
@@ -38,6 +39,7 @@ createRoot(document.getElementById('root')).render(
             <Route index element={<DashboardPage />} />
             <Route path="companies" element={<CompaniesPage />} />
             <Route path="products" element={<ProductsPage />} />
+            <Route path="imports" element={<ImportCenterPage />} />
             <Route path="marketplaces" element={<MarketplacesPage />} />
             <Route path="orders" element={<OrdersPage />} />
           <Route path="api-logs" element={<ApiLogsPage />} />

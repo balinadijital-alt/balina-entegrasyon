@@ -10,10 +10,12 @@ use App\Http\Controllers\Api\MarketplaceAccountController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductImportController;
+use App\Http\Controllers\Api\ProductImportRunController;
 use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\QueueDashboardController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\TrendyolController;
+use App\Http\Controllers\Api\XmlSourceController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -28,6 +30,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/products/import', ProductImportController::class);
     Route::post('/products/{product}/images', [ProductImageController::class, 'store']);
     Route::delete('/product-images/{image}', [ProductImageController::class, 'destroy']);
+    Route::apiResource('xml-sources', XmlSourceController::class)
+        ->parameters(['xml-sources' => 'xmlSource'])
+        ->except(['show']);
+    Route::post('/xml-sources/{xmlSource}/preview', [XmlSourceController::class, 'preview']);
+    Route::post('/xml-sources/{xmlSource}/import', [XmlSourceController::class, 'import']);
+    Route::get('/import-runs', [ProductImportRunController::class, 'index']);
+    Route::get('/import-runs/{importRun}', [ProductImportRunController::class, 'show']);
+    Route::post('/import-runs/preview-excel', [ProductImportRunController::class, 'previewExcel']);
+    Route::post('/import-runs/excel', [ProductImportRunController::class, 'queueExcel']);
+    Route::post('/import-runs/{importRun}/retry', [ProductImportRunController::class, 'retry']);
 
     Route::apiResource('orders', OrderController::class)->only(['index', 'show', 'update']);
     Route::apiResource('marketplaces', MarketplaceAccountController::class);

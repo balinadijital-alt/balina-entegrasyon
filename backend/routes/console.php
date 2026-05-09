@@ -27,5 +27,10 @@ Schedule::command('hepsiburada:sync-price-inventory')
     ->withoutOverlapping()
     ->onOneServer();
 
+Schedule::command('imports:dispatch-due-xml')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
 Schedule::command('queue:prune-failed --hours=168')->daily();

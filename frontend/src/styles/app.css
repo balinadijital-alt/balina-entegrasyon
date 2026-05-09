@@ -342,6 +342,62 @@ th {
   height: 100%;
 }
 
+.inline-progress {
+  margin-top: 0;
+  min-width: 120px;
+}
+
+.mapping-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
+.option-grid {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
+.option-grid label {
+  align-items: center;
+  color: #4b5563;
+  display: flex;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 8px;
+}
+
+.option-grid input[type="checkbox"] {
+  min-height: auto;
+  width: auto;
+}
+
+.import-preview {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.import-preview h3 {
+  font-size: 15px;
+  margin: 0 0 10px;
+}
+
+.import-preview pre {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  margin: 0 0 8px;
+  max-height: 180px;
+  overflow: auto;
+  padding: 10px;
+}
+
 .split {
   display: grid;
   gap: 18px;
@@ -466,8 +522,11 @@ th {
   }
 
   .form-grid,
+  .mapping-grid,
   .stats-grid,
   .split,
+  .option-grid,
+  .import-preview,
   .queue-summary {
     grid-template-columns: 1fr;
   }
