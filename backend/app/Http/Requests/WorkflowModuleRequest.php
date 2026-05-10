@@ -1,0 +1,1 @@
+<?php namespace App\Http\Requests; class WorkflowModuleRequest extends ModuleRecordRequest { public function rules(): array { return array_merge(parent::rules(), ['from_status' => ['nullable', 'string', 'max:64'], 'to_status' => ['nullable', 'string', 'max:64'], 'note' => ['nullable', 'string']]); } }

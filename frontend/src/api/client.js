@@ -45,6 +45,12 @@ export const api = {
     update: (module, id, payload) => http.put(`/modules/${module}/${id}`, payload).then((response) => response.data),
     remove: (module, id) => http.delete(`/modules/${module}/${id}`),
   },
+  domainModules: {
+    list: (domain, module, params) => http.get(`/${domain}/${module}`, { params }).then((response) => response.data),
+    create: (domain, module, payload) => http.post(`/${domain}/${module}`, payload).then((response) => response.data),
+    update: (domain, module, id, payload) => http.put(`/${domain}/${module}/${id}`, payload).then((response) => response.data),
+    remove: (domain, module, id) => http.delete(`/${domain}/${module}/${id}`),
+  },
   auth: {
     login: (payload) => http.post('/auth/login', payload).then((response) => response.data),
     register: (payload) => http.post('/auth/register', payload).then((response) => response.data),

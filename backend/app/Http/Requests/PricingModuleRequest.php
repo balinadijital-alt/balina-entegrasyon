@@ -1,0 +1,1 @@
+<?php namespace App\Http\Requests; class PricingModuleRequest extends ModuleRecordRequest { public function rules(): array { return array_merge(parent::rules(), ['profit_rate' => ['nullable', 'numeric', 'min:0'], 'minimum_profit_amount' => ['nullable', 'numeric', 'min:0'], 'base_cost' => ['nullable', 'numeric', 'min:0']]); } }

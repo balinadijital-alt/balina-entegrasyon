@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Company;
+use App\Models\AuditLog;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\SaasPlan;
@@ -128,6 +129,39 @@ class ApiSmokeTest extends TestCase
         ])->assertCreated()->assertJsonPath('scope', 'home');
 
         $this->getJson('/api/modules/cms-pages')->assertOk()->assertJsonCount(1, 'data');
+    }
+
+    public function test_specialized_domain_module_endpoints_and_audit_logs(): void
+    {
+        $page = $this->postJson('/api/cms/cms-pages', [
+            'title' => 'KVKK',
+            'slug' => 'kvkk',
+            'status' => 'draft',
+        ])->assertCreated()->json();
+
+        $this->putJson("/api/cms/cms-pages/{$page['id']}", [
+            'title' => 'KVKK Metni',
+            'slug' => 'kvkk',
+            'status' => 'active',
+        ])->assertOk()->assertJsonPath('title', 'KVKK Metni');
+
+        $this->postJson('/api/marketing/coupons', [
+            'company_id' => $this->company->id,
+            'name' => 'Kargo Bedava',
+            'code' => 'KARGO0',
+            'type' => 'free_shipping',
+            'free_shipping' => true,
+        ])->assertCreated()->assertJsonPath('free_shipping', true);
+
+        $this->postJson('/api/pricing/profit-rules', [
+            'company_id' => $this->company->id,
+            'scope' => 'category',
+            'scope_value' => 'Elektronik',
+            'profit_rate' => 18,
+        ])->assertCreated()->assertJsonPath('scope_value', 'Elektronik');
+
+        $this->getJson('/api/cms/cms-pages')->assertOk()->assertJsonCount(1, 'data');
+        $this->assertGreaterThanOrEqual(4, AuditLog::count());
     }
 
     public function test_payment_shipping_invoice_and_saas_endpoints(): void

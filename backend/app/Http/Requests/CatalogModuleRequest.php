@@ -1,0 +1,1 @@
+<?php namespace App\Http\Requests; class CatalogModuleRequest extends ModuleRecordRequest { public function rules(): array { return array_merge(parent::rules(), ['rating' => ['nullable', 'integer', 'min:1', 'max:5'], 'status' => ['nullable', 'in:pending,approved,rejected,draft,active,passive']]); } }

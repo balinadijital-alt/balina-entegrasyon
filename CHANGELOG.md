@@ -6,6 +6,9 @@ Tum onemli degisiklikler bu dosyada tutulur.
 
 ### Added
 
+- Kritik CMS, pazarlama, gelismis urun, fiyat motoru, siparis workflow, B2B ve SEO modulleri icin domain controller/service/request katmani.
+- CMS sayfa/blog/banner/popup, pazarlama kupon/sepet/feed/pixel, katalog varyant/iliski/ozel alan/yorum, fiyat kurali, workflow, B2B ve SEO icin ozel frontend sayfalari.
+- Domain bazli audit log ve feature test kapsami.
 - Local gelistirme icin demo seed sistemi.
 - `demo:reset` komutu.
 - Dashboard rapor endpoint'i.

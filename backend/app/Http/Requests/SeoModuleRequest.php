@@ -1,0 +1,1 @@
+<?php namespace App\Http\Requests; class SeoModuleRequest extends ModuleRecordRequest { public function rules(): array { return array_merge(parent::rules(), ['code' => ['nullable', 'string', 'max:16'], 'target_currency' => ['nullable', 'string', 'size:3'], 'rate' => ['nullable', 'numeric', 'min:0']]); } }

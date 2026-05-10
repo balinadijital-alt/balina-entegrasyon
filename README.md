@@ -207,6 +207,20 @@ DELETE /api/modules/dealers/{id}
 
 Desteklenen modul anahtarlari CMS, pazarlama, gelismis urun, fiyat motoru, siparis is akisi, bayi/B2B ve SEO tablolarini kapsar.
 
+Kritik moduller icin ortak yapi korunurken domain odakli controller/request/service katmani da vardir:
+
+```text
+GET|POST /api/cms/{module}
+GET|POST /api/marketing/{module}
+GET|POST /api/catalog/{module}
+GET|POST /api/pricing/{module}
+GET|POST /api/workflow/{module}
+GET|POST /api/b2b/{module}
+GET|POST /api/seo/{module}
+```
+
+Bu endpointler domain bazli validation request kullanir ve create/update/delete islemlerini audit log'a yazar.
+
 Protected endpointler Sanctum token ister. Login ve API rate limitleri aktiftir.
 
 ## Dashboard Metrikleri

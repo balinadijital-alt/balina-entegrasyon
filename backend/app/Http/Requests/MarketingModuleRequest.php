@@ -1,0 +1,1 @@
+<?php namespace App\Http\Requests; class MarketingModuleRequest extends ModuleRecordRequest { public function rules(): array { return array_merge(parent::rules(), ['name' => ['nullable', 'string', 'max:255'], 'code' => ['nullable', 'string', 'max:255'], 'provider' => ['nullable', 'in:google,meta,tiktok,gtm,email,sms,whatsapp'], 'value' => ['nullable', 'numeric', 'min:0']]); } }

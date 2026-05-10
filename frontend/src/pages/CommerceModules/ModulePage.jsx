@@ -41,7 +41,9 @@ export function ModulePage({ config }) {
 
   const load = async () => {
     await run(async () => {
-      const response = await api.modules.list(config.module);
+      const response = config.domain
+        ? await api.domainModules.list(config.domain, config.module)
+        : await api.modules.list(config.module);
       setRows(response.data || []);
     }, { onError: (message) => notify('error', message) });
   };
@@ -62,7 +64,11 @@ export function ModulePage({ config }) {
     event.preventDefault();
     await run(async () => {
       const payload = Object.fromEntries(Object.entries(form).map(([field, value]) => [field, normalizeValue(field, value)]));
-      await api.modules.create(config.module, payload);
+      if (config.domain) {
+        await api.domainModules.create(config.domain, config.module, payload);
+      } else {
+        await api.modules.create(config.module, payload);
+      }
       notify('success', 'Kayit olusturuldu.');
       setForm(emptyForm(config));
       await load();

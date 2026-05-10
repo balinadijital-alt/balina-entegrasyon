@@ -1,0 +1,1 @@
+<?php namespace App\Http\Requests; class B2BModuleRequest extends ModuleRecordRequest { public function rules(): array { return array_merge(parent::rules(), ['email' => ['nullable', 'email', 'max:255'], 'discount_rate' => ['nullable', 'numeric', 'min:0'], 'balance' => ['nullable', 'numeric']]); } }

@@ -1,0 +1,1 @@
+<?php namespace App\Http\Requests; class CmsModuleRequest extends ModuleRecordRequest { public function rules(): array { return array_merge(parent::rules(), ['title' => ['required', 'string', 'max:255'], 'status' => ['nullable', 'in:draft,active,passive,published'], 'slug' => ['nullable', 'string', 'max:255']]); } }

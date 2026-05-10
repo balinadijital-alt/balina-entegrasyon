@@ -4,7 +4,10 @@ use App\Http\Controllers\Api\ApiLogController;
 use App\Http\Controllers\Api\AccountingAccountController;
 use App\Http\Controllers\Api\AccountingIntegrationController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\B2BModuleController;
 use App\Http\Controllers\Api\CategoryMappingController;
+use App\Http\Controllers\Api\CatalogModuleController;
+use App\Http\Controllers\Api\CmsModuleController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\CurrentAccountController;
 use App\Http\Controllers\Api\DashboardController;
@@ -13,11 +16,13 @@ use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MarketplaceSyncController;
 use App\Http\Controllers\Api\MarketplaceAccountController;
+use App\Http\Controllers\Api\MarketingModuleController;
 use App\Http\Controllers\Api\ModuleCrudController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentAccountController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PaymentProviderController;
+use App\Http\Controllers\Api\PricingModuleController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductImportController;
 use App\Http\Controllers\Api\ProductImportRunController;
@@ -25,10 +30,12 @@ use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\QueueDashboardController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SaasController;
+use App\Http\Controllers\Api\SeoModuleController;
 use App\Http\Controllers\Api\ShipmentController;
 use App\Http\Controllers\Api\ShippingAccountController;
 use App\Http\Controllers\Api\ShippingCarrierController;
 use App\Http\Controllers\Api\TrendyolController;
+use App\Http\Controllers\Api\WorkflowModuleController;
 use App\Http\Controllers\Api\XmlSourceController;
 use Illuminate\Support\Facades\Route;
 
@@ -145,5 +152,27 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::get('/{id}', [ModuleCrudController::class, 'show']);
         Route::put('/{id}', [ModuleCrudController::class, 'update']);
         Route::delete('/{id}', [ModuleCrudController::class, 'destroy']);
+    });
+
+    Route::prefix('cms/{module}')->whereIn('module', ['cms-pages', 'blog-categories', 'blog-posts', 'banners', 'popups', 'navigation-menus', 'faqs', 'legal-documents'])->group(function () {
+        Route::get('/', [CmsModuleController::class, 'index']); Route::post('/', [CmsModuleController::class, 'store']); Route::get('/{id}', [CmsModuleController::class, 'show']); Route::put('/{id}', [CmsModuleController::class, 'update']); Route::delete('/{id}', [CmsModuleController::class, 'destroy']);
+    });
+    Route::prefix('marketing/{module}')->whereIn('module', ['coupons', 'abandoned-carts', 'message-templates', 'notification-channels', 'marketing-feeds', 'tracking-pixels'])->group(function () {
+        Route::get('/', [MarketingModuleController::class, 'index']); Route::post('/', [MarketingModuleController::class, 'store']); Route::get('/{id}', [MarketingModuleController::class, 'show']); Route::put('/{id}', [MarketingModuleController::class, 'update']); Route::delete('/{id}', [MarketingModuleController::class, 'destroy']);
+    });
+    Route::prefix('catalog/{module}')->whereIn('module', ['product-variant-options', 'product-relations', 'product-custom-fields', 'product-barcode-batches', 'product-reviews'])->group(function () {
+        Route::get('/', [CatalogModuleController::class, 'index']); Route::post('/', [CatalogModuleController::class, 'store']); Route::get('/{id}', [CatalogModuleController::class, 'show']); Route::put('/{id}', [CatalogModuleController::class, 'update']); Route::delete('/{id}', [CatalogModuleController::class, 'destroy']);
+    });
+    Route::prefix('pricing/{module}')->whereIn('module', ['profit-rules', 'bulk-price-operations', 'price-calculations'])->group(function () {
+        Route::get('/', [PricingModuleController::class, 'index']); Route::post('/', [PricingModuleController::class, 'store']); Route::get('/{id}', [PricingModuleController::class, 'show']); Route::put('/{id}', [PricingModuleController::class, 'update']); Route::delete('/{id}', [PricingModuleController::class, 'destroy']);
+    });
+    Route::prefix('workflow/{module}')->whereIn('module', ['order-workflow-rules', 'order-notes', 'order-operation-histories'])->group(function () {
+        Route::get('/', [WorkflowModuleController::class, 'index']); Route::post('/', [WorkflowModuleController::class, 'store']); Route::get('/{id}', [WorkflowModuleController::class, 'show']); Route::put('/{id}', [WorkflowModuleController::class, 'update']); Route::delete('/{id}', [WorkflowModuleController::class, 'destroy']);
+    });
+    Route::prefix('b2b/{module}')->whereIn('module', ['dealer-groups', 'dealers', 'dealer-prices', 'dealer-transactions'])->group(function () {
+        Route::get('/', [B2BModuleController::class, 'index']); Route::post('/', [B2BModuleController::class, 'store']); Route::get('/{id}', [B2BModuleController::class, 'show']); Route::put('/{id}', [B2BModuleController::class, 'update']); Route::delete('/{id}', [B2BModuleController::class, 'destroy']);
+    });
+    Route::prefix('seo/{module}')->whereIn('module', ['seo-settings', 'site-scripts', 'sitemap-entries', 'robots-rules', 'currency-rates', 'locations', 'languages'])->group(function () {
+        Route::get('/', [SeoModuleController::class, 'index']); Route::post('/', [SeoModuleController::class, 'store']); Route::get('/{id}', [SeoModuleController::class, 'show']); Route::put('/{id}', [SeoModuleController::class, 'update']); Route::delete('/{id}', [SeoModuleController::class, 'destroy']);
     });
 });

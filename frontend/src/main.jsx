@@ -9,6 +9,27 @@ import { RegisterPage } from './pages/Auth/RegisterPage.jsx';
 import { CompaniesPage } from './pages/Companies/CompaniesPage.jsx';
 import { AccountingPage } from './pages/Accounting/AccountingPage.jsx';
 import { moduleRoutes } from './pages/CommerceModules/ModuleRoutes.jsx';
+import { B2BDealersPage } from './pages/CommerceModules/B2BDealersPage.jsx';
+import { B2BPricesPage } from './pages/CommerceModules/B2BPricesPage.jsx';
+import { B2BTransactionsPage } from './pages/CommerceModules/B2BTransactionsPage.jsx';
+import { CatalogCustomFieldsPage } from './pages/CommerceModules/CatalogCustomFieldsPage.jsx';
+import { CatalogRelationsPage } from './pages/CommerceModules/CatalogRelationsPage.jsx';
+import { CatalogReviewsPage } from './pages/CommerceModules/CatalogReviewsPage.jsx';
+import { CatalogVariantsPage } from './pages/CommerceModules/CatalogVariantsPage.jsx';
+import { CmsBannersPage } from './pages/CommerceModules/CmsBannersPage.jsx';
+import { CmsBlogPage } from './pages/CommerceModules/CmsBlogPage.jsx';
+import { CmsPagesPage } from './pages/CommerceModules/CmsPagesPage.jsx';
+import { CmsPopupsPage } from './pages/CommerceModules/CmsPopupsPage.jsx';
+import { MarketingAbandonedCartsPage } from './pages/CommerceModules/MarketingAbandonedCartsPage.jsx';
+import { MarketingCouponsPage } from './pages/CommerceModules/MarketingCouponsPage.jsx';
+import { MarketingFeedsPage } from './pages/CommerceModules/MarketingFeedsPage.jsx';
+import { MarketingPixelsPage } from './pages/CommerceModules/MarketingPixelsPage.jsx';
+import { PricingRulesPage } from './pages/CommerceModules/PricingRulesPage.jsx';
+import { SeoHeadTagsPage } from './pages/CommerceModules/SeoHeadTagsPage.jsx';
+import { SeoLocalizationPage } from './pages/CommerceModules/SeoLocalizationPage.jsx';
+import { SeoRobotsSitemapPage } from './pages/CommerceModules/SeoRobotsSitemapPage.jsx';
+import { SeoSettingsPage } from './pages/CommerceModules/SeoSettingsPage.jsx';
+import { WorkflowRulesPage } from './pages/CommerceModules/WorkflowRulesPage.jsx';
 import { DashboardPage } from './pages/Dashboard/DashboardPage.jsx';
 import { ApiLogsPage } from './pages/Logs/ApiLogsPage.jsx';
 import { ImportCenterPage } from './pages/Imports/ImportCenterPage.jsx';
@@ -66,6 +87,27 @@ createRoot(document.getElementById('root')).render(
             <Route path="api-logs" element={<ApiLogsPage />} />
             <Route path="queue" element={<QueuePage />} />
             <Route path="roles" element={<RolesPage />} />
+            <Route path="cms/pages" element={<CmsPagesPage />} />
+            <Route path="cms/blog-posts" element={<CmsBlogPage />} />
+            <Route path="cms/banners" element={<CmsBannersPage />} />
+            <Route path="cms/popups" element={<CmsPopupsPage />} />
+            <Route path="marketing/coupons" element={<MarketingCouponsPage />} />
+            <Route path="marketing/abandoned-carts" element={<MarketingAbandonedCartsPage />} />
+            <Route path="marketing/feeds" element={<MarketingFeedsPage />} />
+            <Route path="marketing/pixels" element={<MarketingPixelsPage />} />
+            <Route path="catalog/variants" element={<CatalogVariantsPage />} />
+            <Route path="catalog/relations" element={<CatalogRelationsPage />} />
+            <Route path="catalog/custom-fields" element={<CatalogCustomFieldsPage />} />
+            <Route path="catalog/reviews" element={<CatalogReviewsPage />} />
+            <Route path="pricing/profit-rules" element={<PricingRulesPage />} />
+            <Route path="workflow/rules" element={<WorkflowRulesPage />} />
+            <Route path="b2b/dealers" element={<B2BDealersPage />} />
+            <Route path="b2b/prices" element={<B2BPricesPage />} />
+            <Route path="b2b/transactions" element={<B2BTransactionsPage />} />
+            <Route path="seo/settings" element={<SeoSettingsPage />} />
+            <Route path="seo/sitemap" element={<SeoRobotsSitemapPage />} />
+            <Route path="seo/head-tags" element={<SeoHeadTagsPage />} />
+            <Route path="seo/languages" element={<SeoLocalizationPage />} />
             {moduleRoutes()}
           </Route>
         </Routes>
