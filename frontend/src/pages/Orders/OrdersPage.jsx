@@ -4,6 +4,7 @@ import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { PageToolbar } from '../../components/PageToolbar.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
@@ -17,6 +18,8 @@ export function OrdersPage() {
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [selectedPaymentAccountId, setSelectedPaymentAccountId] = useState('');
   const [selectedAccountingAccountId, setSelectedAccountingAccountId] = useState('');
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
 
   const load = async () => {
     await run(async () => {
@@ -76,6 +79,21 @@ export function OrdersPage() {
   return (
     <>
       <PageHeader title="Siparis Yonetimi" />
+      <PageToolbar
+        search={search}
+        onSearch={setSearch}
+        searchPlaceholder="Siparis no veya musteri ara"
+        filters={(
+          <select value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="">Tum durumlar</option>
+            <option value="new">Yeni</option>
+            <option value="processing">Hazirlaniyor</option>
+            <option value="shipped">Kargoda</option>
+            <option value="delivered">Teslim</option>
+            <option value="cancelled">Iptal</option>
+          </select>
+        )}
+      />
       <section className="panel compact-panel">
         <h2>Siparis Kargo Islemleri</h2>
         <select value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)}>
@@ -94,7 +112,14 @@ export function OrdersPage() {
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && orders.length === 0 ? <LoadingState /> : (
       <DataTable
-        rows={orders}
+        rows={orders.filter((order) => {
+          const query = search.trim().toLowerCase();
+          const matchesSearch = !query || [order.marketplace_order_id, order.customer_name, order.company?.name].some((value) => String(value || '').toLowerCase().includes(query));
+          const matchesStatus = !status || order.status === status;
+          return matchesSearch && matchesStatus;
+        })}
+        emptyTitle="Siparis bulunamadi"
+        emptyText="Filtreleri temizleyin veya pazaryeri siparis senkronizasyonunu calistirin."
         columns={[
           { key: 'marketplace_code', label: 'Pazaryeri' },
           { key: 'marketplace_order_id', label: 'Siparis No' },

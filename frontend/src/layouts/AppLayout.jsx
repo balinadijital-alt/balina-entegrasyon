@@ -1,54 +1,17 @@
-import { Building2, ClipboardList, CreditCard, FileText, Gauge, KeyRound, Landmark, Link2, Package, ShieldCheck, Sparkles, Truck, UploadCloud, Workflow } from 'lucide-react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext.jsx';
-
-const links = [
-  { to: '/', label: 'Panel', icon: Gauge },
-  { to: '/companies', label: 'Firmalar', icon: Building2 },
-  { to: '/accounting', label: 'Cari/Fatura', icon: Landmark },
-  { to: '/products', label: 'Urunler', icon: Package },
-  { to: '/imports', label: 'Import Merkezi', icon: UploadCloud },
-  { to: '/marketplaces', label: 'Entegrasyonlar', icon: Link2 },
-  { to: '/orders', label: 'Siparisler', icon: ClipboardList },
-  { to: '/payments', label: 'Odemeler', icon: CreditCard },
-  { to: '/shipping', label: 'Kargo', icon: Truck },
-  { to: '/saas', label: 'SaaS', icon: Sparkles },
-  { to: '/api-logs', label: 'API Loglari', icon: FileText },
-  { to: '/queue', label: 'Queue', icon: Workflow },
-  { to: '/roles', label: 'Roller', icon: ShieldCheck },
-];
+import { Outlet } from 'react-router-dom';
+import { Sidebar } from '../components/Sidebar.jsx';
+import { Topbar } from '../components/Topbar.jsx';
 
 export function AppLayout() {
-  const navigate = useNavigate();
-  const { logout: logoutUser } = useApp();
-
-  const logout = async () => {
-    await logoutUser();
-    navigate('/login');
-  };
-
   return (
     <div className="shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <KeyRound size={22} />
-          <span>Balina Entegrasyon</span>
-        </div>
-        <nav>
-          {links.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} end={to === '/'}>
-              <Icon size={18} />
-              <span>{label}</span>
-            </NavLink>
-          ))}
-        </nav>
-        <button className="ghost-button" onClick={logout}>
-          Cikis Yap
-        </button>
-      </aside>
-      <main className="content">
-        <Outlet />
-      </main>
+      <Sidebar />
+      <div className="main-shell">
+        <Topbar />
+        <main className="content">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

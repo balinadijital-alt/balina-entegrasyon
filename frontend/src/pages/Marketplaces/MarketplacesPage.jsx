@@ -6,6 +6,7 @@ import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { PageToolbar } from '../../components/PageToolbar.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { firstError, validateMarketplace } from '../../utils/validation.js';
@@ -23,21 +24,24 @@ const initialForm = {
   is_active: true,
 };
 
-export function MarketplacesPage() {
+export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
   const { notify } = useApp();
   const { loading, error, setError, run } = useAsync();
   const [accounts, setAccounts] = useState([]);
   const [companies, setCompanies] = useState([]);
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState({ ...initialForm, code: provider || initialForm.code });
   const [errors, setErrors] = useState({});
   const [syncing, setSyncing] = useState('');
   const [categories, setCategories] = useState([]);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
 
   const load = async () => {
     await run(async () => {
       const [accountResponse, companyResponse] = await Promise.all([api.marketplaces.list(), api.companies.list()]);
-      setAccounts(accountResponse.data || []);
+      setAccounts((accountResponse.data || []).filter((account) => !provider || account.code === provider));
       setCompanies(companyResponse.data || []);
+      setForm((current) => ({ ...current, code: provider || current.code }));
     });
   };
 
@@ -56,8 +60,8 @@ export function MarketplacesPage() {
     }
 
     await run(async () => {
-      await api.marketplaces.create(form);
-      setForm(initialForm);
+      await api.marketplaces.create({ ...form, code: provider || form.code });
+      setForm({ ...initialForm, code: provider || 'trendyol' });
       notify('success', 'Entegrasyon kaydedildi.');
       await load();
     }, { onError: (message) => notify('error', message) });
@@ -84,7 +88,7 @@ export function MarketplacesPage() {
       if (response.categories) {
         setCategories(response.categories);
       }
-      const marketplaceName = type.startsWith('hb') ? 'Hepsiburada' : 'Trendyol';
+      const marketplaceName = type.startsWith('hb') || provider === 'hepsiburada' ? 'Hepsiburada' : 'Trendyol';
       const message = categoryCount !== undefined ? `${categoryCount} ${marketplaceName} kategorisi cekildi.` : response.message;
       if (message) notify('success', message);
       await load();
@@ -101,7 +105,20 @@ export function MarketplacesPage() {
 
   return (
     <>
-      <PageHeader title="Pazaryeri Entegrasyonlari" />
+      <PageHeader title={title} />
+      <PageToolbar
+        search={search}
+        onSearch={setSearch}
+        searchPlaceholder="Hesap veya firma ara"
+        filters={(
+          <select value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="">Tum baglantilar</option>
+            <option value="connected">Bagli</option>
+            <option value="failed">Basarisiz</option>
+            <option value="pending">Bekliyor</option>
+          </select>
+        )}
+      />
       <section className="panel">
         <form className="form-grid" onSubmit={submit}>
           <Field label="Firma" error={errors.company_id}>
@@ -111,7 +128,7 @@ export function MarketplacesPage() {
             </select>
           </Field>
           <Field label="Pazaryeri">
-            <select value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })}>
+            <select value={form.code} disabled={!!provider} onChange={(event) => setForm({ ...form, code: event.target.value })}>
               <option value="trendyol">Trendyol</option>
               <option value="hepsiburada">Hepsiburada</option>
             </select>
@@ -149,7 +166,14 @@ export function MarketplacesPage() {
       )}
       {loading && accounts.length === 0 ? <LoadingState /> : (
       <DataTable
-        rows={accounts}
+        rows={accounts.filter((account) => {
+          const query = search.trim().toLowerCase();
+          const matchesSearch = !query || [account.name, account.code, account.company?.name].some((value) => String(value || '').toLowerCase().includes(query));
+          const matchesStatus = !status || account.connection_status === status;
+          return matchesSearch && matchesStatus;
+        })}
+        emptyTitle="Pazaryeri hesabi yok"
+        emptyText="Yeni entegrasyon ekleyin veya filtreleri temizleyin."
         columns={[
           { key: 'name', label: 'Hesap' },
           { key: 'code', label: 'Pazaryeri' },

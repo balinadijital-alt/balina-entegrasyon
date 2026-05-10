@@ -101,7 +101,7 @@ function Breakdown({ title, items }) {
   );
 }
 
-export function DashboardPage() {
+export function DashboardPage({ title = 'Yonetim Paneli' }) {
   const { loading, error, run } = useAsync();
   const [report, setReport] = useState(null);
 
@@ -126,7 +126,7 @@ export function DashboardPage() {
   return (
     <>
       <PageHeader
-        title="Yonetim Paneli"
+        title={title}
         actions={<button type="button" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
       {error && <ErrorState message={error} onRetry={load} />}
