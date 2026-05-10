@@ -1,4 +1,6 @@
-export function DataTable({ columns, rows, emptyText = 'Kayit bulunamadi.' }) {
+import { PackageOpen } from 'lucide-react';
+
+export function DataTable({ columns, rows, emptyText = 'Kayit bulunamadi.', emptyTitle = 'Kayit yok' }) {
   return (
     <div className="table-wrap">
       <table>
@@ -13,7 +15,11 @@ export function DataTable({ columns, rows, emptyText = 'Kayit bulunamadi.' }) {
           {rows.length === 0 ? (
             <tr>
               <td colSpan={columns.length} className="empty-cell">
-                {emptyText}
+                <div className="empty-state">
+                  <PackageOpen size={26} />
+                  <strong>{emptyTitle}</strong>
+                  <span>{emptyText}</span>
+                </div>
               </td>
             </tr>
           ) : (

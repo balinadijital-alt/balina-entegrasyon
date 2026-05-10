@@ -42,6 +42,10 @@ class ApiSmokeTest extends TestCase
 
     public function test_company_product_and_order_endpoints(): void
     {
+        $this->getJson('/api/dashboard')
+            ->assertOk()
+            ->assertJsonStructure(['summary', 'charts', 'breakdowns', 'saas_usage', 'recent_activity']);
+
         $this->postJson('/api/companies', ['name' => 'Yeni Firma', 'email' => 'new@example.test', 'is_active' => true])
             ->assertCreated()
             ->assertJsonPath('name', 'Yeni Firma');

@@ -36,6 +36,9 @@ export function apiErrorMessage(error) {
 }
 
 export const api = {
+  dashboard: {
+    report: () => http.get('/dashboard').then((response) => response.data),
+  },
   auth: {
     login: (payload) => http.post('/auth/login', payload).then((response) => response.data),
     register: (payload) => http.post('/auth/register', payload).then((response) => response.data),

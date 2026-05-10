@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryMappingController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\CurrentAccountController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\HepsiburadaController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\InvoiceController;
@@ -36,6 +37,8 @@ Route::match(['get', 'post'], '/payment-callbacks/{payment}', [PaymentController
 Route::get('/health', HealthController::class);
 
 Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
+    Route::get('/dashboard', DashboardController::class);
+
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 
