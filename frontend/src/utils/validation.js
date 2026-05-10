@@ -23,6 +23,20 @@ export function validateProduct(form) {
       errors.trendyol_attributes = 'Trendyol ozellikleri gecerli JSON olmali.';
     }
   }
+  if (form.hepsiburada_attributes) {
+    try {
+      JSON.parse(form.hepsiburada_attributes);
+    } catch {
+      errors.hepsiburada_attributes = 'Hepsiburada ozellikleri gecerli JSON olmali.';
+    }
+  }
+  if (form.variant_options) {
+    try {
+      JSON.parse(form.variant_options);
+    } catch {
+      errors.variant_options = 'Varyant bilgileri gecerli JSON olmali.';
+    }
+  }
   return errors;
 }
 

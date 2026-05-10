@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Company;
 use App\Models\AuditLog;
+use App\Models\MarketplaceAccount;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\SaasPlan;
@@ -51,15 +52,50 @@ class ApiSmokeTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('name', 'Yeni Firma');
 
-        $this->postJson('/api/products', [
+        $product = $this->postJson('/api/products', [
             'company_id' => $this->company->id,
             'sku' => 'SKU-1',
+            'barcode' => '869000000001',
             'name' => 'Urun',
+            'brand' => 'Demo Marka',
+            'category' => 'Demo Kategori',
+            'short_description' => 'Kisa aciklama',
+            'description' => 'Detayli aciklama',
+            'seo_title' => 'SEO Baslik',
+            'seo_description' => 'SEO aciklama',
             'price' => 100,
             'stock' => 5,
             'vat_rate' => 20,
+            'dimensional_weight' => 1,
+            'shipping_type' => 'standard',
+            'main_image_url' => 'https://example.test/image.jpg',
+            'trendyol_category_id' => 123,
+            'hepsiburada_category_id' => 'HB-123',
+            'trendyol_attributes' => [['attributeId' => 1, 'attributeValueId' => 2]],
+            'hepsiburada_attributes' => [['name' => 'Renk', 'value' => 'Siyah']],
             'status' => 'active',
-        ])->assertCreated();
+        ])->assertCreated()->json();
+
+        $marketplace = MarketplaceAccount::create([
+            'company_id' => $this->company->id,
+            'code' => 'trendyol',
+            'name' => 'Test Trendyol',
+            'supplier_id' => '12345',
+            'is_active' => true,
+        ]);
+
+        $this->getJson("/api/products/{$product['id']}/readiness")
+            ->assertOk()
+            ->assertJsonPath('ready', true);
+
+        $draft = $this->postJson('/api/marketplace-publish/validate', [
+            'marketplace_account_id' => $marketplace->id,
+            'product_ids' => [$product['id']],
+        ])->assertCreated()->assertJsonPath('status', 'ready')->json();
+
+        $this->postJson("/api/marketplace-publish-drafts/{$draft['id']}/send")
+            ->assertOk()
+            ->assertJsonPath('status', 'queued');
 
         Order::create([
             'company_id' => $this->company->id,

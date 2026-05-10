@@ -50,6 +50,11 @@ button {
   padding: 0 10px;
 }
 
+.secondary-button,
+.secondary-link {
+  background: #334155;
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.65;
@@ -274,6 +279,99 @@ a {
 .field small {
   color: #b91c1c;
   font-size: 12px;
+}
+
+.wizard-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.wizard-steps {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.wizard-step {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  color: #334155;
+  display: grid;
+  font-size: 12px;
+  gap: 6px;
+  min-height: 68px;
+  padding: 8px;
+}
+
+.wizard-step span {
+  align-items: center;
+  background: #e2e8f0;
+  border-radius: 999px;
+  display: inline-flex;
+  height: 24px;
+  justify-content: center;
+  justify-self: center;
+  width: 24px;
+}
+
+.wizard-step.active {
+  background: #0f766e;
+  color: #fff;
+}
+
+.wizard-step.active span {
+  background: rgb(255 255 255 / 18%);
+}
+
+.wizard-actions,
+.row-actions,
+.check-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.wizard-actions {
+  border-top: 1px solid #e5e7eb;
+  justify-content: flex-end;
+  margin-top: 18px;
+  padding-top: 16px;
+}
+
+.wizard-save-state {
+  align-items: center;
+  color: #64748b;
+  display: inline-flex;
+  font-size: 13px;
+  gap: 6px;
+}
+
+.readiness-grid,
+.preview-grid {
+  display: grid;
+  gap: 10px;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.status-pill {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  justify-content: center;
+  min-width: 76px;
+  padding: 5px 8px;
+}
+
+.status-pill.ready {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-pill.blocked {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .table-wrap {
@@ -850,6 +948,9 @@ th {
   .queue-summary,
   .usage-grid,
   .settings-grid,
+  .wizard-steps,
+  .readiness-grid,
+  .preview-grid,
   .page-toolbar {
     grid-template-columns: 1fr;
   }

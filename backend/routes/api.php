@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductImportController;
 use App\Http\Controllers\Api\ProductImportRunController;
 use App\Http\Controllers\Api\ProductImageController;
+use App\Http\Controllers\Api\ProductMarketplaceController;
 use App\Http\Controllers\Api\QueueDashboardController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SaasController;
@@ -63,6 +64,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 
     Route::apiResource('companies', CompanyController::class);
     Route::apiResource('products', ProductController::class)->middleware('plan.limit:products');
+    Route::get('/products/{product}/readiness', [ProductMarketplaceController::class, 'readiness']);
     Route::post('/products/import', ProductImportController::class)->middleware('plan.limit:products');
     Route::post('/products/{product}/images', [ProductImageController::class, 'store']);
     Route::delete('/product-images/{image}', [ProductImageController::class, 'destroy']);
@@ -132,6 +134,9 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     });
     Route::post('/marketplaces/{marketplace}/sync-products', [MarketplaceSyncController::class, 'syncProducts']);
     Route::post('/marketplaces/{marketplace}/sync-orders', [MarketplaceSyncController::class, 'syncOrders']);
+    Route::get('/marketplace-publish-drafts', [ProductMarketplaceController::class, 'drafts']);
+    Route::post('/marketplace-publish/validate', [ProductMarketplaceController::class, 'validatePublish']);
+    Route::post('/marketplace-publish-drafts/{draft}/send', [ProductMarketplaceController::class, 'send']);
 
     Route::get('/api-logs', [ApiLogController::class, 'index']);
     Route::get('/queue/status', [QueueDashboardController::class, 'index']);

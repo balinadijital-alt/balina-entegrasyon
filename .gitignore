@@ -1,6 +1,7 @@
 /backend/vendor
 /backend/.env
 /backend/database/*.sqlite
+/backend/.phpunit.result.cache
 /backend/bootstrap/cache/*
 !/backend/bootstrap/cache/.gitignore
 /backend/storage/*

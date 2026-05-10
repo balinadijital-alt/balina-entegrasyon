@@ -40,6 +40,7 @@ import { TrendyolPage } from './pages/Marketplaces/TrendyolPage.jsx';
 import { OrdersPage } from './pages/Orders/OrdersPage.jsx';
 import { PaymentsPage } from './pages/Payments/PaymentsPage.jsx';
 import { ProductCreatePage } from './pages/Products/ProductCreatePage.jsx';
+import { ProductPublishWizardPage } from './pages/Products/ProductPublishWizardPage.jsx';
 import { ProductsPage } from './pages/Products/ProductsPage.jsx';
 import { QueuePage } from './pages/Queue/QueuePage.jsx';
 import { ReportsPage } from './pages/Reports/ReportsPage.jsx';
@@ -74,6 +75,7 @@ createRoot(document.getElementById('root')).render(
             <Route path="accounting" element={<AccountingPage />} />
             <Route path="products" element={<ProductsPage />} />
             <Route path="products/new" element={<ProductCreatePage />} />
+            <Route path="products/publish" element={<ProductPublishWizardPage />} />
             <Route path="imports" element={<ImportCenterPage />} />
             <Route path="products/import" element={<ProductImportPage />} />
             <Route path="marketplaces" element={<MarketplacesPage />} />

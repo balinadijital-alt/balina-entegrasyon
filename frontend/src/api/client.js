@@ -64,10 +64,17 @@ export const api = {
     remove: (id) => http.delete(`/companies/${id}`),
   },
   products: {
-    list: () => http.get('/products').then((response) => response.data),
+    list: (params) => http.get('/products', { params }).then((response) => response.data),
     create: (payload) => http.post('/products', payload).then((response) => response.data),
+    update: (id, payload) => http.put(`/products/${id}`, payload).then((response) => response.data),
+    readiness: (id) => http.get(`/products/${id}/readiness`).then((response) => response.data),
     import: (payload) => http.post('/products/import', payload).then((response) => response.data),
     uploadImage: (productId, payload) => http.post(`/products/${productId}/images`, payload).then((response) => response.data),
+  },
+  productPublish: {
+    drafts: () => http.get('/marketplace-publish-drafts').then((response) => response.data),
+    validate: (payload) => http.post('/marketplace-publish/validate', payload).then((response) => response.data),
+    send: (draftId) => http.post(`/marketplace-publish-drafts/${draftId}/send`).then((response) => response.data),
   },
   imports: {
     runs: () => http.get('/import-runs').then((response) => response.data),
