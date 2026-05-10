@@ -1,0 +1,102 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class ModuleRecordRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user() !== null;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'company_id' => ['nullable', 'exists:companies,id'],
+            'title' => ['nullable', 'string', 'max:255'],
+            'name' => ['nullable', 'string', 'max:255'],
+            'code' => ['nullable', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:255'],
+            'type' => ['nullable', 'string', 'max:255'],
+            'channel' => ['nullable', 'string', 'max:255'],
+            'provider' => ['nullable', 'string', 'max:255'],
+            'placement' => ['nullable', 'string', 'max:255'],
+            'trigger' => ['nullable', 'string', 'max:255'],
+            'location' => ['nullable', 'string', 'max:255'],
+            'category' => ['nullable', 'string', 'max:255'],
+            'scope' => ['nullable', 'string', 'max:255'],
+            'scope_value' => ['nullable', 'string', 'max:255'],
+            'directive' => ['nullable', 'string', 'max:255'],
+            'parent_code' => ['nullable', 'string', 'max:255'],
+            'status' => ['nullable', 'string', 'max:255'],
+            'subject' => ['nullable', 'string', 'max:255'],
+            'body' => ['nullable', 'string'],
+            'url' => ['nullable', 'string', 'max:2048'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:64'],
+            'customer_email' => ['nullable', 'email', 'max:255'],
+            'customer_phone' => ['nullable', 'string', 'max:64'],
+            'customer_name' => ['nullable', 'string', 'max:255'],
+            'content' => ['nullable', 'string'],
+            'excerpt' => ['nullable', 'string'],
+            'comment' => ['nullable', 'string'],
+            'moderation_note' => ['nullable', 'string'],
+            'description' => ['nullable', 'string'],
+            'operation_type' => ['nullable', 'string', 'max:255'],
+            'from_status' => ['nullable', 'string', 'max:255'],
+            'to_status' => ['nullable', 'string', 'max:255'],
+            'event' => ['nullable', 'string', 'max:255'],
+            'note' => ['nullable', 'string'],
+            'field_type' => ['nullable', 'string', 'max:255'],
+            'base_currency' => ['nullable', 'string', 'size:3'],
+            'target_currency' => ['nullable', 'string', 'size:3'],
+            'settings' => ['nullable', 'array'],
+            'rules' => ['nullable', 'array'],
+            'items' => ['nullable', 'array'],
+            'values' => ['nullable', 'array'],
+            'options' => ['nullable', 'array'],
+            'costs' => ['nullable', 'array'],
+            'filters' => ['nullable', 'array'],
+            'payload' => ['nullable', 'array'],
+            'xml_settings' => ['nullable', 'array'],
+            'variables' => ['nullable', 'array'],
+            'is_active' => ['nullable', 'boolean'],
+            'is_required' => ['nullable', 'boolean'],
+            'is_default' => ['nullable', 'boolean'],
+            'free_shipping' => ['nullable', 'boolean'],
+            'minimum_cart_amount' => ['nullable', 'numeric', 'min:0'],
+            'cart_total' => ['nullable', 'numeric', 'min:0'],
+            'value' => ['nullable', 'numeric'],
+            'rating' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'profit_rate' => ['nullable', 'numeric'],
+            'minimum_profit_amount' => ['nullable', 'numeric', 'min:0'],
+            'base_cost' => ['nullable', 'numeric', 'min:0'],
+            'commission_cost' => ['nullable', 'numeric', 'min:0'],
+            'tax_cost' => ['nullable', 'numeric', 'min:0'],
+            'shipping_cost' => ['nullable', 'numeric', 'min:0'],
+            'packaging_cost' => ['nullable', 'numeric', 'min:0'],
+            'ad_cost' => ['nullable', 'numeric', 'min:0'],
+            'rate' => ['nullable', 'numeric', 'min:0'],
+            'price' => ['nullable', 'numeric', 'min:0'],
+            'amount' => ['nullable', 'numeric', 'min:0'],
+            'discount_rate' => ['nullable', 'numeric', 'min:0'],
+            'balance' => ['nullable', 'numeric'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'blog_category_id' => ['nullable', 'exists:blog_categories,id'],
+            'product_id' => ['nullable', 'exists:products,id'],
+            'related_product_id' => ['nullable', 'exists:products,id'],
+            'dealer_id' => ['nullable', 'exists:dealers,id'],
+            'dealer_group_id' => ['nullable', 'exists:dealer_groups,id'],
+            'order_id' => ['nullable', 'exists:orders,id'],
+            'user_id' => ['nullable', 'exists:users,id'],
+            'published_at' => ['nullable', 'date'],
+            'starts_at' => ['nullable', 'date'],
+            'ends_at' => ['nullable', 'date'],
+            'last_activity_at' => ['nullable', 'date'],
+            'recovered_at' => ['nullable', 'date'],
+            'fetched_at' => ['nullable', 'date'],
+        ];
+    }
+}

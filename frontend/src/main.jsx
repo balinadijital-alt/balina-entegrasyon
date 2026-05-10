@@ -8,6 +8,7 @@ import { LoginPage } from './pages/Auth/LoginPage.jsx';
 import { RegisterPage } from './pages/Auth/RegisterPage.jsx';
 import { CompaniesPage } from './pages/Companies/CompaniesPage.jsx';
 import { AccountingPage } from './pages/Accounting/AccountingPage.jsx';
+import { moduleRoutes } from './pages/CommerceModules/ModuleRoutes.jsx';
 import { DashboardPage } from './pages/Dashboard/DashboardPage.jsx';
 import { ApiLogsPage } from './pages/Logs/ApiLogsPage.jsx';
 import { ImportCenterPage } from './pages/Imports/ImportCenterPage.jsx';
@@ -65,6 +66,7 @@ createRoot(document.getElementById('root')).render(
             <Route path="api-logs" element={<ApiLogsPage />} />
             <Route path="queue" element={<QueuePage />} />
             <Route path="roles" element={<RolesPage />} />
+            {moduleRoutes()}
           </Route>
         </Routes>
         <ToastHost />

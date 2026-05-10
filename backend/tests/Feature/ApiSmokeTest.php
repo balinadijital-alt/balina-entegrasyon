@@ -73,6 +73,63 @@ class ApiSmokeTest extends TestCase
         $this->getJson('/api/orders')->assertOk()->assertJsonCount(1, 'data');
     }
 
+    public function test_growth_module_crud_endpoints(): void
+    {
+        $this->postJson('/api/modules/cms-pages', [
+            'title' => 'Hakkimizda',
+            'slug' => 'hakkimizda',
+            'status' => 'active',
+            'content' => 'Demo icerik',
+        ])->assertCreated()->assertJsonPath('title', 'Hakkimizda');
+
+        $this->postJson('/api/modules/coupons', [
+            'company_id' => $this->company->id,
+            'name' => 'Sepet Indirimi',
+            'code' => 'DEMO10',
+            'type' => 'cart_discount',
+            'value' => 10,
+            'status' => 'active',
+        ])->assertCreated()->assertJsonPath('code', 'DEMO10');
+
+        $this->postJson('/api/modules/profit-rules', [
+            'company_id' => $this->company->id,
+            'scope' => 'marketplace',
+            'scope_value' => 'trendyol',
+            'profit_rate' => 20,
+            'minimum_profit_amount' => 25,
+            'costs' => ['commission' => 12, 'shipping' => 35],
+        ])->assertCreated()->assertJsonPath('scope', 'marketplace');
+
+        $this->postJson('/api/modules/price-calculations', [
+            'company_id' => $this->company->id,
+            'base_cost' => 100,
+            'commission_cost' => 10,
+            'tax_cost' => 20,
+            'shipping_cost' => 15,
+            'packaging_cost' => 5,
+            'ad_cost' => 4,
+            'profit_rate' => 30,
+            'minimum_profit_amount' => 40,
+        ])->assertCreated()->assertJsonPath('sale_price', 194);
+
+        $this->postJson('/api/modules/dealers', [
+            'company_id' => $this->company->id,
+            'name' => 'Demo Bayi',
+            'email' => 'bayi@example.test',
+            'discount_rate' => 12,
+            'balance' => 500,
+        ])->assertCreated()->assertJsonPath('name', 'Demo Bayi');
+
+        $this->postJson('/api/modules/seo-settings', [
+            'title' => 'Ana Sayfa SEO',
+            'scope' => 'home',
+            'status' => 'active',
+            'settings' => ['meta_description' => 'Balina demo'],
+        ])->assertCreated()->assertJsonPath('scope', 'home');
+
+        $this->getJson('/api/modules/cms-pages')->assertOk()->assertJsonCount(1, 'data');
+    }
+
     public function test_payment_shipping_invoice_and_saas_endpoints(): void
     {
         $order = Order::create([

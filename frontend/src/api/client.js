@@ -39,6 +39,12 @@ export const api = {
   dashboard: {
     report: () => http.get('/dashboard').then((response) => response.data),
   },
+  modules: {
+    list: (module, params) => http.get(`/modules/${module}`, { params }).then((response) => response.data),
+    create: (module, payload) => http.post(`/modules/${module}`, payload).then((response) => response.data),
+    update: (module, id, payload) => http.put(`/modules/${module}/${id}`, payload).then((response) => response.data),
+    remove: (module, id) => http.delete(`/modules/${module}/${id}`),
+  },
   auth: {
     login: (payload) => http.post('/auth/login', payload).then((response) => response.data),
     register: (payload) => http.post('/auth/register', payload).then((response) => response.data),

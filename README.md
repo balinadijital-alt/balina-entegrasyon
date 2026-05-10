@@ -33,6 +33,13 @@ Balina'nin hedefi firmalarin birden fazla pazaryeri ve operasyonel servisi tek n
 | Queue/worker | Hazir | Redis, Horizon, failed job retry, schedule |
 | Dashboard | Hazir | Satis, siparis, urun, kargo, odeme, fatura ve SaaS metrikleri |
 | Test/kalite | Hazir | Feature test, quality-check script, health check |
+| CMS | Hazir | Sayfa, blog, kategori, banner, popup, menu, SSS, sozlesme ve cerez yonetimi |
+| Pazarlama | Hazir | Kupon, sepet indirimi, terk edilmis sepet, e-posta/SMS/WhatsApp sablonlari, Merchant/Meta feed ve pixel ayarlari |
+| Gelismis urun | Hazir | Varyant, urun iliskileri, ozel alan, barkod batch, video/metrekare alanlari ve yorum moderasyonu altyapisi |
+| Fiyat motoru | Hazir | Pazaryeri/kategori/XML bazli kar kurallari, toplu fiyat operasyonu ve maliyet dahil fiyat hesaplama |
+| Siparis is akisi | Hazir | Durum gecis kurallari, kilitli durum altyapisi, siparis notlari ve operasyon gecmisi |
+| Bayi/B2B | Hazir | Bayi grup, iskonto, bakiye, ozel fiyat, XML ayarlari, siparis/tahsilat altyapisi |
+| SEO ve genel ayarlar | Hazir | Meta alanlari, head etiketleri, Search Console, sitemap, robots, doviz, lokasyon ve coklu dil |
 
 ## Mimari
 
@@ -187,6 +194,18 @@ Ana endpoint gruplari:
 - `GET /api/api-logs`
 - `GET /api/queue/status`
 - `GET /api/health`
+- `GET|POST /api/modules/{module}`
+
+Yeni genisleme modullerinde ortak API deseni kullanilir:
+
+```text
+GET    /api/modules/cms-pages
+POST   /api/modules/coupons
+PUT    /api/modules/seo-settings/{id}
+DELETE /api/modules/dealers/{id}
+```
+
+Desteklenen modul anahtarlari CMS, pazarlama, gelismis urun, fiyat motoru, siparis is akisi, bayi/B2B ve SEO tablolarini kapsar.
 
 Protected endpointler Sanctum token ister. Login ve API rate limitleri aktiftir.
 

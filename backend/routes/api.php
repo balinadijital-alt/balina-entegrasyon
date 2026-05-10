@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MarketplaceSyncController;
 use App\Http\Controllers\Api\MarketplaceAccountController;
+use App\Http\Controllers\Api\ModuleCrudController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentAccountController;
 use App\Http\Controllers\Api\PaymentController;
@@ -130,4 +131,19 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/queue/failed/{uuid}/retry', [QueueDashboardController::class, 'retry']);
     Route::get('/roles', [RoleController::class, 'index']);
     Route::post('/users/{user}/roles', [RoleController::class, 'assign']);
+
+    Route::prefix('modules/{module}')->whereIn('module', [
+        'cms-pages', 'blog-categories', 'blog-posts', 'banners', 'popups', 'navigation-menus', 'faqs', 'legal-documents',
+        'coupons', 'abandoned-carts', 'message-templates', 'notification-channels', 'marketing-feeds', 'tracking-pixels',
+        'product-variant-options', 'product-relations', 'product-custom-fields', 'product-barcode-batches', 'product-reviews',
+        'profit-rules', 'bulk-price-operations', 'price-calculations', 'order-workflow-rules', 'order-notes', 'order-operation-histories',
+        'dealer-groups', 'dealers', 'dealer-prices', 'dealer-transactions', 'seo-settings', 'site-scripts', 'sitemap-entries',
+        'robots-rules', 'currency-rates', 'locations', 'languages',
+    ])->group(function () {
+        Route::get('/', [ModuleCrudController::class, 'index']);
+        Route::post('/', [ModuleCrudController::class, 'store']);
+        Route::get('/{id}', [ModuleCrudController::class, 'show']);
+        Route::put('/{id}', [ModuleCrudController::class, 'update']);
+        Route::delete('/{id}', [ModuleCrudController::class, 'destroy']);
+    });
 });
