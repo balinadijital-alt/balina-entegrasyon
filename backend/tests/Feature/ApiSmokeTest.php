@@ -11,6 +11,7 @@ use App\Models\SaasPlan;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -256,5 +257,31 @@ class ApiSmokeTest extends TestCase
         $plan = SaasPlan::first();
         $this->postJson("/api/companies/{$this->company->id}/start-trial", ['saas_plan_id' => $plan->id])->assertCreated();
         $this->getJson("/api/companies/{$this->company->id}/saas-usage")->assertOk()->assertJsonStructure(['subscription', 'usage']);
+    }
+
+    public function test_trendyol_authorization_environment_and_catalog_endpoints(): void
+    {
+        Http::fake(function ($request) {
+            $this->assertStringStartsWith('https://stageapigw.trendyol.com', $request->url());
+            $this->assertSame('12345 - BalinaEntegrasyon', $request->header('User-Agent')[0] ?? null);
+            $this->assertStringStartsWith('Basic ', $request->header('Authorization')[0] ?? '');
+
+            return Http::response(['brands' => [['id' => 1, 'name' => 'Demo Marka']]], 200);
+        });
+
+        $marketplace = MarketplaceAccount::create([
+            'company_id' => $this->company->id,
+            'code' => 'trendyol',
+            'name' => 'Stage Trendyol',
+            'supplier_id' => '12345',
+            'api_key' => 'api-key',
+            'api_secret' => 'api-secret',
+            'is_active' => true,
+            'metadata' => ['environment' => 'stage'],
+        ]);
+
+        $this->getJson("/api/marketplaces/{$marketplace->id}/trendyol/brands")
+            ->assertOk()
+            ->assertJsonPath('brands.0.name', 'Demo Marka');
     }
 }

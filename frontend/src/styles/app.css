@@ -922,6 +922,21 @@ th {
   padding: 7px 10px;
 }
 
+.muted-text {
+  color: #64748b;
+  margin-top: 0;
+}
+
+.json-preview {
+  background: #0f172a;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 12px;
+  max-height: 360px;
+  overflow: auto;
+  padding: 14px;
+}
+
 .row-actions {
   display: flex;
   flex-wrap: wrap;

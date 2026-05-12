@@ -24,7 +24,7 @@ Balina'nin hedefi firmalarin birden fazla pazaryeri ve operasyonel servisi tek n
 | Firma yonetimi | Hazir | Firma CRUD, firma bazli entegrasyon hesaplari |
 | Urun yonetimi | Hazir | Manuel urun, gorsel, stok/fiyat alanlari |
 | XML/Excel import | Hazir | Alan eslestirme, preview, queue import, hata raporu |
-| Trendyol | Hazir | Baglanti testi, kategori, urun, stok/fiyat, siparis joblari |
+| Trendyol | Hazir | Basic Auth, canli/test ortam, Product V2, kategori/marka/ozellik, batch takip, stream siparis, iade, soru-cevap, fatura ve API log altyapisi |
 | Hepsiburada | Hazir | Trendyol mimarisiyle uyumlu servis, job ve log altyapisi |
 | Kargo | Hazir | Yurtici, Aras, MNG, Surat, PTT, Hepsijet, Trendyol Express servisleri |
 | Odeme/POS | Hazir | iyzico, PayTR, Param, Sipay, Paynet, banka POS, havale/EFT, kapida odeme |
@@ -81,6 +81,26 @@ php artisan migrate --seed
 php artisan storage:link
 php artisan serve
 ```
+
+## Trendyol Servis Kapsami
+
+Trendyol hesaplari firma bazlidir. `supplier_id`, `api_key` ve `api_secret` alanlari sifreli saklanir; istekler Basic Auth ile gonderilir. User-Agent varsayilan olarak `{supplierId} - BalinaEntegrasyon` formatinda uretilir ve hesap metadata alanindan degistirilebilir.
+
+Ortam secimi hesap metadata uzerinden yapilir:
+
+- `production`: `https://apigw.trendyol.com`
+- `stage`: `https://stageapigw.trendyol.com`
+
+Global env degerleri:
+
+```env
+TRENDYOL_BASE_URL=https://apigw.trendyol.com
+TRENDYOL_STAGE_BASE_URL=https://stageapigw.trendyol.com
+TRENDYOL_RATE_LIMIT_ATTEMPTS=50
+TRENDYOL_RATE_LIMIT_DECAY=10
+```
+
+Servis kapsaminda Product V2 urun gonderimi, stok/fiyat guncelleme, batch result sorgulama, kategori agaci, marka listesi, kategori ozellikleri/degerleri, onayli/onaysiz urun filtreleme, arsivleme, `getShipmentPackagesStream`, webhook paket isleme, iade, soru-cevap, fatura link/dosya gonderimi ve ortak etiket barkod altyapisi bulunur. Trendyol dokumanina gore Product V1 servisleri 10 Agustos 2026 itibariyla kullanim disi kalacagi icin yeni gelistirmelerde V2 endpointleri tercih edilir.
 
 Varsayilan admin:
 

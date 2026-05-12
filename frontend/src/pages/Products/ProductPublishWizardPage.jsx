@@ -29,6 +29,7 @@ export function ProductPublishWizardPage() {
   const [draft, setDraft] = useState(null);
   const [mappings, setMappings] = useState({ category_id: '', attributes: '' });
   const [priceControls, setPriceControls] = useState({ minimum_profit_rate: 15, include_shipping_cost: true });
+  const [requiredAttributes, setRequiredAttributes] = useState([]);
 
   const selectedMarketplace = useMemo(
     () => marketplaces.find((marketplace) => String(marketplace.id) === String(marketplaceId)),
@@ -56,9 +57,42 @@ export function ProductPublishWizardPage() {
     setSelectedProducts((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   };
 
+  const fetchRequiredAttributes = async () => {
+    if (selectedMarketplace?.code !== 'trendyol') return;
+    const categoryId = mappings.category_id || selectedRows[0]?.trendyol_category_id;
+    if (!categoryId) {
+      setRequiredAttributes([]);
+      return;
+    }
+    await run(async () => {
+      const response = await api.marketplaces.trendyolCategoryAttributes(selectedMarketplace.id, categoryId);
+      const attributes = (response.attributes || response.raw?.categoryAttributes || []).filter((item) => item.required);
+      setRequiredAttributes(attributes);
+      notify('success', `${attributes.length} zorunlu Trendyol ozelligi bulundu.`);
+    }, { onError: (message) => notify('error', message) });
+  };
+
+  const missingRequiredAttributes = () => {
+    if (selectedMarketplace?.code !== 'trendyol' || requiredAttributes.length === 0) return [];
+    return selectedRows.flatMap((product) => {
+      const productAttributes = product.trendyol_attributes || [];
+      const sentIds = productAttributes.map((attribute) => String(attribute.attributeId || attribute.attribute?.id));
+      return requiredAttributes
+        .filter((attribute) => !sentIds.includes(String(attribute.attributeId || attribute.attribute?.id)))
+        .map((attribute) => `${product.sku}: ${attribute.attributeName || attribute.attribute?.name || attribute.attributeId}`);
+    });
+  };
+
   const validateDraft = async () => {
     if (!marketplaceId || selectedProducts.length === 0) {
       setError('Urun ve pazaryeri secimi zorunludur.');
+      return;
+    }
+    const missingAttributes = missingRequiredAttributes();
+    if (missingAttributes.length > 0) {
+      const message = `Trendyol zorunlu ozellikleri eksik: ${missingAttributes.slice(0, 5).join(', ')}`;
+      setError(message);
+      notify('error', message);
       return;
     }
 
@@ -132,6 +166,13 @@ export function ProductPublishWizardPage() {
           <div className="form-grid">
             <Field label="Kategori Esleme"><input value={mappings.category_id} onChange={(event) => setMappings({ ...mappings, category_id: event.target.value })} /></Field>
             <Field label="Ozellik Esleme JSON"><textarea value={mappings.attributes} onChange={(event) => setMappings({ ...mappings, attributes: event.target.value })} placeholder='{"renk":"Renk","beden":"Beden"}' /></Field>
+            {selectedMarketplace?.code === 'trendyol' && <button type="button" disabled={loading} onClick={fetchRequiredAttributes}>Trendyol Zorunlu Ozellikleri Getir</button>}
+            {requiredAttributes.length > 0 && (
+              <div className="soft-empty">
+                <strong>{requiredAttributes.length} zorunlu ozellik</strong>
+                <span>{requiredAttributes.slice(0, 8).map((item) => item.attributeName || item.attribute?.name || item.attributeId).join(', ')}</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -147,7 +188,7 @@ export function ProductPublishWizardPage() {
             {selectedRows.map((product) => (
               <div className="soft-empty" key={product.id}>
                 <strong>{product.name}</strong>
-                <span>{product.marketplace_ready ? 'Genel pazaryeri kontrolleri tamam.' : missingText(product.marketplace_readiness) || 'Readiness kontrolu bekleniyor.'}</span>
+                <span>{missingRequiredAttributes().some((item) => item.startsWith(`${product.sku}:`)) ? 'Trendyol zorunlu ozellik eksigi var.' : (product.marketplace_ready ? 'Genel pazaryeri kontrolleri tamam.' : missingText(product.marketplace_readiness) || 'Readiness kontrolu bekleniyor.')}</span>
               </div>
             ))}
           </div>

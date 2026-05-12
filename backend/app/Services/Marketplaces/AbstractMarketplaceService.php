@@ -29,9 +29,9 @@ abstract class AbstractMarketplaceService implements MarketplaceService
         }
     }
 
-    protected function throttle(MarketplaceAccount $account): void
+    protected function throttle(MarketplaceAccount $account, ?string $scope = null): void
     {
-        $key = "marketplace:{$account->code}:{$account->id}";
+        $key = "marketplace:{$account->code}:{$account->id}:".md5($scope ?: 'global');
         $maxAttempts = (int) config("marketplaces.{$account->code}.rate_limit_attempts", 30);
         $decay = (int) config("marketplaces.{$account->code}.rate_limit_decay", 60);
 

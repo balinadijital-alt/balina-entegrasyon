@@ -126,9 +126,24 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::prefix('marketplaces/{marketplace}/trendyol')->group(function () {
         Route::post('/test', [TrendyolController::class, 'test']);
         Route::get('/categories', [TrendyolController::class, 'categories']);
+        Route::get('/brands', [TrendyolController::class, 'brands']);
+        Route::get('/categories/{categoryId}/attributes', [TrendyolController::class, 'categoryAttributes']);
+        Route::get('/categories/{categoryId}/attributes/{attributeId}/values', [TrendyolController::class, 'categoryAttributeValues']);
         Route::post('/send-products', [TrendyolController::class, 'sendProducts']);
         Route::post('/update-price-inventory', [TrendyolController::class, 'updatePriceInventory']);
+        Route::get('/batch-results/{batchRequestId}', [TrendyolController::class, 'batchResult']);
+        Route::get('/products/filter', [TrendyolController::class, 'filterProducts']);
+        Route::put('/products/archive', [TrendyolController::class, 'archiveProducts']);
         Route::post('/pull-orders', [TrendyolController::class, 'pullOrders']);
+        Route::get('/orders/stream', [TrendyolController::class, 'pullOrdersStream']);
+        Route::post('/webhook/packages', [TrendyolController::class, 'webhookPackages']);
+        Route::get('/returns', [TrendyolController::class, 'returns']);
+        Route::post('/returns/{claimId}/answer', [TrendyolController::class, 'answerReturn']);
+        Route::get('/questions', [TrendyolController::class, 'questions']);
+        Route::post('/questions/{questionId}/answer', [TrendyolController::class, 'answerQuestion']);
+        Route::post('/shipment-packages/{packageId}/invoice-link', [TrendyolController::class, 'sendInvoiceLink']);
+        Route::post('/shipment-packages/{packageId}/invoice-file', [TrendyolController::class, 'sendInvoiceFile']);
+        Route::get('/common-label-barcodes', [TrendyolController::class, 'commonLabelBarcode']);
     });
     Route::prefix('marketplaces/{marketplace}/hepsiburada')->group(function () {
         Route::post('/test', [HepsiburadaController::class, 'test']);
