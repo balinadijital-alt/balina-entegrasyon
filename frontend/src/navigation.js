@@ -60,6 +60,8 @@ export const appNavigationGroups = [
       { to: '/catalog/tags', label: 'Etiketler', icon: Percent },
       { to: '/catalog/suppliers', label: 'Tedarikciler', icon: Building2 },
       { to: '/pricing/profit-rules', label: 'Fiyat Kurallari', icon: Calculator },
+      { to: '/catalog/tax-rates', label: 'KDV Oranlari', icon: Percent },
+      { to: '/catalog/units', label: 'Birimler', icon: Settings },
       { to: '/catalog/defaults', label: 'KDV / Birim / Desi', icon: Settings },
       { to: '/pricing/bulk-operations', label: 'Toplu Urun Islemleri', icon: Workflow },
       { to: '/products/import', label: 'Toplu Urun Yukleme', icon: UploadCloud },

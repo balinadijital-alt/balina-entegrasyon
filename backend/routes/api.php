@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AccountingIntegrationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\B2BModuleController;
 use App\Http\Controllers\Api\CategoryMappingController;
+use App\Http\Controllers\Api\CatalogResourceController;
 use App\Http\Controllers\Api\CatalogModuleController;
 use App\Http\Controllers\Api\CmsModuleController;
 use App\Http\Controllers\Api\CompanyController;
@@ -64,6 +65,9 @@ Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(fun
 
     Route::apiResource('companies', CompanyController::class);
     Route::apiResource('products', ProductController::class)->middleware('plan.limit:products');
+    Route::apiResource('catalog-resources', CatalogResourceController::class)
+        ->parameters(['catalog-resources' => 'catalogResource'])
+        ->except(['show']);
     Route::get('/products/{product}/readiness', [ProductMarketplaceController::class, 'readiness']);
     Route::post('/products/import', ProductImportController::class)->middleware('plan.limit:products');
     Route::post('/products/{product}/images', [ProductImageController::class, 'store']);

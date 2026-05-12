@@ -15,6 +15,15 @@ const missingLabels = {
   category_mapping: 'Kategori eslesmesi eksik',
   marketplace_category: 'Pazaryeri kategorisi eksik',
   required_attributes: 'Zorunlu ozellik eksik',
+  attributes: 'Katalog niteligi eksik',
+  brand: 'Marka eksik',
+  category: 'Kategori eksik',
+  barcode: 'Barkod eksik',
+  sku: 'SKU eksik',
+  description: 'Aciklama eksik',
+  vat_rate: 'KDV eksik',
+  seo: 'SEO bilgileri eksik',
+  cargo: 'Kargo bilgisi eksik',
   image: 'Gorsel eksik',
   price: 'Fiyat kontrol edilmeli',
   stock: 'Stok kontrol edilmeli',
@@ -39,6 +48,7 @@ function draftStatusLabel(draft) {
     const missing = draftMissingFields(draft);
     if (missing.includes('category_mapping')) return 'Eksik kategori';
     if (missing.includes('required_attributes')) return 'Eksik ozellik';
+    if (missing.includes('attributes')) return 'Eksik katalog niteligi';
     if (missing.includes('image')) return 'Eksik gorsel';
     if (missing.includes('price') || missing.includes('stock')) return 'Fiyat/stok hatasi';
     return 'Hata aldi';

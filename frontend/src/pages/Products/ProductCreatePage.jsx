@@ -34,6 +34,7 @@ const stepDescriptions = [
 
 const readinessLabels = {
   temel: 'Temel bilgiler',
+  katalog: 'Katalog bilgileri',
   barkod: 'Barkod',
   fiyatStok: 'Fiyat ve stok',
   gorsel: 'Gorsel',
@@ -47,6 +48,12 @@ const missingLabels = {
   category_mapping: 'Kategori eslesmesi',
   marketplace_category: 'Pazaryeri kategorisi',
   required_attributes: 'Zorunlu ozellik',
+  attributes: 'Katalog niteligi',
+  brand: 'Marka',
+  category: 'Kategori',
+  vat_rate: 'KDV',
+  seo: 'SEO bilgileri',
+  cargo: 'Kargo bilgisi',
   image: 'Gorsel',
   price: 'Fiyat',
   stock: 'Stok',
@@ -64,6 +71,7 @@ const initialForm = {
   name: '',
   brand: '',
   category: '',
+  supplier_name: '',
   barcode: '',
   sku: '',
   product_type: 'standard',
@@ -75,6 +83,7 @@ const initialForm = {
   price: '',
   list_price: '',
   vat_rate: 20,
+  unit: 'adet',
   stock: 0,
   critical_stock: 0,
   dimensional_weight: 1,
@@ -89,6 +98,8 @@ const initialForm = {
   hepsiburada_category_id: '',
   trendyol_attributes: '',
   hepsiburada_attributes: '',
+  tags: [],
+  attributes: {},
   status: 'draft',
 };
 
@@ -123,7 +134,13 @@ function productToForm(product) {
     variant_options: stringifyJson(product.variant_options),
     trendyol_attributes: stringifyJson(product.trendyol_attributes),
     hepsiburada_attributes: stringifyJson(product.hepsiburada_attributes),
+    tags: product.tags || [],
+    attributes: product.attributes || {},
   };
+}
+
+function valuesOf(resource) {
+  return Array.isArray(resource.values) ? resource.values : [];
 }
 
 export function ProductCreatePage() {
@@ -131,6 +148,16 @@ export function ProductCreatePage() {
   const { notify } = useApp();
   const { loading, error, setError, run } = useAsync();
   const [companies, setCompanies] = useState([]);
+  const [catalog, setCatalog] = useState({
+    categories: [],
+    brands: [],
+    attributes: [],
+    tags: [],
+    suppliers: [],
+    taxRates: [],
+    units: [],
+    defaults: [],
+  });
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [step, setStep] = useState(0);
@@ -141,6 +168,7 @@ export function ProductCreatePage() {
   const readiness = useMemo(() => {
     const checks = {
       temel: required(form.name) && required(form.sku) && required(form.company_id),
+      katalog: required(form.category) && required(form.brand) && Object.keys(form.attributes || {}).length > 0,
       barkod: required(form.barcode),
       fiyatStok: Number(form.price) > 0 && Number(form.stock) >= 0,
       gorsel: required(form.main_image_url) || parseList(form.gallery_images).length > 0,
@@ -156,11 +184,29 @@ export function ProductCreatePage() {
 
   const load = async () => {
     await run(async () => {
-      const [companyResponse, productResponse] = await Promise.all([
+      const [companyResponse, productResponse, categories, brands, attributes, tags, suppliers, taxRates, units, defaults] = await Promise.all([
         api.companies.list(),
         isEdit ? api.products.show(id) : Promise.resolve(null),
+        api.catalogResources.list({ type: 'categories', active: 1 }),
+        api.catalogResources.list({ type: 'brands', active: 1 }),
+        api.catalogResources.list({ type: 'attributes', active: 1 }),
+        api.catalogResources.list({ type: 'tags', active: 1 }),
+        api.catalogResources.list({ type: 'suppliers', active: 1 }),
+        api.catalogResources.list({ type: 'tax-rates', active: 1 }),
+        api.catalogResources.list({ type: 'units', active: 1 }),
+        api.catalogResources.list({ type: 'defaults', active: 1 }),
       ]);
       setCompanies(companyResponse.data || []);
+      setCatalog({
+        categories: categories.data || [],
+        brands: brands.data || [],
+        attributes: attributes.data || [],
+        tags: tags.data || [],
+        suppliers: suppliers.data || [],
+        taxRates: taxRates.data || [],
+        units: units.data || [],
+        defaults: defaults.data || [],
+      });
       if (productResponse) {
         setForm(productToForm(productResponse));
         setReadinessReport(productResponse.marketplace_readiness || null);
@@ -192,6 +238,7 @@ export function ProductCreatePage() {
         stock: Number(form.stock),
         critical_stock: Number(form.critical_stock || 0),
         vat_rate: Number(form.vat_rate),
+        unit: form.unit || null,
         dimensional_weight: Number(form.dimensional_weight || 1),
         weight: form.weight === '' ? null : Number(form.weight),
         trendyol_category_id: form.trendyol_category_id === '' ? null : Number(form.trendyol_category_id),
@@ -199,6 +246,8 @@ export function ProductCreatePage() {
         variant_options: parseJson(form.variant_options, null),
         trendyol_attributes: parseJson(form.trendyol_attributes, null),
         hepsiburada_attributes: parseJson(form.hepsiburada_attributes, null),
+        tags: form.tags || [],
+        attributes: form.attributes || {},
       };
       const saved = isEdit ? await api.products.update(id, payload) : await api.products.create(payload);
       const readinessResponse = await api.products.readiness(saved.id);
@@ -218,6 +267,22 @@ export function ProductCreatePage() {
     } catch {
       setErrors((current) => ({ ...current, [key]: `${label} gecerli formatta olmali.` }));
     }
+  };
+
+  const toggleTag = (tagName) => {
+    setForm((current) => {
+      const tags = current.tags || [];
+      return { ...current, tags: tags.includes(tagName) ? tags.filter((tag) => tag !== tagName) : [...tags, tagName] };
+    });
+  };
+
+  const setAttribute = (name, value) => {
+    setForm((current) => {
+      const next = { ...(current.attributes || {}) };
+      if (value) next[name] = value;
+      else delete next[name];
+      return { ...current, attributes: next };
+    });
   };
 
   const uploadImage = async () => {
@@ -288,8 +353,26 @@ export function ProductCreatePage() {
 
           {step === 1 && (
             <div className="form-grid">
-              <Field label="Kategori"><input value={form.category} onChange={(event) => setValue('category', event.target.value)} /></Field>
-              <Field label="Marka"><input value={form.brand} onChange={(event) => setValue('brand', event.target.value)} /></Field>
+              {catalog.categories.length === 0 && <div className="soft-empty">Kategori bulunamadi. <Link to="/catalog/categories">Once kategori olusturun</Link>.</div>}
+              {catalog.brands.length === 0 && <div className="soft-empty">Marka bulunamadi. <Link to="/catalog/brands">Once marka olusturun</Link>.</div>}
+              <Field label="Kategori">
+                <select value={form.category} onChange={(event) => setValue('category', event.target.value)}>
+                  <option value="">Kategori seciniz</option>
+                  {catalog.categories.map((category) => <option key={category.id} value={category.name}>{category.parent?.name ? `${category.parent.name} / ${category.name}` : category.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Marka">
+                <select value={form.brand} onChange={(event) => setValue('brand', event.target.value)}>
+                  <option value="">Marka seciniz</option>
+                  {catalog.brands.map((brand) => <option key={brand.id} value={brand.name}>{brand.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Tedarikci">
+                <select value={form.supplier_name} onChange={(event) => setValue('supplier_name', event.target.value)}>
+                  <option value="">Tedarikci seciniz</option>
+                  {catalog.suppliers.map((supplier) => <option key={supplier.id} value={supplier.name}>{supplier.name}</option>)}
+                </select>
+              </Field>
               <Field label="Barkod"><input value={form.barcode} onChange={(event) => setValue('barcode', event.target.value)} /></Field>
               <Field label="SKU" error={errors.sku}><input value={form.sku} onChange={(event) => setValue('sku', event.target.value)} /></Field>
             </div>
@@ -300,7 +383,20 @@ export function ProductCreatePage() {
               <Field label="Alis Fiyati"><input type="number" value={form.purchase_price} onChange={(event) => setValue('purchase_price', event.target.value)} /></Field>
               <Field label="Satis Fiyati" error={errors.price}><input type="number" value={form.price} onChange={(event) => setValue('price', event.target.value)} /></Field>
               <Field label="Liste Fiyati"><input type="number" value={form.list_price} onChange={(event) => setValue('list_price', event.target.value)} /></Field>
-              <Field label="KDV Orani"><input type="number" value={form.vat_rate} onChange={(event) => setValue('vat_rate', event.target.value)} /></Field>
+              <Field label="KDV Orani">
+                <select value={form.vat_rate} onChange={(event) => setValue('vat_rate', event.target.value)}>
+                  {[...catalog.taxRates, ...catalog.defaults].length === 0 && <option value="20">%20</option>}
+                  {catalog.taxRates.map((rate) => <option key={rate.id} value={rate.settings?.rate || rate.code || rate.name}>{rate.name}</option>)}
+                  {catalog.defaults.map((item) => item.settings?.vat_rate ? <option key={item.id} value={item.settings.vat_rate}>Varsayilan %{item.settings.vat_rate}</option> : null)}
+                </select>
+              </Field>
+              <Field label="Birim">
+                <select value={form.unit} onChange={(event) => setValue('unit', event.target.value)}>
+                  <option value="">Birim seciniz</option>
+                  {catalog.units.length === 0 && <option value="adet">Adet</option>}
+                  {catalog.units.map((unit) => <option key={unit.id} value={unit.code || unit.name}>{unit.name}</option>)}
+                </select>
+              </Field>
               <Field label="Stok" error={errors.stock}><input type="number" value={form.stock} onChange={(event) => setValue('stock', event.target.value)} /></Field>
               <Field label="Kritik Stok"><input type="number" value={form.critical_stock} onChange={(event) => setValue('critical_stock', event.target.value)} /></Field>
               <Field label="Desi"><input type="number" value={form.dimensional_weight} onChange={(event) => setValue('dimensional_weight', event.target.value)} /></Field>
@@ -343,6 +439,27 @@ export function ProductCreatePage() {
 
           {step === 6 && (
             <div className="form-grid">
+              <div className="soft-empty">
+                Katalog nitelikleri urunun pazaryerine hazirligini guclendirir. Eksikse <Link to="/catalog/attributes">Nitelikler / Ozellikler</Link> sayfasindan ekleyin.
+              </div>
+              {catalog.attributes.map((attribute) => (
+                <Field label={attribute.name} key={attribute.id}>
+                  <select value={form.attributes?.[attribute.name] || ''} onChange={(event) => setAttribute(attribute.name, event.target.value)}>
+                    <option value="">Deger seciniz</option>
+                    {valuesOf(attribute).map((value) => <option key={value} value={value}>{value}</option>)}
+                  </select>
+                </Field>
+              ))}
+              <Field label="Etiketler">
+                <div className="tag-selector">
+                  {catalog.tags.length === 0 ? <span>Etiket yok. Etiketler sayfasindan ekleyebilirsiniz.</span> : catalog.tags.map((tag) => (
+                    <label className="check-row" key={tag.id}>
+                      <input type="checkbox" checked={(form.tags || []).includes(tag.name)} onChange={() => toggleTag(tag.name)} />
+                      {tag.name}
+                    </label>
+                  ))}
+                </div>
+              </Field>
               <Field label="Trendyol Kategori Kodu"><input type="number" value={form.trendyol_category_id} onChange={(event) => setValue('trendyol_category_id', event.target.value)} /></Field>
               <Field label="Hepsiburada Kategori Kodu"><input value={form.hepsiburada_category_id} onChange={(event) => setValue('hepsiburada_category_id', event.target.value)} /></Field>
               <Field label="Trendyol Ozellik Eslesmeleri" error={errors.trendyol_attributes}>

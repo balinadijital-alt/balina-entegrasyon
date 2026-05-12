@@ -72,6 +72,12 @@ export const api = {
     import: (payload) => http.post('/products/import', payload).then((response) => response.data),
     uploadImage: (productId, payload) => http.post(`/products/${productId}/images`, payload).then((response) => response.data),
   },
+  catalogResources: {
+    list: (params) => http.get('/catalog-resources', { params }).then((response) => response.data),
+    create: (payload) => http.post('/catalog-resources', payload).then((response) => response.data),
+    update: (id, payload) => http.put(`/catalog-resources/${id}`, payload).then((response) => response.data),
+    remove: (id) => http.delete(`/catalog-resources/${id}`),
+  },
   productPublish: {
     drafts: () => http.get('/marketplace-publish-drafts').then((response) => response.data),
     validate: (payload) => http.post('/marketplace-publish/validate', payload).then((response) => response.data),

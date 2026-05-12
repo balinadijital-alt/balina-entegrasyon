@@ -52,6 +52,7 @@ class ProductReadinessService
             'sku' => filled($product->sku),
             'price' => (float) $product->price > 0,
             'stock' => $product->stock !== null && (int) $product->stock >= 0,
+            'attributes' => count(Arr::wrap($product->attributes)) > 0,
             'vat_rate' => $product->vat_rate !== null,
             'description' => filled($product->description) || filled($product->short_description),
             'seo' => filled($product->seo_title) && filled($product->seo_description),

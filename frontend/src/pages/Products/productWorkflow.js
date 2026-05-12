@@ -44,6 +44,10 @@ export function publishBlockReason(product) {
   if (missing.includes('category_mapping')) return 'Eksik kategori eslesmesi';
   if (missing.includes('marketplace_category')) return 'Eksik pazaryeri kategorisi';
   if (missing.includes('required_attributes')) return 'Eksik zorunlu ozellik';
+  if (missing.includes('attributes')) return 'Eksik katalog niteligi';
+  if (missing.includes('brand')) return 'Eksik marka';
+  if (missing.includes('category')) return 'Eksik kategori';
+  if (missing.includes('barcode')) return 'Eksik barkod';
   if (missing.includes('image')) return 'Eksik gorsel';
   if (missing.includes('price') || missing.includes('stock')) return 'Fiyat/stok hatasi';
   return product.marketplace_ready ? 'Hazir' : 'Kontrol gerekli';

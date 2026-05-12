@@ -88,6 +88,7 @@ class ProductController extends Controller
             'stock' => ['required', 'integer', 'min:0'],
             'critical_stock' => ['nullable', 'integer', 'min:0'],
             'vat_rate' => ['required', 'integer', 'min:0', 'max:100'],
+            'unit' => ['nullable', 'string', 'max:64'],
             'dimensional_weight' => ['nullable', 'numeric', 'min:0.01'],
             'weight' => ['nullable', 'numeric', 'min:0'],
             'shipping_type' => ['nullable', 'string', 'max:128'],
@@ -99,6 +100,9 @@ class ProductController extends Controller
             'variant_options' => ['nullable', 'array'],
             'trendyol_attributes' => ['nullable', 'array'],
             'hepsiburada_attributes' => ['nullable', 'array'],
+            'tags' => ['nullable', 'array'],
+            'tags.*' => ['nullable', 'string', 'max:120'],
+            'attributes' => ['nullable', 'array'],
             'status' => ['required', 'in:draft,active,passive'],
         ]);
     }

@@ -116,6 +116,9 @@ class ApiSmokeTest extends TestCase
             'hepsiburada_category_id' => 'HB-123',
             'trendyol_attributes' => [['attributeId' => 1, 'attributeValueId' => 2]],
             'hepsiburada_attributes' => [['name' => 'Renk', 'value' => 'Siyah']],
+            'attributes' => ['Renk' => 'Siyah', 'Beden' => 'M'],
+            'tags' => ['Yeni Urun'],
+            'unit' => 'adet',
             'status' => 'active',
         ])->assertCreated()->json();
 
@@ -169,6 +172,81 @@ class ApiSmokeTest extends TestCase
 
         $this->getJson('/api/products')->assertOk()->assertJsonCount(1, 'data');
         $this->getJson('/api/orders')->assertOk()->assertJsonCount(1, 'data');
+    }
+
+    public function test_catalog_resource_management_endpoints(): void
+    {
+        $category = $this->postJson('/api/catalog-resources', [
+            'company_id' => $this->company->id,
+            'type' => 'categories',
+            'name' => 'Ayakkabi',
+            'sort_order' => 1,
+            'is_active' => true,
+            'settings' => ['seo_title' => 'Ayakkabi'],
+        ])->assertCreated()->assertJsonPath('name', 'Ayakkabi')->json();
+
+        $this->postJson('/api/catalog-resources', [
+            'company_id' => $this->company->id,
+            'parent_id' => $category['id'],
+            'type' => 'categories',
+            'name' => 'Spor Ayakkabi',
+            'is_active' => true,
+        ])->assertCreated()->assertJsonPath('parent_id', $category['id']);
+
+        $this->postJson('/api/catalog-resources', [
+            'company_id' => $this->company->id,
+            'type' => 'brands',
+            'name' => 'Demo Marka',
+            'image_url' => 'https://example.test/logo.png',
+            'settings' => ['seo_description' => 'Marka aciklamasi'],
+        ])->assertCreated()->assertJsonPath('name', 'Demo Marka');
+
+        $this->postJson('/api/catalog-resources', [
+            'company_id' => $this->company->id,
+            'type' => 'attributes',
+            'name' => 'Renk',
+            'values' => ['Siyah', 'Beyaz'],
+        ])->assertCreated()->assertJsonPath('values.0', 'Siyah');
+
+        $this->postJson('/api/catalog-resources', [
+            'company_id' => $this->company->id,
+            'type' => 'tags',
+            'name' => 'Yeni Urun',
+            'settings' => ['color' => '#2563eb', 'icon' => 'sparkles'],
+        ])->assertCreated()->assertJsonPath('name', 'Yeni Urun');
+
+        $this->postJson('/api/catalog-resources', [
+            'company_id' => $this->company->id,
+            'type' => 'suppliers',
+            'name' => 'Demo Tedarikci',
+            'settings' => ['xml_url' => 'https://example.test/feed.xml', 'discount_rate' => 10],
+        ])->assertCreated()->assertJsonPath('name', 'Demo Tedarikci');
+
+        $this->postJson('/api/catalog-resources', [
+            'company_id' => $this->company->id,
+            'type' => 'tax-rates',
+            'name' => '%20 KDV',
+            'code' => '20',
+            'settings' => ['rate' => 20],
+        ])->assertCreated()->assertJsonPath('code', '20');
+
+        $unit = $this->postJson('/api/catalog-resources', [
+            'company_id' => $this->company->id,
+            'type' => 'units',
+            'name' => 'Adet',
+            'code' => 'adet',
+        ])->assertCreated()->assertJsonPath('code', 'adet')->json();
+
+        $this->putJson("/api/catalog-resources/{$unit['id']}", [
+            'company_id' => $this->company->id,
+            'type' => 'units',
+            'name' => 'Paket',
+            'code' => 'paket',
+            'is_active' => true,
+        ])->assertOk()->assertJsonPath('name', 'Paket');
+
+        $this->getJson('/api/catalog-resources?type=categories')->assertOk()->assertJsonCount(2, 'data');
+        $this->deleteJson("/api/catalog-resources/{$unit['id']}")->assertNoContent();
     }
 
     public function test_growth_module_crud_endpoints(): void

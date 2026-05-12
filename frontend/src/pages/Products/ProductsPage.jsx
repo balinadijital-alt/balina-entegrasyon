@@ -43,6 +43,7 @@ export function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [marketplaces, setMarketplaces] = useState([]);
+  const [catalog, setCatalog] = useState({ categories: [], brands: [], suppliers: [], tags: [] });
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [companyId, setCompanyId] = useState('');
@@ -52,16 +53,35 @@ export function ProductsPage() {
   const [trendyolFilter, setTrendyolFilter] = useState('');
   const [hepsiburadaFilter, setHepsiburadaFilter] = useState('');
   const [marketplaceId, setMarketplaceId] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [brandFilter, setBrandFilter] = useState('');
+  const [supplierFilter, setSupplierFilter] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
   const [selected, setSelected] = useState([]);
   const [quickEditId, setQuickEditId] = useState(null);
   const [quickEdit, setQuickEdit] = useState({ price: '', stock: '', status: 'active' });
+  const [bulkEdit, setBulkEdit] = useState({ category: '', brand: '', tag: '', price: '', stock: '' });
 
   const load = async () => {
     await run(async () => {
-      const [productResponse, companyResponse, marketplaceResponse] = await Promise.all([api.products.list(), api.companies.list(), api.marketplaces.list()]);
+      const [productResponse, companyResponse, marketplaceResponse, categories, brands, suppliers, tags] = await Promise.all([
+        api.products.list(),
+        api.companies.list(),
+        api.marketplaces.list(),
+        api.catalogResources.list({ type: 'categories', active: 1 }),
+        api.catalogResources.list({ type: 'brands', active: 1 }),
+        api.catalogResources.list({ type: 'suppliers', active: 1 }),
+        api.catalogResources.list({ type: 'tags', active: 1 }),
+      ]);
       setProducts(productResponse.data || []);
       setCompanies(companyResponse.data || []);
       setMarketplaces(marketplaceResponse.data || []);
+      setCatalog({
+        categories: categories.data || [],
+        brands: brands.data || [],
+        suppliers: suppliers.data || [],
+        tags: tags.data || [],
+      });
       setMarketplaceId((current) => current || marketplaceResponse.data?.[0]?.id || '');
     });
   };
@@ -93,6 +113,40 @@ export function ProductsPage() {
       });
       notify('success', 'Urun hizli guncellendi.');
       setQuickEditId(null);
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
+  const productPayload = (product, changes = {}) => ({
+    ...product,
+    ...changes,
+    gallery_images: product.gallery_images || [],
+    variant_options: product.variant_options || null,
+    trendyol_attributes: product.trendyol_attributes || null,
+    hepsiburada_attributes: product.hepsiburada_attributes || null,
+    tags: changes.tags || product.tags || [],
+    attributes: changes.attributes || product.attributes || {},
+  });
+
+  const applyBulkEdit = async () => {
+    const selectedProducts = products.filter((product) => selected.includes(product.id));
+    if (selectedProducts.length === 0) return;
+
+    await run(async () => {
+      await Promise.all(selectedProducts.map((product) => {
+        const tags = bulkEdit.tag ? Array.from(new Set([...(product.tags || []), bulkEdit.tag])) : product.tags || [];
+        const changes = {
+          category: bulkEdit.category || product.category,
+          brand: bulkEdit.brand || product.brand,
+          tags,
+          price: bulkEdit.price === '' ? product.price : Number(bulkEdit.price),
+          stock: bulkEdit.stock === '' ? product.stock : Number(bulkEdit.stock),
+        };
+        return api.products.update(product.id, productPayload(product, changes));
+      }));
+      notify('success', 'Secili urunler guncellendi.');
+      setSelected([]);
+      setBulkEdit({ category: '', brand: '', tag: '', price: '', stock: '' });
       await load();
     }, { onError: (message) => notify('error', message) });
   };
@@ -150,7 +204,11 @@ export function ProductsPage() {
     const matchesStock = !stockFilter || (stockFilter === 'out' ? Number(product.stock || 0) <= 0 : Number(product.stock || 0) <= Number(product.critical_stock || 0));
     const matchesTrendyol = !trendyolFilter || trendyol === trendyolFilter;
     const matchesHepsiburada = !hepsiburadaFilter || hepsiburada === hepsiburadaFilter;
-    return matchesSearch && matchesStatus && matchesCompany && matchesReady && matchesMissing && matchesStock && matchesTrendyol && matchesHepsiburada;
+    const matchesCategory = !categoryFilter || product.category === categoryFilter;
+    const matchesBrand = !brandFilter || product.brand === brandFilter;
+    const matchesSupplier = !supplierFilter || product.supplier_name === supplierFilter;
+    const matchesTag = !tagFilter || (product.tags || []).includes(tagFilter);
+    return matchesSearch && matchesStatus && matchesCompany && matchesReady && matchesMissing && matchesStock && matchesTrendyol && matchesHepsiburada && matchesCategory && matchesBrand && matchesSupplier && matchesTag;
   });
 
   return (
@@ -182,6 +240,22 @@ export function ProductsPage() {
             <option value="draft">Taslak</option>
             <option value="active">Aktif</option>
             <option value="passive">Pasif</option>
+          </select>
+          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+            <option value="">Tum kategoriler</option>
+            {catalog.categories.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}
+          </select>
+          <select value={brandFilter} onChange={(event) => setBrandFilter(event.target.value)}>
+            <option value="">Tum markalar</option>
+            {catalog.brands.map((brand) => <option key={brand.id} value={brand.name}>{brand.name}</option>)}
+          </select>
+          <select value={supplierFilter} onChange={(event) => setSupplierFilter(event.target.value)}>
+            <option value="">Tum tedarikciler</option>
+            {catalog.suppliers.map((supplier) => <option key={supplier.id} value={supplier.name}>{supplier.name}</option>)}
+          </select>
+          <select value={tagFilter} onChange={(event) => setTagFilter(event.target.value)}>
+            <option value="">Tum etiketler</option>
+            {catalog.tags.map((tag) => <option key={tag.id} value={tag.name}>{tag.name}</option>)}
           </select>
           <select value={marketplaceId} onChange={(event) => setMarketplaceId(event.target.value)}>
             <option value="">Pazaryeri hesabi</option>
@@ -229,9 +303,23 @@ export function ProductsPage() {
       {selected.length > 0 && (
         <section className="state-box bulk-action-bar">
           <span>{selected.length} urun secildi.</span>
-          <Link className="button-link secondary-link" to="/products/category-mapping"><Layers3 size={16} /> Toplu kategori esle</Link>
+          <select value={bulkEdit.category} onChange={(event) => setBulkEdit({ ...bulkEdit, category: event.target.value })}>
+            <option value="">Kategori degistir</option>
+            {catalog.categories.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}
+          </select>
+          <select value={bulkEdit.brand} onChange={(event) => setBulkEdit({ ...bulkEdit, brand: event.target.value })}>
+            <option value="">Marka degistir</option>
+            {catalog.brands.map((brand) => <option key={brand.id} value={brand.name}>{brand.name}</option>)}
+          </select>
+          <select value={bulkEdit.tag} onChange={(event) => setBulkEdit({ ...bulkEdit, tag: event.target.value })}>
+            <option value="">Etiket ekle</option>
+            {catalog.tags.map((tag) => <option key={tag.id} value={tag.name}>{tag.name}</option>)}
+          </select>
+          <input type="number" value={bulkEdit.price} onChange={(event) => setBulkEdit({ ...bulkEdit, price: event.target.value })} placeholder="Yeni fiyat" />
+          <input type="number" value={bulkEdit.stock} onChange={(event) => setBulkEdit({ ...bulkEdit, stock: event.target.value })} placeholder="Yeni stok" />
+          <button type="button" className="secondary-button" disabled={loading} onClick={applyBulkEdit}>Toplu guncelle</button>
+          <Link className="button-link secondary-link" to="/products/category-mapping"><Layers3 size={16} /> Kategori esle</Link>
           <button type="button" className="secondary-button" disabled={loading} onClick={() => addToPublishQueue(selected)}>Aktarim listesine ekle</button>
-          <button type="button" className="secondary-button" onClick={() => notify('success', 'Toplu fiyat/stok guncelleme icin hizli duzenleme alanini kullanin.')}>Fiyat/stok guncelle</button>
           <button type="button" disabled={loading} onClick={() => sendProducts(selected)}><Send size={16} /> Toplu gonder</button>
         </section>
       )}

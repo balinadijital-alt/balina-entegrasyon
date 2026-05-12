@@ -16,7 +16,7 @@ const initialForm = {
   local_category: '',
   external_category_id: '',
   external_category_name: '',
-  attributes: '{\n  "brand": "Marka",\n  "color": "Renk",\n  "size": "Beden",\n  "gender": "Cinsiyet",\n  "age_group": "Yas Grubu"\n}',
+  attributes: {},
 };
 
 function mappingForm(record) {
@@ -26,7 +26,7 @@ function mappingForm(record) {
     local_category: record.local_category || '',
     external_category_id: record.external_category_id || '',
     external_category_name: record.external_category_name || '',
-    attributes: JSON.stringify(record.attributes || {}, null, 2),
+    attributes: record.attributes || {},
   };
 }
 
@@ -42,6 +42,8 @@ export function CategoryMappingPage() {
   const [companies, setCompanies] = useState([]);
   const [marketplaces, setMarketplaces] = useState([]);
   const [products, setProducts] = useState([]);
+  const [resourceCategories, setResourceCategories] = useState([]);
+  const [resourceAttributes, setResourceAttributes] = useState([]);
   const [mappings, setMappings] = useState([]);
   const [form, setForm] = useState({ ...initialForm, local_category: searchParams.get('category') || '' });
   const [editingId, setEditingId] = useState(null);
@@ -51,26 +53,34 @@ export function CategoryMappingPage() {
   const selectedAccount = useMemo(() => marketplaces.find((marketplace) => (
     marketplace.code === form.marketplace_code && String(marketplace.company_id) === String(form.company_id)
   )) || marketplaces.find((marketplace) => marketplace.code === form.marketplace_code), [marketplaces, form.company_id, form.marketplace_code]);
-  const localCategories = useMemo(() => [...new Set(products
+  const productCategories = useMemo(() => [...new Set(products
     .filter((product) => !form.company_id || String(product.company_id) === String(form.company_id))
     .map((product) => product.category)
     .filter(Boolean))], [products, form.company_id]);
+  const localCategories = useMemo(() => {
+    const resourceNames = resourceCategories.map((category) => category.name).filter(Boolean);
+    return resourceNames.length > 0 ? resourceNames : productCategories;
+  }, [resourceCategories, productCategories]);
   const affectedProductCount = products.filter((product) => (
     String(product.company_id) === String(form.company_id) && product.category === form.local_category
   )).length;
 
   const load = async () => {
     await run(async () => {
-      const [companyResponse, marketplaceResponse, mappingResponse, productResponse] = await Promise.all([
+      const [companyResponse, marketplaceResponse, mappingResponse, productResponse, categoryResponse, attributeResponse] = await Promise.all([
         api.companies.list(),
         api.marketplaces.list(),
         api.categoryMappings.list(),
         api.products.list(),
+        api.catalogResources.list({ type: 'categories', active: 1 }),
+        api.catalogResources.list({ type: 'attributes', active: 1 }),
       ]);
       setCompanies(companyResponse.data || []);
       setMarketplaces(marketplaceResponse.data || []);
       setMappings(mappingResponse.data || []);
       setProducts(productResponse.data || []);
+      setResourceCategories(categoryResponse.data || []);
+      setResourceAttributes(attributeResponse.data || []);
       setForm((current) => ({
         ...current,
         company_id: current.company_id || companyResponse.data?.[0]?.id || '',
@@ -83,6 +93,14 @@ export function CategoryMappingPage() {
   }, []);
 
   const setValue = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const setAttributeMapping = (key, value) => {
+    setForm((current) => {
+      const attributes = { ...(current.attributes || {}) };
+      if (value) attributes[key] = value;
+      else delete attributes[key];
+      return { ...current, attributes };
+    });
+  };
 
   const fetchMarketplaceCatalog = async () => {
     if (!selectedAccount) {
@@ -120,16 +138,9 @@ export function CategoryMappingPage() {
 
   const save = async (event) => {
     event.preventDefault();
-    let attributes = {};
-    try {
-      attributes = form.attributes ? JSON.parse(form.attributes) : {};
-    } catch {
-      setError('Ozellik ve deger eslemeleri gecerli formatta olmali.');
-      return;
-    }
 
     await run(async () => {
-      const payload = { ...form, attributes };
+      const payload = { ...form, attributes: form.attributes || {} };
       const response = editingId ? await api.categoryMappings.update(editingId, payload) : await api.categoryMappings.create(payload);
       notify('success', editingId ? 'Kategori eslesmesi guncellendi.' : 'Kategori eslesmesi sablon olarak kaydedildi.');
       setEditingId(null);
@@ -185,10 +196,14 @@ export function CategoryMappingPage() {
                 <option value="hepsiburada">Hepsiburada</option>
               </select>
             </Field>
-            <Field label="Yerel Kategori"><input value={form.local_category} onChange={(event) => setValue('local_category', event.target.value)} /></Field>
+            <Field label="Yerel Kategori">
+              <select value={form.local_category} onChange={(event) => setValue('local_category', event.target.value)}>
+                <option value="">Kategori seciniz</option>
+                {localCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+              </select>
+            </Field>
             <Field label="Pazaryeri Kategori ID"><input value={form.external_category_id} onChange={(event) => setValue('external_category_id', event.target.value)} /></Field>
             <Field label="Pazaryeri Kategori Adi"><input value={form.external_category_name} onChange={(event) => setValue('external_category_name', event.target.value)} /></Field>
-            <Field label="Ozellik ve Deger Eslemeleri"><textarea value={form.attributes} onChange={(event) => setValue('attributes', event.target.value)} /></Field>
           </div>
           <div className="wizard-actions inline-actions">
             <button type="button" className="secondary-button" disabled={loading} onClick={fetchMarketplaceCatalog}><RefreshCw size={16} /> Kategori Agacini Getir</button>
@@ -210,12 +225,20 @@ export function CategoryMappingPage() {
             <strong>{affectedProductCount}</strong>
             <span>urun bu eslesmeden etkilenir</span>
           </div>
-          <div className="attribute-row"><strong>Marka</strong><span>Yerel marka alanina baglanir</span></div>
-          <div className="attribute-row"><strong>Renk</strong><span>Varyant veya ozel alan</span></div>
-          <div className="attribute-row"><strong>Beden</strong><span>Varyant degeri</span></div>
-          <div className="attribute-row"><strong>Cinsiyet</strong><span>Sabit veya kategori bazli</span></div>
-          <div className="attribute-row"><strong>Yas Grubu</strong><span>Sabit veya kategori bazli</span></div>
-          <div className="attribute-row"><strong>Materyal</strong><span>Ozel alan</span></div>
+          {resourceAttributes.length === 0 ? (
+            <div className="soft-empty">Nitelik bulunamadi. Nitelikler / Ozellikler sayfasindan Renk, Beden, Materyal gibi alanlari ekleyin.</div>
+          ) : resourceAttributes.map((attribute) => (
+            <div className="attribute-row" key={attribute.id}>
+              <strong>{attribute.name}</strong>
+              <select value={form.attributes?.[attribute.name] || ''} onChange={(event) => setAttributeMapping(attribute.name, event.target.value)}>
+                <option value="">Eslesme seciniz</option>
+                <option value="brand">Marka</option>
+                <option value="variant">Varyant</option>
+                <option value="fixed">Sabit Deger</option>
+                {Array.isArray(attribute.values) ? attribute.values.map((value) => <option key={value} value={value}>{value}</option>) : null}
+              </select>
+            </div>
+          ))}
           {categoryAttributes.length === 0 ? (
             <div className="soft-empty">Kategori ID girip zorunlu ozellikleri getirin. Eslesme yoksa urun gonderimi engellenir.</div>
           ) : categoryAttributes.map((attribute) => (

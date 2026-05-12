@@ -88,6 +88,8 @@ function CustomerRoutes() {
       <Route path="catalog/attributes" element={<CatalogResourcePage type="attributes" />} />
       <Route path="catalog/tags" element={<CatalogResourcePage type="tags" />} />
       <Route path="catalog/suppliers" element={<CatalogResourcePage type="suppliers" />} />
+      <Route path="catalog/tax-rates" element={<CatalogResourcePage type="tax-rates" />} />
+      <Route path="catalog/units" element={<CatalogResourcePage type="units" />} />
       <Route path="catalog/defaults" element={<CatalogResourcePage type="defaults" />} />
       <Route path="marketplaces" element={<MarketplacesPage />} />
       <Route path="marketplaces/onboarding" element={<MarketplaceOnboardingPage />} />
