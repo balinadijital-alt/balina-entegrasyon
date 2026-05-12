@@ -37,11 +37,13 @@ import { ProductImportPage } from './pages/Imports/ProductImportPage.jsx';
 import { HepsiburadaPage } from './pages/Marketplaces/HepsiburadaPage.jsx';
 import { BatchResultsPage } from './pages/Marketplaces/BatchResultsPage.jsx';
 import { MarketplacesPage } from './pages/Marketplaces/MarketplacesPage.jsx';
+import { MarketplaceOnboardingPage } from './pages/Marketplaces/MarketplaceOnboardingPage.jsx';
 import { TrendyolPage } from './pages/Marketplaces/TrendyolPage.jsx';
 import { OrderDetailPage } from './pages/Orders/OrderDetailPage.jsx';
 import { OrdersPage } from './pages/Orders/OrdersPage.jsx';
 import { PaymentsPage } from './pages/Payments/PaymentsPage.jsx';
 import { CategoryMappingPage } from './pages/Products/CategoryMappingPage.jsx';
+import { CatalogResourcePage } from './pages/Products/CatalogResourcePage.jsx';
 import { ProductCreatePage } from './pages/Products/ProductCreatePage.jsx';
 import { ProductDetailPage } from './pages/Products/ProductDetailPage.jsx';
 import { ProductPublishWizardPage } from './pages/Products/ProductPublishWizardPage.jsx';
@@ -51,6 +53,7 @@ import { ProductsPage } from './pages/Products/ProductsPage.jsx';
 import { VariantManagementPage } from './pages/Products/VariantManagementPage.jsx';
 import { QueuePage } from './pages/Queue/QueuePage.jsx';
 import { CustomerReportsPage, ReportsPage } from './pages/Reports/ReportsPage.jsx';
+import { DeveloperCenterPage } from './pages/Resources/DeveloperCenterPage.jsx';
 import { RolesPage } from './pages/Roles/RolesPage.jsx';
 import { ShippingPage } from './pages/Shipping/ShippingPage.jsx';
 import { SaasPage } from './pages/Saas/SaasPage.jsx';
@@ -66,6 +69,7 @@ function CustomerRoutes() {
     <>
       <Route index element={<CustomerDashboardPage />} />
       <Route path="reports" element={<CustomerReportsPage />} />
+      <Route path="resources" element={<DeveloperCenterPage />} />
       <Route path="companies" element={<CompaniesPage />} />
       <Route path="accounting" element={<AccountingPage />} />
       <Route path="products" element={<ProductsPage />} />
@@ -77,7 +81,14 @@ function CustomerRoutes() {
       <Route path="products/:id/edit" element={<ProductCreatePage />} />
       <Route path="imports" element={<ImportCenterPage />} />
       <Route path="products/import" element={<ProductImportPage />} />
+      <Route path="catalog/categories" element={<CatalogResourcePage type="categories" />} />
+      <Route path="catalog/brands" element={<CatalogResourcePage type="brands" />} />
+      <Route path="catalog/attributes" element={<CatalogResourcePage type="attributes" />} />
+      <Route path="catalog/tags" element={<CatalogResourcePage type="tags" />} />
+      <Route path="catalog/suppliers" element={<CatalogResourcePage type="suppliers" />} />
+      <Route path="catalog/defaults" element={<CatalogResourcePage type="defaults" />} />
       <Route path="marketplaces" element={<MarketplacesPage />} />
+      <Route path="marketplaces/onboarding" element={<MarketplaceOnboardingPage />} />
       <Route path="marketplaces/trendyol" element={<TrendyolPage />} />
       <Route path="marketplaces/hepsiburada" element={<HepsiburadaPage />} />
       <Route path="marketplaces/batch-results" element={<BatchResultsPage />} />
