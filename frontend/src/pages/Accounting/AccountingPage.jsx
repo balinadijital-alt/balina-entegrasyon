@@ -102,7 +102,7 @@ export function AccountingPage() {
         <div className="kpi-card"><span>Cari Kart</span><strong>{currentAccounts.length}</strong><small>Musteri / tedarikci</small></div>
         <div className="kpi-card"><span>Fatura</span><strong>{invoices.length}</strong><small>Toplam kayit</small></div>
         <div className="kpi-card"><span>Tahsilat Odeme</span><strong>{transactions.length}</strong><small>Cari hareket</small></div>
-        <div className="kpi-card"><span>Entegrasyon</span><strong>{accounts.length}</strong><small>Muhasebe hesabi</small></div>
+        <div className="kpi-card"><span>Muhasebe Hesabi</span><strong>{accounts.length}</strong><small>Aktif hesap</small></div>
       </section>
       <section className="split">
         <form className="panel compact-panel" onSubmit={saveCurrent}>
@@ -119,17 +119,17 @@ export function AccountingPage() {
         </form>
 
         <form className="panel compact-panel" onSubmit={saveAccount}>
-          <h2>Muhasebe Entegrasyonu</h2>
+          <h2>Muhasebe Hesabi</h2>
           <Field label="Firma"><select value={accountForm.company_id} onChange={(e) => setAccountForm({ ...accountForm, company_id: e.target.value })}><option value="">Seciniz</option>{companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
           <Field label="Servis"><select value={accountForm.accounting_integration_id} onChange={(e) => setAccountForm({ ...accountForm, accounting_integration_id: e.target.value })}><option value="">Seciniz</option>{integrations.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}</select></Field>
           <Field label="Hesap Adi"><input value={accountForm.name} onChange={(e) => setAccountForm({ ...accountForm, name: e.target.value })} /></Field>
-          <Field label="Client ID"><input value={accountForm.client_id} onChange={(e) => setAccountForm({ ...accountForm, client_id: e.target.value })} /></Field>
-          <Field label="Client Secret"><input type="password" value={accountForm.client_secret} onChange={(e) => setAccountForm({ ...accountForm, client_secret: e.target.value })} /></Field>
+          <Field label="Hesap Kodu"><input value={accountForm.client_id} onChange={(e) => setAccountForm({ ...accountForm, client_id: e.target.value })} /></Field>
+          <Field label="Gizli Anahtar"><input type="password" value={accountForm.client_secret} onChange={(e) => setAccountForm({ ...accountForm, client_secret: e.target.value })} /></Field>
           <Field label="Kullanici"><input value={accountForm.username} onChange={(e) => setAccountForm({ ...accountForm, username: e.target.value })} /></Field>
           <Field label="Sifre"><input type="password" value={accountForm.password} onChange={(e) => setAccountForm({ ...accountForm, password: e.target.value })} /></Field>
-          <Field label="API Key"><input value={accountForm.api_key} onChange={(e) => setAccountForm({ ...accountForm, api_key: e.target.value })} /></Field>
-          <Field label="Base URL"><input value={accountForm.base_url} onChange={(e) => setAccountForm({ ...accountForm, base_url: e.target.value })} /></Field>
-          <button disabled={loading}>Entegrasyon Kaydet</button>
+          <Field label="Baglanti Anahtari"><input value={accountForm.api_key} onChange={(e) => setAccountForm({ ...accountForm, api_key: e.target.value })} /></Field>
+          <Field label="Servis Adresi"><input value={accountForm.base_url} onChange={(e) => setAccountForm({ ...accountForm, base_url: e.target.value })} /></Field>
+          <button disabled={loading}>Hesap Kaydet</button>
         </form>
       </section>
 
@@ -151,7 +151,7 @@ export function AccountingPage() {
         <section className="panel"><h2>Cari Hesaplar</h2><DataTable rows={currentAccounts} columns={[{ key: 'name', label: 'Cari' }, { key: 'type', label: 'Tip' }, { key: 'tax_number', label: 'VKN' }, { key: 'identity_number', label: 'TCKN' }, { key: 'balance', label: 'Bakiye' }]} /></section>
         <section className="panel"><h2>Cari Hareketler</h2><DataTable rows={transactions} columns={[{ key: 'currentAccount', label: 'Cari', render: (r) => r.current_account?.name || r.currentAccount?.name }, { key: 'type', label: 'Tip' }, { key: 'direction', label: 'Yon' }, { key: 'amount', label: 'Tutar' }, { key: 'description', label: 'Aciklama' }]} /></section>
         <section className="panel"><h2>Faturalar</h2><DataTable rows={invoices} columns={[{ key: 'invoice_number', label: 'No', render: (r) => r.invoice_number || '-' }, { key: 'currentAccount', label: 'Cari', render: (r) => r.current_account?.name || r.currentAccount?.name }, { key: 'type', label: 'Tip' }, { key: 'grand_total', label: 'Toplam' }, { key: 'status', label: 'Durum', render: (r) => <span className={`badge ${r.status}`}>{r.status}</span> }, { key: 'actions', label: 'Islem', render: (r) => <div className="row-actions"><button type="button" onClick={() => invoiceAction(r.id, api.accounting.queryInvoice, 'Sorgu kuyruga alindi.')}><RotateCcw size={15} /> Sorgu</button><button type="button" onClick={() => invoiceAction(r.id, api.accounting.createPdf, 'PDF kuyruga alindi.')}><FileText size={15} /> PDF</button><button type="button" onClick={() => downloadPdf(r.id)}><Download size={15} /> Indir</button><button type="button" onClick={() => invoiceAction(r.id, api.accounting.returnInvoice, 'Iade faturasi kuyruga alindi.')}><Undo2 size={15} /> Iade</button></div> }]} /></section>
-        <section className="panel"><h2>Muhasebe Loglari</h2><DataTable rows={logs} columns={[{ key: 'provider_code', label: 'Servis' }, { key: 'event', label: 'Event' }, { key: 'status', label: 'Durum' }, { key: 'duration_ms', label: 'Sure' }, { key: 'error_message', label: 'Hata', render: (r) => r.error_message || '-' }]} /></section>
+        <section className="panel"><h2>Fatura Hatalari</h2><DataTable rows={logs.filter((log) => log.status === 'failed' || log.error_message)} columns={[{ key: 'provider_code', label: 'Servis' }, { key: 'event', label: 'Islem' }, { key: 'status', label: 'Durum' }, { key: 'error_message', label: 'Hata', render: (r) => r.error_message || '-' }]} /></section>
       </>
       )}
     </>

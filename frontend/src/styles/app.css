@@ -1121,6 +1121,27 @@ a {
   margin-bottom: 14px;
 }
 
+.disabled-marketplace-card {
+  opacity: 0.72;
+}
+
+.variant-layout,
+.pricing-layout {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+}
+
+.simulation-card .setup-progress {
+  margin-top: 12px;
+}
+
+.upload-inline {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
 .order-command-strip div {
   background: #fff;
   border: 1px solid var(--border);
@@ -2642,6 +2663,9 @@ tbody td:last-child .row-actions:focus-within {
   .marketplace-card-grid,
   .marketplace-card-stats,
   .result-summary-grid,
+  .variant-layout,
+  .pricing-layout,
+  .upload-inline,
   .command-kpis,
   .dashboard-hero,
   .dashboard-command-grid,

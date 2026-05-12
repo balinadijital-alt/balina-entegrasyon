@@ -81,10 +81,10 @@ export function PaymentsPage() {
     <>
       <PageHeader title="Odeme Yonetimi" />
       <section className="kpi-grid">
-        <div className="kpi-card"><span>POS Hesabi</span><strong>{accounts.length}</strong><small>Entegrasyon</small></div>
+        <div className="kpi-card"><span>POS Hesabi</span><strong>{accounts.length}</strong><small>Aktif hesap</small></div>
         <div className="kpi-card"><span>Basarili</span><strong>{payments.filter((payment) => payment.status === 'paid').length}</strong><small>Odeme</small></div>
         <div className="kpi-card"><span>Bekleyen</span><strong>{payments.filter((payment) => payment.status === 'pending').length}</strong><small>Sorgulanacak</small></div>
-        <div className="kpi-card"><span>Log</span><strong>{logs.length}</strong><small>Son kayit</small></div>
+        <div className="kpi-card"><span>Hatali</span><strong>{payments.filter((payment) => payment.status === 'failed').length}</strong><small>Kontrol gerekli</small></div>
       </section>
       <section className="panel">
         <form className="form-grid" onSubmit={createAccount}>
@@ -102,12 +102,12 @@ export function PaymentsPage() {
           </Field>
           <Field label="Hesap Adi"><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
           <Field label="Merchant ID"><input value={form.merchant_id} onChange={(event) => setForm({ ...form, merchant_id: event.target.value })} /></Field>
-          <Field label="API Key"><input value={form.api_key} onChange={(event) => setForm({ ...form, api_key: event.target.value })} /></Field>
-          <Field label="API Secret"><input type="password" value={form.api_secret} onChange={(event) => setForm({ ...form, api_secret: event.target.value })} /></Field>
+          <Field label="Baglanti Anahtari"><input value={form.api_key} onChange={(event) => setForm({ ...form, api_key: event.target.value })} /></Field>
+          <Field label="Gizli Anahtar"><input type="password" value={form.api_secret} onChange={(event) => setForm({ ...form, api_secret: event.target.value })} /></Field>
           <Field label="Client ID"><input value={form.client_id} onChange={(event) => setForm({ ...form, client_id: event.target.value })} /></Field>
           <Field label="Client Secret"><input type="password" value={form.client_secret} onChange={(event) => setForm({ ...form, client_secret: event.target.value })} /></Field>
-          <Field label="Base URL"><input value={form.base_url} onChange={(event) => setForm({ ...form, base_url: event.target.value })} /></Field>
-          <Field label="Webhook Secret"><input type="password" value={form.webhook_secret} onChange={(event) => setForm({ ...form, webhook_secret: event.target.value })} /></Field>
+          <Field label="Servis Adresi"><input value={form.base_url} onChange={(event) => setForm({ ...form, base_url: event.target.value })} /></Field>
+          <Field label="Bildirim Anahtari"><input type="password" value={form.webhook_secret} onChange={(event) => setForm({ ...form, webhook_secret: event.target.value })} /></Field>
           <button disabled={loading}>POS Hesabi Ekle</button>
         </form>
       </section>
@@ -116,7 +116,7 @@ export function PaymentsPage() {
       {loading && accounts.length === 0 ? <LoadingState /> : (
         <>
           <section className="panel">
-            <h2>Odeme Saglayicilari ve POS API Ayarlari</h2>
+            <h2>Odeme Hesaplari</h2>
             <DataTable
               rows={accounts}
               columns={[
@@ -146,12 +146,12 @@ export function PaymentsPage() {
           </section>
 
           <section className="panel">
-            <h2>Odeme Loglari</h2>
+            <h2>Odeme Hatalari</h2>
             <DataTable
-              rows={logs}
+              rows={logs.filter((log) => log.status === 'failed' || log.error_message)}
               columns={[
                 { key: 'provider_code', label: 'Saglayici' },
-                { key: 'event', label: 'Event' },
+                { key: 'event', label: 'Islem' },
                 { key: 'status', label: 'Durum' },
                 { key: 'duration_ms', label: 'Sure' },
                 { key: 'error_message', label: 'Hata', render: (row) => row.error_message || '-' },

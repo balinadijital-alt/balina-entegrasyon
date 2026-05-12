@@ -85,7 +85,7 @@ function orderRisk(order) {
   return 'Normal';
 }
 
-export function OrdersPage() {
+export function OrdersPage({ initialStatus = '' }) {
   const { notify } = useApp();
   const { loading, error, run } = useAsync();
   const [orders, setOrders] = useState([]);
@@ -99,7 +99,7 @@ export function OrdersPage() {
   const [selectedAccountingAccountId, setSelectedAccountingAccountId] = useState('');
   const [filters, setFilters] = useState({
     search: '',
-    status: 'new',
+    status: initialStatus,
     marketplace_code: '',
     company_id: '',
     payment_status: '',
@@ -133,6 +133,11 @@ export function OrdersPage() {
   useEffect(() => {
     load();
   }, [filters.status]);
+
+  useEffect(() => {
+    setFilters((current) => ({ ...current, status: initialStatus }));
+    setSelectedOrderIds([]);
+  }, [initialStatus]);
 
   const setFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }));
 

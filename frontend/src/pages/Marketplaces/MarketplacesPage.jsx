@@ -177,6 +177,25 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
               </article>
             );
           })}
+          {!provider && (
+            <article className="marketplace-account-card disabled-marketplace-card">
+              <div className="marketplace-card-top">
+                <span className="marketplace-card-icon"><ShoppingBag size={20} /></span>
+                <div>
+                  <strong>Ciceksepeti</strong>
+                  <small>Bu pazaryeri yakinda aktif olacak.</small>
+                </div>
+                <span className="status-pill blocked">Yakinda</span>
+              </div>
+              <div className="marketplace-card-stats">
+                <div><span>Baglanti</span><strong>Pasif</strong></div>
+                <div><span>Son urun</span><strong>-</strong></div>
+                <div><span>Son stok/fiyat</span><strong>-</strong></div>
+                <div><span>Hata</span><strong>-</strong></div>
+              </div>
+              <button type="button" disabled>Yakinda</button>
+            </article>
+          )}
         </section>
       )}
 

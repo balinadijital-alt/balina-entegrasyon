@@ -16,7 +16,6 @@ import { B2BTransactionsPage } from './pages/CommerceModules/B2BTransactionsPage
 import { CatalogCustomFieldsPage } from './pages/CommerceModules/CatalogCustomFieldsPage.jsx';
 import { CatalogRelationsPage } from './pages/CommerceModules/CatalogRelationsPage.jsx';
 import { CatalogReviewsPage } from './pages/CommerceModules/CatalogReviewsPage.jsx';
-import { CatalogVariantsPage } from './pages/CommerceModules/CatalogVariantsPage.jsx';
 import { CmsBannersPage } from './pages/CommerceModules/CmsBannersPage.jsx';
 import { CmsBlogPage } from './pages/CommerceModules/CmsBlogPage.jsx';
 import { CmsPagesPage } from './pages/CommerceModules/CmsPagesPage.jsx';
@@ -25,7 +24,6 @@ import { MarketingAbandonedCartsPage } from './pages/CommerceModules/MarketingAb
 import { MarketingCouponsPage } from './pages/CommerceModules/MarketingCouponsPage.jsx';
 import { MarketingFeedsPage } from './pages/CommerceModules/MarketingFeedsPage.jsx';
 import { MarketingPixelsPage } from './pages/CommerceModules/MarketingPixelsPage.jsx';
-import { PricingRulesPage } from './pages/CommerceModules/PricingRulesPage.jsx';
 import { SeoHeadTagsPage } from './pages/CommerceModules/SeoHeadTagsPage.jsx';
 import { SeoLocalizationPage } from './pages/CommerceModules/SeoLocalizationPage.jsx';
 import { SeoRobotsSitemapPage } from './pages/CommerceModules/SeoRobotsSitemapPage.jsx';
@@ -37,6 +35,7 @@ import { ApiLogsPage } from './pages/Logs/ApiLogsPage.jsx';
 import { ImportCenterPage } from './pages/Imports/ImportCenterPage.jsx';
 import { ProductImportPage } from './pages/Imports/ProductImportPage.jsx';
 import { HepsiburadaPage } from './pages/Marketplaces/HepsiburadaPage.jsx';
+import { BatchResultsPage } from './pages/Marketplaces/BatchResultsPage.jsx';
 import { MarketplacesPage } from './pages/Marketplaces/MarketplacesPage.jsx';
 import { TrendyolPage } from './pages/Marketplaces/TrendyolPage.jsx';
 import { OrderDetailPage } from './pages/Orders/OrderDetailPage.jsx';
@@ -46,8 +45,10 @@ import { CategoryMappingPage } from './pages/Products/CategoryMappingPage.jsx';
 import { ProductCreatePage } from './pages/Products/ProductCreatePage.jsx';
 import { ProductDetailPage } from './pages/Products/ProductDetailPage.jsx';
 import { ProductPublishWizardPage } from './pages/Products/ProductPublishWizardPage.jsx';
+import { PricingRulesCustomerPage } from './pages/Products/PricingRulesCustomerPage.jsx';
 import { PublishQueuePage } from './pages/Products/PublishQueuePage.jsx';
 import { ProductsPage } from './pages/Products/ProductsPage.jsx';
+import { VariantManagementPage } from './pages/Products/VariantManagementPage.jsx';
 import { QueuePage } from './pages/Queue/QueuePage.jsx';
 import { CustomerReportsPage, ReportsPage } from './pages/Reports/ReportsPage.jsx';
 import { RolesPage } from './pages/Roles/RolesPage.jsx';
@@ -79,7 +80,13 @@ function CustomerRoutes() {
       <Route path="marketplaces" element={<MarketplacesPage />} />
       <Route path="marketplaces/trendyol" element={<TrendyolPage />} />
       <Route path="marketplaces/hepsiburada" element={<HepsiburadaPage />} />
-      <Route path="orders" element={<OrdersPage />} />
+      <Route path="marketplaces/batch-results" element={<BatchResultsPage />} />
+      <Route path="orders" element={<OrdersPage initialStatus="" />} />
+      <Route path="orders/new" element={<OrdersPage initialStatus="new" />} />
+      <Route path="orders/preparing" element={<OrdersPage initialStatus="preparing" />} />
+      <Route path="orders/ready-to-ship" element={<OrdersPage initialStatus="ready_to_ship" />} />
+      <Route path="orders/shipped" element={<OrdersPage initialStatus="shipped" />} />
+      <Route path="orders/cancel-returned" element={<OrdersPage initialStatus="cancel_returned" />} />
       <Route path="orders/:id" element={<OrderDetailPage />} />
       <Route path="payments" element={<PaymentsPage />} />
       <Route path="shipping" element={<ShippingPage />} />
@@ -96,11 +103,11 @@ function CustomerRoutes() {
       <Route path="marketing/abandoned-carts" element={<MarketingAbandonedCartsPage />} />
       <Route path="marketing/feeds" element={<MarketingFeedsPage />} />
       <Route path="marketing/pixels" element={<MarketingPixelsPage />} />
-      <Route path="catalog/variants" element={<CatalogVariantsPage />} />
+      <Route path="catalog/variants" element={<VariantManagementPage />} />
       <Route path="catalog/relations" element={<CatalogRelationsPage />} />
       <Route path="catalog/custom-fields" element={<CatalogCustomFieldsPage />} />
       <Route path="catalog/reviews" element={<CatalogReviewsPage />} />
-      <Route path="pricing/profit-rules" element={<PricingRulesPage />} />
+      <Route path="pricing/profit-rules" element={<PricingRulesCustomerPage />} />
       <Route path="workflow/rules" element={<WorkflowRulesPage />} />
       <Route path="b2b/dealers" element={<B2BDealersPage />} />
       <Route path="b2b/prices" element={<B2BPricesPage />} />

@@ -11,13 +11,13 @@ import { useAsync } from '../../hooks/useAsync.js';
 import { firstError, required, validateProduct } from '../../utils/validation.js';
 
 const steps = [
-  'Urun Turu',
-  'Kategori Kimlik',
+  'Urun Bilgileri',
+  'Kategori/Marka',
   'Fiyat Stok',
   'Varyantlar',
   'Gorseller',
-  'Aciklama SEO',
-  'Pazaryeri',
+  'Aciklama/SEO',
+  'Pazaryeri Hazirligi',
   'Onizleme',
 ];
 
@@ -135,6 +135,7 @@ export function ProductCreatePage() {
   const [errors, setErrors] = useState({});
   const [step, setStep] = useState(0);
   const [readinessReport, setReadinessReport] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
   const isEdit = Boolean(id);
 
   const readiness = useMemo(() => {
@@ -217,6 +218,25 @@ export function ProductCreatePage() {
     } catch {
       setErrors((current) => ({ ...current, [key]: `${label} gecerli formatta olmali.` }));
     }
+  };
+
+  const uploadImage = async () => {
+    if (!isEdit) {
+      notify('error', 'Gorsel yuklemek icin once urunu kaydedin.');
+      return;
+    }
+    if (!imageFile) {
+      notify('error', 'Yuklemek icin gorsel seciniz.');
+      return;
+    }
+    const body = new FormData();
+    body.append('image', imageFile);
+    await run(async () => {
+      await api.products.uploadImage(id, body);
+      setImageFile(null);
+      notify('success', 'Urun gorseli yuklendi.');
+      await load();
+    }, { onError: (message) => notify('error', message) });
   };
 
   return (
@@ -303,6 +323,12 @@ export function ProductCreatePage() {
               <Field label="Ana Gorsel URL"><input value={form.main_image_url} onChange={(event) => setValue('main_image_url', event.target.value)} /></Field>
               <Field label="Galeri Gorselleri"><textarea value={form.gallery_images} onChange={(event) => setValue('gallery_images', event.target.value)} placeholder="Her satira bir gorsel URL" /></Field>
               <Field label="Video URL"><input value={form.video_url} onChange={(event) => setValue('video_url', event.target.value)} /></Field>
+              <Field label="Bilgisayardan Gorsel Yukle">
+                <div className="upload-inline">
+                  <input type="file" accept="image/*" onChange={(event) => setImageFile(event.target.files[0])} />
+                  <button type="button" className="secondary-button" disabled={loading || !imageFile} onClick={uploadImage}>Yukle</button>
+                </div>
+              </Field>
             </div>
           )}
 
