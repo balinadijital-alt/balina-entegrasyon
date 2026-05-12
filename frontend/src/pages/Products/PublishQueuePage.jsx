@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, Layers3, Send } from 'lucide-react';
+import { CheckCircle2, Edit3, Layers3, Send, Tags } from 'lucide-react';
 import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -9,29 +9,11 @@ import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
-import { publishBlockReason } from './productWorkflow.js';
-
-const missingLabels = {
-  category_mapping: 'Kategori eslesmesi eksik',
-  marketplace_category: 'Pazaryeri kategorisi eksik',
-  required_attributes: 'Zorunlu ozellik eksik',
-  attributes: 'Katalog niteligi eksik',
-  brand: 'Marka eksik',
-  category: 'Kategori eksik',
-  barcode: 'Barkod eksik',
-  sku: 'SKU eksik',
-  description: 'Aciklama eksik',
-  vat_rate: 'KDV eksik',
-  seo: 'SEO bilgileri eksik',
-  cargo: 'Kargo bilgisi eksik',
-  image: 'Gorsel eksik',
-  price: 'Fiyat kontrol edilmeli',
-  stock: 'Stok kontrol edilmeli',
-};
+import { isMarketplaceReady, missingLabel, publishBlockReason, readinessScore } from './productWorkflow.js';
 
 function draftMissingText(draft) {
   const missing = draftMissingFields(draft)
-    .map((field) => missingLabels[field] || field);
+    .map((field) => `${missingLabel(field)} eksik`);
 
   return [...new Set(missing)].join(', ');
 }
@@ -66,13 +48,16 @@ export function PublishQueuePage() {
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [selectedDrafts, setSelectedDrafts] = useState([]);
   const [marketplaceId, setMarketplaceId] = useState('');
+  const [marketplaceFilter, setMarketplaceFilter] = useState('');
   const [previewDraft, setPreviewDraft] = useState(null);
   const [activeQueueTab, setActiveQueueTab] = useState('ready');
 
   const selectedMarketplace = useMemo(() => marketplaces.find((marketplace) => String(marketplace.id) === String(marketplaceId)), [marketplaces, marketplaceId]);
-  const readyDrafts = drafts.filter((draft) => ['ready', 'queued'].includes(draft.status));
-  const blockedDrafts = drafts.filter((draft) => !['ready', 'queued'].includes(draft.status));
+  const filteredDrafts = drafts.filter((draft) => !marketplaceFilter || draft.marketplace_code === marketplaceFilter);
+  const readyDrafts = filteredDrafts.filter((draft) => ['ready', 'queued'].includes(draft.status));
+  const blockedDrafts = filteredDrafts.filter((draft) => !['ready', 'queued'].includes(draft.status));
   const visibleDrafts = activeQueueTab === 'ready' ? readyDrafts : blockedDrafts;
+  const selectedMarketplaceCode = selectedMarketplace?.code || '';
 
   const load = async () => {
     await run(async () => {
@@ -135,6 +120,9 @@ export function PublishQueuePage() {
     setSelectedDrafts([]);
   };
 
+  const productById = (id) => products.find((product) => Number(product.id) === Number(id));
+  const firstDraftProduct = (draft) => productById(draft.product_ids?.[0]);
+
   return (
     <>
       <PageHeader
@@ -142,6 +130,7 @@ export function PublishQueuePage() {
         actions={(
           <>
             <Link className="button-link secondary-link" to="/products/category-mapping"><Layers3 size={16} /> Kategori Esle</Link>
+            <Link className="button-link secondary-link" to="/catalog/attributes"><Tags size={16} /> Katalog Kaynaklari</Link>
             <Link className="button-link" to="/products/publish"><Send size={16} /> Gonderim Sihirbazi</Link>
           </>
         )}
@@ -172,7 +161,9 @@ export function PublishQueuePage() {
               { key: 'name', label: 'Urun' },
               { key: 'sku', label: 'SKU' },
               { key: 'category', label: 'Kategori' },
-              { key: 'status', label: 'Durum', render: (row) => <span className={row.marketplace_ready ? 'status-pill ready' : 'status-pill blocked'}>{publishBlockReason(row)}</span> },
+              { key: 'score', label: 'Hazirlik', render: (row) => <div className="score-cell"><strong>{readinessScore(row, selectedMarketplaceCode)}%</strong><span>{publishBlockReason(row, selectedMarketplaceCode)}</span></div> },
+              { key: 'status', label: 'Durum', render: (row) => <span className={isMarketplaceReady(row, selectedMarketplaceCode) ? 'status-pill ready' : 'status-pill blocked'}>{isMarketplaceReady(row, selectedMarketplaceCode) ? 'Hazir' : 'Eksik'}</span> },
+              { key: 'edit', label: 'Islem', render: (row) => <Link className="table-action-link" to={`/products/${row.id}/edit`}><Edit3 size={14} /> Duzenle</Link> },
             ]}
           />
         </section>
@@ -201,6 +192,20 @@ export function PublishQueuePage() {
         </section>
       )}
 
+      <section className="panel compact-filter-panel">
+        <div className="compact-filter-heading">
+          <strong>Aktarim filtreleri</strong>
+          <span>Hazir urunleri one alin veya pazaryerine gore listeyi daraltin.</span>
+        </div>
+        <div className="product-filter-row">
+          <select value={marketplaceFilter} onChange={(event) => { setMarketplaceFilter(event.target.value); setSelectedDrafts([]); }}>
+            <option value="">Tum pazaryerleri</option>
+            <option value="trendyol">Trendyol</option>
+            <option value="hepsiburada">Hepsiburada</option>
+          </select>
+        </div>
+      </section>
+
       <div className="tabs">
         <button type="button" className={activeQueueTab === 'ready' ? 'tab active' : 'tab'} onClick={() => { setActiveQueueTab('ready'); setSelectedDrafts([]); }}>
           Gonderime Hazir ({readyDrafts.length})
@@ -225,6 +230,19 @@ export function PublishQueuePage() {
             { key: 'products', label: 'Urun', render: (row) => row.product_ids?.length || 0 },
             { key: 'missing', label: 'Eksik Sebebi', render: (row) => draftMissingText(row) || 'Eksik yok' },
             { key: 'batch', label: 'Sonuc', render: (row) => row.result_summary?.message || row.error_message || (row.status === 'queued' ? 'Gonderildi' : '-') },
+            {
+              key: 'fix',
+              label: 'Duzelt',
+              render: (row) => {
+                const product = firstDraftProduct(row);
+                const missing = draftMissingFields(row);
+                if (!product || missing.length === 0) return '-';
+                if (missing.includes('category_mapping') || missing.includes('marketplace_category')) {
+                  return <Link className="table-action-link" to={`/products/category-mapping?category=${encodeURIComponent(product.category || '')}`}>Kategori esle</Link>;
+                }
+                return <Link className="table-action-link" to={`/products/${product.id}/edit`}>Urunu duzenle</Link>;
+              },
+            },
             {
               key: 'actions',
               label: 'Islem',

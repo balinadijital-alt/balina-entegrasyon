@@ -3,11 +3,41 @@ export function marketplaceStatus(product, code) {
     || product.marketplaceStatuses?.find((status) => status.marketplace_code === code);
 }
 
-export function missingFields(product) {
+export const MISSING_FIELD_LABELS = {
+  name: 'Urun adi',
+  brand: 'Marka',
+  category: 'Kategori',
+  barcode: 'Barkod',
+  sku: 'SKU',
+  price: 'Fiyat',
+  stock: 'Stok',
+  attributes: 'Katalog niteligi',
+  vat_rate: 'KDV',
+  description: 'Aciklama',
+  seo: 'SEO bilgileri',
+  image: 'Gorsel',
+  cargo: 'Kargo bilgisi',
+  marketplace_category: 'Pazaryeri kategorisi',
+  category_mapping: 'Kategori eslesmesi',
+  required_attributes: 'Zorunlu pazaryeri ozelligi',
+};
+
+export function missingLabel(field) {
+  return MISSING_FIELD_LABELS[field] || String(field || '').replaceAll('_', ' ');
+}
+
+export function marketplaceReadiness(product, code) {
+  if (!code) return null;
+  return product.marketplace_readiness?.[code] || null;
+}
+
+export function missingFields(product, code = null) {
   const statuses = product.marketplace_statuses || product.marketplaceStatuses || [];
   const readiness = product.marketplace_readiness || {};
-  const statusMissing = statuses.flatMap((status) => status.missing_fields || []);
-  const reportMissing = Object.values(readiness).flatMap((item) => item?.missing_fields || []);
+  const relevantStatuses = code ? statuses.filter((status) => status.marketplace_code === code) : statuses;
+  const relevantReports = code ? [readiness[code]].filter(Boolean) : Object.values(readiness);
+  const statusMissing = relevantStatuses.flatMap((status) => status.missing_fields || []);
+  const reportMissing = relevantReports.flatMap((item) => item?.missing_fields || []);
 
   return [...new Set([...statusMissing, ...reportMissing])];
 }
@@ -25,7 +55,12 @@ export function productImage(product) {
   return firstGalleryItem?.url || firstGalleryItem?.path || '';
 }
 
-export function readinessScore(product) {
+export function readinessScore(product, code = null) {
+  const singleReport = marketplaceReadiness(product, code);
+  if (singleReport) {
+    return Number(singleReport.score || 0);
+  }
+
   const reports = Object.values(product.marketplace_readiness || {});
   if (reports.length > 0) {
     return Math.round(reports.reduce((sum, report) => sum + Number(report.score || 0), 0) / reports.length);
@@ -35,12 +70,18 @@ export function readinessScore(product) {
     return 100;
   }
 
-  const missing = missingFields(product).length;
+  const missing = missingFields(product, code).length;
   return Math.max(20, 100 - (missing * 12));
 }
 
-export function publishBlockReason(product) {
-  const missing = missingFields(product);
+export function isMarketplaceReady(product, code = null) {
+  const report = marketplaceReadiness(product, code);
+  if (report) return Boolean(report.ready);
+  return Boolean(product.marketplace_ready);
+}
+
+export function publishBlockReason(product, code = null) {
+  const missing = missingFields(product, code);
   if (missing.includes('category_mapping')) return 'Eksik kategori eslesmesi';
   if (missing.includes('marketplace_category')) return 'Eksik pazaryeri kategorisi';
   if (missing.includes('required_attributes')) return 'Eksik zorunlu ozellik';
@@ -50,5 +91,9 @@ export function publishBlockReason(product) {
   if (missing.includes('barcode')) return 'Eksik barkod';
   if (missing.includes('image')) return 'Eksik gorsel';
   if (missing.includes('price') || missing.includes('stock')) return 'Fiyat/stok hatasi';
-  return product.marketplace_ready ? 'Hazir' : 'Kontrol gerekli';
+  return isMarketplaceReady(product, code) ? 'Hazir' : 'Kontrol gerekli';
+}
+
+export function missingTextFromFields(fields = []) {
+  return [...new Set(fields)].map((field) => missingLabel(field)).join(', ');
 }
