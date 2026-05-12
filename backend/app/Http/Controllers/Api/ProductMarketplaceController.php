@@ -15,6 +15,8 @@ class ProductMarketplaceController extends Controller
 {
     public function readiness(Product $product, ProductReadinessService $service): JsonResponse
     {
+        $this->abortIfNotTenant(request(), $product);
+
         return response()->json($service->check($product));
     }
 
@@ -22,6 +24,7 @@ class ProductMarketplaceController extends Controller
     {
         $drafts = MarketplacePublishDraft::query()
             ->with(['company:id,name', 'marketplaceAccount:id,name,code'])
+            ->when($this->tenantCompanyId($request), fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->when($request->filled('marketplace_code'), fn ($query) => $query->where('marketplace_code', $request->string('marketplace_code')))
             ->latest()
             ->paginate(20);
@@ -40,6 +43,7 @@ class ProductMarketplaceController extends Controller
         ]);
 
         $marketplace = MarketplaceAccount::findOrFail($data['marketplace_account_id']);
+        $this->abortIfNotTenant($request, $marketplace);
         $draft = $service->createDraft(
             $marketplace,
             $data['product_ids'],
@@ -52,6 +56,8 @@ class ProductMarketplaceController extends Controller
 
     public function send(MarketplacePublishDraft $draft, MarketplacePublishService $service): JsonResponse
     {
+        $this->abortIfNotTenant(request(), $draft);
+
         return response()->json($service->send($draft)->load(['company:id,name', 'marketplaceAccount:id,name,code']));
     }
 }

@@ -131,6 +131,7 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
             <select value={form.code} disabled={!!provider} onChange={(event) => setForm({ ...form, code: event.target.value })}>
               <option value="trendyol">Trendyol</option>
               <option value="hepsiburada">Hepsiburada</option>
+              <option value="ciceksepeti">Ciceksepeti</option>
             </select>
           </Field>
           <Field label="Hesap Adi" error={errors.name}><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>

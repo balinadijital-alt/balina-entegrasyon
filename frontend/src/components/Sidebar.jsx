@@ -1,9 +1,9 @@
 import { Bell, ChevronDown, ChevronsLeft, KeyRound, PanelLeft, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { navigationGroups } from '../navigation.js';
+import { navigationGroups as defaultNavigationGroups } from '../navigation.js';
 
-export function Sidebar() {
+export function Sidebar({ navigationGroups = defaultNavigationGroups, panelLabel = 'Operasyon Paneli' }) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState(() => navigationGroups.reduce((acc, group, index) => ({ ...acc, [group.label]: index < 2 }), {}));
@@ -16,7 +16,7 @@ export function Sidebar() {
         <span className="brand-mark"><KeyRound size={21} /></span>
         <div>
           <strong>Balina</strong>
-          <small>Entegrasyon Paneli</small>
+          <small>{panelLabel}</small>
         </div>
         <button type="button" className="collapse-button" onClick={() => setCollapsed((value) => !value)}><ChevronsLeft size={15} /></button>
       </div>

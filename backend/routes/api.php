@@ -45,7 +45,7 @@ Route::post('/auth/login', [AuthController::class, 'login'])->middleware('thrott
 Route::match(['get', 'post'], '/payment-callbacks/{payment}', [PaymentController::class, 'callback']);
 Route::get('/health', HealthController::class);
 
-Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(function () {
     Route::get('/dashboard', DashboardController::class);
 
     Route::get('/auth/me', [AuthController::class, 'me']);

@@ -25,8 +25,8 @@ export function LoginPage() {
     }
 
     await run(async () => {
-      await login(form);
-      navigate('/');
+      const response = await login(form);
+      navigate(response.panel || (response.user?.roles?.some((role) => role.name === 'super_admin') ? '/admin' : '/app'));
     });
   };
 

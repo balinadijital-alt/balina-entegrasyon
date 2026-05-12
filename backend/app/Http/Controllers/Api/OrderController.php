@@ -22,6 +22,7 @@ class OrderController extends Controller
     {
         return response()->json(Order::query()
             ->with(['company:id,name', 'shipments.account.carrier:id,code,name', 'payments.account.provider:id,code,name', 'invoices:id,order_id,status,invoice_number,pdf_path,pdf_url'])
+            ->when($this->tenantCompanyId($request), fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->when($request->filled('company_id'), fn ($query) => $query->where('company_id', $request->integer('company_id')))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->filled('marketplace_code'), fn ($query) => $query->where('marketplace_code', $request->string('marketplace_code')))
@@ -50,6 +51,8 @@ class OrderController extends Controller
 
     public function show(Order $order): JsonResponse
     {
+        $this->abortIfNotTenant(request(), $order);
+
         return response()->json($order->load([
             'company',
             'shipments.account.carrier',
@@ -63,6 +66,8 @@ class OrderController extends Controller
 
     public function update(Request $request, Order $order, OrderOperationService $operations): JsonResponse
     {
+        $this->abortIfNotTenant($request, $order);
+
         $data = $request->validate([
             'status' => ['required', 'string', 'max:64'],
             'note' => ['nullable', 'string'],
@@ -80,6 +85,8 @@ class OrderController extends Controller
 
     public function addNote(Request $request, Order $order, OrderOperationService $operations): JsonResponse
     {
+        $this->abortIfNotTenant($request, $order);
+
         $data = $request->validate([
             'note' => ['required', 'string', 'max:5000'],
             'type' => ['nullable', 'in:internal,customer,warehouse,accounting,shipping'],
@@ -90,6 +97,8 @@ class OrderController extends Controller
 
     public function transition(Request $request, Order $order, OrderOperationService $operations): JsonResponse
     {
+        $this->abortIfNotTenant($request, $order);
+
         $data = $request->validate([
             'status' => ['required', 'string', 'max:64'],
             'payload' => ['nullable', 'array'],
@@ -100,6 +109,8 @@ class OrderController extends Controller
 
     public function requestResolution(Request $request, Order $order, OrderOperationService $operations): JsonResponse
     {
+        $this->abortIfNotTenant($request, $order);
+
         $data = $request->validate([
             'type' => ['required', 'in:cancel,return,problem'],
             'reason' => ['required', 'string', 'max:5000'],
@@ -120,7 +131,10 @@ class OrderController extends Controller
             'type' => ['nullable', 'in:einvoice,earchive'],
         ]);
 
-        $orders = Order::whereIn('id', $data['order_ids'])->get();
+        $orders = Order::query()
+            ->when($this->tenantCompanyId($request), fn ($query, $companyId) => $query->where('company_id', $companyId))
+            ->whereIn('id', $data['order_ids'])
+            ->get();
         $processed = 0;
 
         foreach ($orders as $order) {

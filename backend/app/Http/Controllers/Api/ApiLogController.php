@@ -13,6 +13,7 @@ class ApiLogController extends Controller
     {
         return response()->json(ApiLog::query()
             ->with('company:id,name')
+            ->when($this->tenantCompanyId($request), fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->when($request->filled('marketplace_code'), fn ($query) => $query->where('marketplace_code', $request->string('marketplace_code')))
             ->latest()
             ->paginate(50));

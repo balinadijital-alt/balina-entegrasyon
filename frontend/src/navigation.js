@@ -28,7 +28,7 @@ import {
   Workflow,
 } from 'lucide-react';
 
-export const navigationGroups = [
+export const appNavigationGroups = [
   {
     label: 'E-Ticaret Yonetimi',
     items: [
@@ -79,4 +79,29 @@ export const navigationGroups = [
   },
 ];
 
+export const adminNavigationGroups = [
+  {
+    label: 'Balina Yonetimi',
+    items: [
+      { to: '/admin', label: 'Dashboard', icon: Gauge, end: true },
+      { to: '/admin/companies', label: 'Musteri Firmalar', icon: Building2 },
+      { to: '/admin/saas', label: 'Paketler Lisanslar', icon: Sparkles },
+      { to: '/admin/saas', label: 'Abonelikler', icon: ClipboardCheck },
+      { to: '/admin/payments', label: 'Odemeler Billing', icon: CircleDollarSign },
+    ],
+  },
+  {
+    label: 'Sistem Operasyonu',
+    items: [
+      { to: '/admin/reports', label: 'Sistem Sagligi', icon: BarChart3 },
+      { to: '/admin/queue', label: 'Queue Horizon', icon: Workflow },
+      { to: '/admin/api-logs', label: 'API Loglari', icon: FileText },
+      { to: '/admin/queue', label: 'Failed Jobs', icon: AlertTriangle },
+      { to: '/admin/api-logs', label: 'Audit Log', icon: ShieldCheck },
+      { to: '/admin/settings', label: 'Global Ayarlar', icon: Settings },
+    ],
+  },
+];
+
+export const navigationGroups = appNavigationGroups;
 export const flatNavigation = navigationGroups.flatMap((group) => group.items);

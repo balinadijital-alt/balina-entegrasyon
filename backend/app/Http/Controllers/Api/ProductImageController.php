@@ -13,6 +13,8 @@ class ProductImageController extends Controller
 {
     public function store(Request $request, Product $product, ProductImageService $service): JsonResponse
     {
+        $this->abortIfNotTenant($request, $product);
+
         $data = $request->validate([
             'image' => ['required', 'image', 'max:4096'],
             'alt_text' => ['nullable', 'string', 'max:255'],
@@ -24,6 +26,8 @@ class ProductImageController extends Controller
 
     public function destroy(ProductImage $image): JsonResponse
     {
+        $this->abortIfNotTenant(request(), $image->product);
+
         $image->delete();
 
         return response()->json(status: 204);

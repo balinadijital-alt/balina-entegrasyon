@@ -14,6 +14,7 @@ class ProductController extends Controller
     {
         $products = Product::query()
             ->with(['company:id,name', 'images', 'marketplaceStatuses'])
+            ->when($this->tenantCompanyId($request), fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->when($request->filled('company_id'), fn ($query) => $query->where('company_id', $request->integer('company_id')))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->filled('search'), function ($query) use ($request) {
@@ -39,11 +40,15 @@ class ProductController extends Controller
 
     public function show(Product $product): JsonResponse
     {
+        $this->abortIfNotTenant(request(), $product);
+
         return response()->json($product->load('company', 'images', 'marketplaceStatuses'));
     }
 
     public function update(Request $request, Product $product, ProductReadinessService $readiness): JsonResponse
     {
+        $this->abortIfNotTenant($request, $product);
+
         $product->update($this->validated($request, $product->id));
         $readiness->check($product);
 
@@ -52,6 +57,8 @@ class ProductController extends Controller
 
     public function destroy(Product $product): JsonResponse
     {
+        $this->abortIfNotTenant(request(), $product);
+
         $product->delete();
 
         return response()->json(status: 204);

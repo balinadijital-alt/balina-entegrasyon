@@ -12,6 +12,7 @@ class CategoryMappingController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json(CategoryMapping::query()
+            ->when($this->tenantCompanyId($request), fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->when($request->filled('company_id'), fn ($query) => $query->where('company_id', $request->integer('company_id')))
             ->when($request->filled('marketplace_code'), fn ($query) => $query->where('marketplace_code', $request->string('marketplace_code')))
             ->latest()
@@ -36,6 +37,8 @@ class CategoryMappingController extends Controller
 
     public function update(Request $request, CategoryMapping $categoryMapping): JsonResponse
     {
+        $this->abortIfNotTenant($request, $categoryMapping);
+
         $categoryMapping->update($this->validated($request));
 
         return response()->json($categoryMapping->refresh());
@@ -43,6 +46,8 @@ class CategoryMappingController extends Controller
 
     public function destroy(CategoryMapping $categoryMapping): JsonResponse
     {
+        $this->abortIfNotTenant(request(), $categoryMapping);
+
         $categoryMapping->delete();
 
         return response()->json(status: 204);
@@ -50,7 +55,7 @@ class CategoryMappingController extends Controller
 
     private function validated(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'company_id' => ['required', 'exists:companies,id'],
             'marketplace_code' => ['required', 'in:trendyol,hepsiburada'],
             'local_category' => ['required', 'string', 'max:255'],
@@ -58,5 +63,12 @@ class CategoryMappingController extends Controller
             'external_category_name' => ['nullable', 'string', 'max:255'],
             'attributes' => ['nullable', 'array'],
         ]);
+
+        $companyId = $this->tenantCompanyId($request);
+        if ($companyId) {
+            $data['company_id'] = $companyId;
+        }
+
+        return $data;
     }
 }

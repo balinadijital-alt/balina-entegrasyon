@@ -28,9 +28,50 @@ class ApiSmokeTest extends TestCase
         parent::setUp();
         $this->seed(DatabaseSeeder::class);
         $this->user = User::factory()->create();
-        $this->user->assignRole('admin');
+        $this->user->assignRole('super_admin');
         Sanctum::actingAs($this->user);
         $this->company = Company::create(['name' => 'Test Firma', 'email' => 'firma@example.test', 'is_active' => true]);
+    }
+
+    public function test_company_user_cannot_access_other_company_records(): void
+    {
+        $ownCompany = Company::create(['name' => 'Tenant A', 'email' => 'a@example.test', 'is_active' => true]);
+        $otherCompany = Company::create(['name' => 'Tenant B', 'email' => 'b@example.test', 'is_active' => true]);
+        $tenantUser = User::factory()->create(['company_id' => $ownCompany->id]);
+        $tenantUser->assignRole('company_admin');
+        Sanctum::actingAs($tenantUser);
+
+        Product::create([
+            'company_id' => $ownCompany->id,
+            'sku' => 'OWN-1',
+            'name' => 'Kendi Urunu',
+            'price' => 10,
+            'stock' => 1,
+            'vat_rate' => 20,
+            'status' => 'active',
+        ]);
+        $otherProduct = Product::create([
+            'company_id' => $otherCompany->id,
+            'sku' => 'OTHER-1',
+            'name' => 'Baska Firma Urunu',
+            'price' => 10,
+            'stock' => 1,
+            'vat_rate' => 20,
+            'status' => 'active',
+        ]);
+        Order::create([
+            'company_id' => $otherCompany->id,
+            'marketplace_code' => 'test',
+            'marketplace_order_id' => 'OTHER-ORD',
+            'customer_name' => 'Musteri',
+            'total_amount' => 20,
+            'status' => 'new',
+        ]);
+
+        $this->getJson('/api/products')->assertOk()->assertJsonCount(1, 'data');
+        $this->getJson('/api/orders')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson("/api/products/{$otherProduct->id}")->assertForbidden();
+        $this->getJson("/api/products?company_id={$otherCompany->id}")->assertForbidden();
     }
 
     public function test_auth_login_and_protected_me_endpoint(): void

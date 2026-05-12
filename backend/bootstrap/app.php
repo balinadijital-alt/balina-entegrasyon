@@ -2,6 +2,8 @@
 
 use App\Http\Middleware\LogApiRequest;
 use App\Http\Middleware\EnsurePlanLimit;
+use App\Http\Middleware\EnsureRole;
+use App\Http\Middleware\EnsureTenantCompany;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SanitizeInput;
 use Illuminate\Foundation\Application;
@@ -18,6 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
             'plan.limit' => EnsurePlanLimit::class,
+            'role.any' => EnsureRole::class,
+            'tenant.company' => EnsureTenantCompany::class,
         ]);
         $middleware->statefulApi();
         $middleware->api(append: [

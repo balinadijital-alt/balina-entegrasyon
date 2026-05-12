@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ToastHost } from './components/ToastHost.jsx';
 import { AppProvider } from './context/AppContext.jsx';
 import { AppLayout } from './layouts/AppLayout.jsx';
+import { adminNavigationGroups, appNavigationGroups } from './navigation.js';
 import { LoginPage } from './pages/Auth/LoginPage.jsx';
 import { RegisterPage } from './pages/Auth/RegisterPage.jsx';
 import { CompaniesPage } from './pages/Companies/CompaniesPage.jsx';
@@ -58,6 +59,76 @@ function Protected({ children }) {
   return localStorage.getItem('token') ? children : <Navigate to="/login" replace />;
 }
 
+function CustomerRoutes() {
+  return (
+    <>
+      <Route index element={<DashboardPage />} />
+      <Route path="reports" element={<ReportsPage />} />
+      <Route path="companies" element={<CompaniesPage />} />
+      <Route path="accounting" element={<AccountingPage />} />
+      <Route path="products" element={<ProductsPage />} />
+      <Route path="products/new" element={<ProductCreatePage />} />
+      <Route path="products/category-mapping" element={<CategoryMappingPage />} />
+      <Route path="products/publish-queue" element={<PublishQueuePage />} />
+      <Route path="products/publish" element={<ProductPublishWizardPage />} />
+      <Route path="products/:id" element={<ProductDetailPage />} />
+      <Route path="products/:id/edit" element={<ProductCreatePage />} />
+      <Route path="imports" element={<ImportCenterPage />} />
+      <Route path="products/import" element={<ProductImportPage />} />
+      <Route path="marketplaces" element={<MarketplacesPage />} />
+      <Route path="marketplaces/trendyol" element={<TrendyolPage />} />
+      <Route path="marketplaces/hepsiburada" element={<HepsiburadaPage />} />
+      <Route path="orders" element={<OrdersPage />} />
+      <Route path="orders/:id" element={<OrderDetailPage />} />
+      <Route path="payments" element={<PaymentsPage />} />
+      <Route path="shipping" element={<ShippingPage />} />
+      <Route path="saas" element={<SaasPage />} />
+      <Route path="settings" element={<SettingsPage />} />
+      <Route path="api-logs" element={<ApiLogsPage />} />
+      <Route path="queue" element={<QueuePage />} />
+      <Route path="roles" element={<RolesPage />} />
+      <Route path="cms/pages" element={<CmsPagesPage />} />
+      <Route path="cms/blog-posts" element={<CmsBlogPage />} />
+      <Route path="cms/banners" element={<CmsBannersPage />} />
+      <Route path="cms/popups" element={<CmsPopupsPage />} />
+      <Route path="marketing/coupons" element={<MarketingCouponsPage />} />
+      <Route path="marketing/abandoned-carts" element={<MarketingAbandonedCartsPage />} />
+      <Route path="marketing/feeds" element={<MarketingFeedsPage />} />
+      <Route path="marketing/pixels" element={<MarketingPixelsPage />} />
+      <Route path="catalog/variants" element={<CatalogVariantsPage />} />
+      <Route path="catalog/relations" element={<CatalogRelationsPage />} />
+      <Route path="catalog/custom-fields" element={<CatalogCustomFieldsPage />} />
+      <Route path="catalog/reviews" element={<CatalogReviewsPage />} />
+      <Route path="pricing/profit-rules" element={<PricingRulesPage />} />
+      <Route path="workflow/rules" element={<WorkflowRulesPage />} />
+      <Route path="b2b/dealers" element={<B2BDealersPage />} />
+      <Route path="b2b/prices" element={<B2BPricesPage />} />
+      <Route path="b2b/transactions" element={<B2BTransactionsPage />} />
+      <Route path="seo/settings" element={<SeoSettingsPage />} />
+      <Route path="seo/sitemap" element={<SeoRobotsSitemapPage />} />
+      <Route path="seo/head-tags" element={<SeoHeadTagsPage />} />
+      <Route path="seo/languages" element={<SeoLocalizationPage />} />
+      {moduleRoutes()}
+    </>
+  );
+}
+
+function AdminRoutes() {
+  return (
+    <>
+      <Route index element={<DashboardPage title="Super Admin Dashboard" />} />
+      <Route path="companies" element={<CompaniesPage />} />
+      <Route path="saas" element={<SaasPage />} />
+      <Route path="payments" element={<PaymentsPage />} />
+      <Route path="reports" element={<ReportsPage />} />
+      <Route path="queue" element={<QueuePage />} />
+      <Route path="api-logs" element={<ApiLogsPage />} />
+      <Route path="settings" element={<SettingsPage />} />
+      <Route path="roles" element={<RolesPage />} />
+    </>
+  );
+}
+
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AppProvider>
@@ -66,60 +137,34 @@ createRoot(document.getElementById('root')).render(
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route
-            path="/"
+            path="/admin"
             element={
               <Protected>
-                <AppLayout />
+                <AppLayout navigationGroups={adminNavigationGroups} panelLabel="Super Admin Paneli" />
               </Protected>
             }
           >
-            <Route index element={<DashboardPage />} />
-            <Route path="reports" element={<ReportsPage />} />
-            <Route path="companies" element={<CompaniesPage />} />
-            <Route path="accounting" element={<AccountingPage />} />
-            <Route path="products" element={<ProductsPage />} />
-            <Route path="products/new" element={<ProductCreatePage />} />
-            <Route path="products/category-mapping" element={<CategoryMappingPage />} />
-            <Route path="products/publish-queue" element={<PublishQueuePage />} />
-            <Route path="products/publish" element={<ProductPublishWizardPage />} />
-            <Route path="products/:id" element={<ProductDetailPage />} />
-            <Route path="products/:id/edit" element={<ProductCreatePage />} />
-            <Route path="imports" element={<ImportCenterPage />} />
-            <Route path="products/import" element={<ProductImportPage />} />
-            <Route path="marketplaces" element={<MarketplacesPage />} />
-            <Route path="marketplaces/trendyol" element={<TrendyolPage />} />
-            <Route path="marketplaces/hepsiburada" element={<HepsiburadaPage />} />
-            <Route path="orders" element={<OrdersPage />} />
-            <Route path="orders/:id" element={<OrderDetailPage />} />
-            <Route path="payments" element={<PaymentsPage />} />
-            <Route path="shipping" element={<ShippingPage />} />
-            <Route path="saas" element={<SaasPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            <Route path="api-logs" element={<ApiLogsPage />} />
-            <Route path="queue" element={<QueuePage />} />
-            <Route path="roles" element={<RolesPage />} />
-            <Route path="cms/pages" element={<CmsPagesPage />} />
-            <Route path="cms/blog-posts" element={<CmsBlogPage />} />
-            <Route path="cms/banners" element={<CmsBannersPage />} />
-            <Route path="cms/popups" element={<CmsPopupsPage />} />
-            <Route path="marketing/coupons" element={<MarketingCouponsPage />} />
-            <Route path="marketing/abandoned-carts" element={<MarketingAbandonedCartsPage />} />
-            <Route path="marketing/feeds" element={<MarketingFeedsPage />} />
-            <Route path="marketing/pixels" element={<MarketingPixelsPage />} />
-            <Route path="catalog/variants" element={<CatalogVariantsPage />} />
-            <Route path="catalog/relations" element={<CatalogRelationsPage />} />
-            <Route path="catalog/custom-fields" element={<CatalogCustomFieldsPage />} />
-            <Route path="catalog/reviews" element={<CatalogReviewsPage />} />
-            <Route path="pricing/profit-rules" element={<PricingRulesPage />} />
-            <Route path="workflow/rules" element={<WorkflowRulesPage />} />
-            <Route path="b2b/dealers" element={<B2BDealersPage />} />
-            <Route path="b2b/prices" element={<B2BPricesPage />} />
-            <Route path="b2b/transactions" element={<B2BTransactionsPage />} />
-            <Route path="seo/settings" element={<SeoSettingsPage />} />
-            <Route path="seo/sitemap" element={<SeoRobotsSitemapPage />} />
-            <Route path="seo/head-tags" element={<SeoHeadTagsPage />} />
-            <Route path="seo/languages" element={<SeoLocalizationPage />} />
-            {moduleRoutes()}
+            {AdminRoutes()}
+          </Route>
+          <Route
+            path="/app"
+            element={
+              <Protected>
+                <AppLayout navigationGroups={appNavigationGroups} panelLabel="Musteri Paneli" basePath="/app" />
+              </Protected>
+            }
+          >
+            {CustomerRoutes()}
+          </Route>
+          <Route
+            path="/"
+            element={
+              <Protected>
+                <AppLayout navigationGroups={appNavigationGroups} panelLabel="Musteri Paneli" />
+              </Protected>
+            }
+          >
+            {CustomerRoutes()}
           </Route>
         </Routes>
         <ToastHost />

@@ -21,11 +21,12 @@ class AuthController extends Controller
         ]);
 
         $user = User::create($data);
-        $user->assignRole('admin');
+        $user->assignRole('company_admin');
 
         return response()->json([
-            'user' => $user,
+            'user' => $user->load('roles', 'company:id,name'),
             'token' => $user->createToken('admin-panel')->plainTextToken,
+            'panel' => $this->panelFor($user),
         ], 201);
     }
 
@@ -54,8 +55,9 @@ class AuthController extends Controller
         RateLimiter::clear($this->throttleKey($request));
 
         return response()->json([
-            'user' => $user->load('roles'),
+            'user' => $user->load('roles', 'company:id,name'),
             'token' => $user->createToken('admin-panel')->plainTextToken,
+            'panel' => $this->panelFor($user),
         ]);
     }
 
@@ -66,7 +68,7 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        return response()->json($request->user()->load('roles', 'permissions'));
+        return response()->json($request->user()->load('roles', 'permissions', 'company:id,name'));
     }
 
     public function logout(Request $request): JsonResponse
@@ -74,5 +76,10 @@ class AuthController extends Controller
         $request->user()->currentAccessToken()?->delete();
 
         return response()->json(['message' => 'Oturum kapatildi.']);
+    }
+
+    private function panelFor(User $user): string
+    {
+        return $user->hasRole('super_admin') ? '/admin' : '/app';
     }
 }

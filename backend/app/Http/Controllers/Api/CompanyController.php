@@ -9,9 +9,12 @@ use Illuminate\Http\Request;
 
 class CompanyController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(Company::latest()->paginate(20));
+        return response()->json(Company::query()
+            ->when($this->tenantCompanyId($request), fn ($query, $companyId) => $query->where('id', $companyId))
+            ->latest()
+            ->paginate(20));
     }
 
     public function store(Request $request): JsonResponse
@@ -23,6 +26,10 @@ class CompanyController extends Controller
 
     public function show(Company $company): JsonResponse
     {
+        if ($this->tenantCompanyId(request()) && (int) $company->id !== $this->tenantCompanyId(request())) {
+            abort(403, 'Baska firmaya ait veriye erisim engellendi.');
+        }
+
         return response()->json($company->loadCount('products'));
     }
 
