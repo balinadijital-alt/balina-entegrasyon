@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ClipboardList, Edit3, Eye, Grid2X2, Layers3, List, MoreHorizontal, PackagePlus, Send, UploadCloud } from 'lucide-react';
+import { ClipboardList, Edit3, Eye, Layers3, MoreHorizontal, PackagePlus, Send, UploadCloud } from 'lucide-react';
 import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -9,6 +9,33 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { marketplaceStatus, missingFields, productImage, publishBlockReason, readinessScore } from './productWorkflow.js';
+
+const statusLabels = {
+  draft: 'Taslak',
+  active: 'Aktif',
+  passive: 'Pasif',
+  ready: 'Hazir',
+  not_ready: 'Eksik',
+  missing: 'Eksik',
+  queued: 'Gonderildi',
+  failed: 'Hatali',
+  blocked: 'Eksik',
+};
+
+function statusLabel(value) {
+  return statusLabels[value] || value || '-';
+}
+
+function marketplaceLabel(product, code) {
+  const status = marketplaceStatus(product, code);
+  const value = status?.status || status?.readiness_status;
+
+  return statusLabel(value);
+}
+
+function formatPrice(value) {
+  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(Number(value || 0));
+}
 
 export function ProductsPage() {
   const { notify } = useApp();
@@ -28,7 +55,6 @@ export function ProductsPage() {
   const [selected, setSelected] = useState([]);
   const [quickEditId, setQuickEditId] = useState(null);
   const [quickEdit, setQuickEdit] = useState({ price: '', stock: '', status: 'active' });
-  const [viewMode, setViewMode] = useState('list');
 
   const load = async () => {
     await run(async () => {
@@ -133,10 +159,6 @@ export function ProductsPage() {
         title="Urunler"
         actions={(
           <>
-            <div className="view-switch">
-              <button type="button" className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}><List size={15} /> Liste</button>
-              <button type="button" className={viewMode === 'grid' ? 'active' : ''} onClick={() => setViewMode('grid')}><Grid2X2 size={15} /> Grid</button>
-            </div>
             <Link className="button-link secondary-link" to="/products/category-mapping"><Layers3 size={16} /> Kategori Esle</Link>
             <Link className="button-link secondary-link" to="/products/publish-queue"><ClipboardList size={16} /> Aktarim Listesi</Link>
             <Link className="button-link secondary-link" to="/products/import"><UploadCloud size={16} /> Toplu Urun Yukle</Link>
@@ -144,59 +166,60 @@ export function ProductsPage() {
           </>
         )}
       />
-      <section className="catalog-shell">
-        <aside className="filter-panel">
-          <h2>Filtreler</h2>
+      <section className="panel compact-filter-panel">
+        <div className="compact-filter-heading">
+          <strong>Filtreler</strong>
+          <span>Urunleri ada, stok durumuna veya pazaryeri hazirligina gore daraltin.</span>
+        </div>
+        <div className="product-filter-row">
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Urun, SKU veya barkod ara" />
-          <div className="filter-stack">
-            <select value={companyId} onChange={(event) => setCompanyId(event.target.value)}>
-              <option value="">Tum firmalar</option>
-              {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
-            </select>
-            <select value={status} onChange={(event) => setStatus(event.target.value)}>
-              <option value="">Tum durumlar</option>
-              <option value="draft">Taslak</option>
-              <option value="active">Aktif</option>
-              <option value="passive">Pasif</option>
-            </select>
-            <select value={marketplaceId} onChange={(event) => setMarketplaceId(event.target.value)}>
-              <option value="">Pazaryeri hesabi</option>
-              {marketplaces.map((marketplace) => <option key={marketplace.id} value={marketplace.id}>{marketplace.name}</option>)}
-            </select>
-            <select value={readyFilter} onChange={(event) => setReadyFilter(event.target.value)}>
-              <option value="">Hazirlik durumu</option>
-              <option value="ready">Pazaryerine hazir</option>
-              <option value="not_ready">Hazir degil</option>
-            </select>
-            <select value={missingFilter} onChange={(event) => setMissingFilter(event.target.value)}>
-              <option value="">Eksik alan</option>
-              <option value="category_mapping">Eksik kategori eslesmesi</option>
-              <option value="required_attributes">Eksik ozellik</option>
-              <option value="image">Eksik gorsel</option>
-              <option value="marketplace_category">Eksik pazaryeri kategori</option>
-            </select>
-            <select value={stockFilter} onChange={(event) => setStockFilter(event.target.value)}>
-              <option value="">Stok durumu</option>
-              <option value="critical">Kritik stok</option>
-              <option value="out">Stok yok</option>
-            </select>
-            <select value={trendyolFilter} onChange={(event) => setTrendyolFilter(event.target.value)}>
-              <option value="">Trendyol durumu</option>
-              <option value="ready">Hazir</option>
-              <option value="not_ready">Eksik</option>
-              <option value="queued">Gonderildi</option>
-              <option value="failed">Hatali</option>
-            </select>
-            <select value={hepsiburadaFilter} onChange={(event) => setHepsiburadaFilter(event.target.value)}>
-              <option value="">Hepsiburada durumu</option>
-              <option value="ready">Hazir</option>
-              <option value="not_ready">Eksik</option>
-              <option value="queued">Gonderildi</option>
-              <option value="failed">Hatali</option>
-            </select>
-          </div>
-        </aside>
-        <main className="catalog-main">
+          <select value={companyId} onChange={(event) => setCompanyId(event.target.value)}>
+            <option value="">Tum firmalar</option>
+            {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+          </select>
+          <select value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="">Tum durumlar</option>
+            <option value="draft">Taslak</option>
+            <option value="active">Aktif</option>
+            <option value="passive">Pasif</option>
+          </select>
+          <select value={marketplaceId} onChange={(event) => setMarketplaceId(event.target.value)}>
+            <option value="">Pazaryeri hesabi</option>
+            {marketplaces.map((marketplace) => <option key={marketplace.id} value={marketplace.id}>{marketplace.name}</option>)}
+          </select>
+          <select value={readyFilter} onChange={(event) => setReadyFilter(event.target.value)}>
+            <option value="">Hazirlik durumu</option>
+            <option value="ready">Hazir</option>
+            <option value="not_ready">Eksik</option>
+          </select>
+          <select value={missingFilter} onChange={(event) => setMissingFilter(event.target.value)}>
+            <option value="">Eksik alan</option>
+            <option value="category_mapping">Kategori</option>
+            <option value="required_attributes">Ozellik</option>
+            <option value="image">Gorsel</option>
+            <option value="marketplace_category">Pazaryeri kategori</option>
+          </select>
+          <select value={stockFilter} onChange={(event) => setStockFilter(event.target.value)}>
+            <option value="">Stok durumu</option>
+            <option value="critical">Kritik stok</option>
+            <option value="out">Stok yok</option>
+          </select>
+          <select value={trendyolFilter} onChange={(event) => setTrendyolFilter(event.target.value)}>
+            <option value="">Trendyol</option>
+            <option value="ready">Hazir</option>
+            <option value="not_ready">Eksik</option>
+            <option value="queued">Gonderildi</option>
+            <option value="failed">Hatali</option>
+          </select>
+          <select value={hepsiburadaFilter} onChange={(event) => setHepsiburadaFilter(event.target.value)}>
+            <option value="">Hepsiburada</option>
+            <option value="ready">Hazir</option>
+            <option value="not_ready">Eksik</option>
+            <option value="queued">Gonderildi</option>
+            <option value="failed">Hatali</option>
+          </select>
+        </div>
+      </section>
       <section className="kpi-grid compact-kpis">
         <div className="kpi-card"><span>Toplam Urun</span><strong>{products.length}</strong><small>Katalog kaydi</small></div>
         <div className="kpi-card"><span>Pazaryerine Hazir</span><strong>{products.filter((product) => product.marketplace_ready).length}</strong><small>Eksiksiz urun</small></div>
@@ -213,73 +236,19 @@ export function ProductsPage() {
         </section>
       )}
       {error && <ErrorState message={error} onRetry={load} />}
-      {loading && products.length === 0 ? <LoadingState /> : viewMode === 'grid' ? (
-        <section className="product-grid">
-          {filteredProducts.length === 0 ? (
-            <div className="panel empty-state">
-              <PackagePlus size={30} />
-              <strong>Urun bulunamadi</strong>
-              <span>Filtreleri temizleyin veya yeni urun ekleyin.</span>
-            </div>
-          ) : filteredProducts.map((product) => {
-            const score = readinessScore(product);
-            const image = productImage(product);
-
-            return (
-              <article className="product-card" key={product.id}>
-                <label className="product-select">
-                  <input type="checkbox" checked={selected.includes(product.id)} onChange={() => toggleSelected(product.id)} />
-                </label>
-                <div className="product-thumb">
-                  {image ? <img src={image} alt={product.name} /> : <PackagePlus size={28} />}
-                </div>
-                <div className="product-card-body">
-                  <div>
-                    <span className="muted-text">{product.sku || 'SKU yok'}</span>
-                    <h3>{product.name}</h3>
-                  </div>
-                  <div className="product-card-meta">
-                    <span>{product.category || 'Kategori yok'} · {product.stock} stok</span>
-                    <strong>{product.price}</strong>
-                  </div>
-                  <div className="readiness-meter">
-                    <div>
-                      <span style={{ width: `${score}%` }} />
-                    </div>
-                    <small>{score}% pazaryeri hazirlik</small>
-                  </div>
-                  <div className="marketplace-badges">
-                    <span className={product.marketplace_ready ? 'status-pill ready' : 'status-pill blocked'}>{product.marketplace_ready ? 'Hazir' : 'Eksik'}</span>
-                    <span className="badge created">TY {marketplaceStatus(product, 'trendyol')?.status || '-'}</span>
-                    <span className="badge created">HB {marketplaceStatus(product, 'hepsiburada')?.status || '-'}</span>
-                  </div>
-                  <div className="row-actions">
-                    <Link className="button-link secondary-link" to={`/products/${product.id}/edit`}><Edit3 size={15} /> Duzenle</Link>
-                    <Link className="button-link secondary-link" to={`/products/${product.id}`}><Eye size={15} /> Detay</Link>
-                    <button type="button" disabled={loading} onClick={() => addToPublishQueue([product.id])}>Listeye ekle</button>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </section>
-      ) : (
+      {loading && products.length === 0 ? <LoadingState /> : (
         <DataTable
           rows={filteredProducts}
           emptyTitle="Urun bulunamadi"
-          emptyText="Filtreleri temizleyin veya yeni urun ekleyin."
+          emptyText="Filtreleri temizleyin, yeni urun ekleyin veya Excel/XML ile toplu yukleme baslatin."
           columns={[
             { key: 'select', label: '', render: (row) => <input type="checkbox" checked={selected.includes(row.id)} onChange={() => toggleSelected(row.id)} /> },
             { key: 'image', label: 'Gorsel', render: (row) => productImage(row) ? <img className="table-product-image" src={productImage(row)} alt={row.name} /> : <span className="table-product-placeholder"><PackagePlus size={16} /></span> },
             { key: 'name', label: 'Urun', render: (row) => <div className="table-product-title"><strong>{row.name}</strong><span>{row.sku}</span></div> },
-            { key: 'barcode', label: 'Barkod' },
-            { key: 'category', label: 'Kategori', render: (row) => row.category || <span className="bad-text">Eksik</span> },
             { key: 'stock', label: 'Stok', render: (row) => quickEditId === row.id ? <input type="number" value={quickEdit.stock} onChange={(event) => setQuickEdit({ ...quickEdit, stock: event.target.value })} /> : <span className={Number(row.stock || 0) <= Number(row.critical_stock || 0) ? 'badge running' : 'badge active'}>{row.stock}</span> },
-            { key: 'price', label: 'Fiyat', render: (row) => quickEditId === row.id ? <input type="number" value={quickEdit.price} onChange={(event) => setQuickEdit({ ...quickEdit, price: event.target.value })} /> : row.price },
-            { key: 'score', label: 'Hazirlik', render: (row) => <div className="score-cell"><strong>{readinessScore(row)}%</strong><span>{publishBlockReason(row)}</span></div> },
-            { key: 'trendyol', label: 'Trendyol', render: (row) => marketplaceStatus(row, 'trendyol')?.status || marketplaceStatus(row, 'trendyol')?.readiness_status || '-' },
-            { key: 'hepsiburada', label: 'Hepsiburada', render: (row) => marketplaceStatus(row, 'hepsiburada')?.status || marketplaceStatus(row, 'hepsiburada')?.readiness_status || '-' },
-            { key: 'missing', label: 'Eksikler', render: (row) => missingFields(row).slice(0, 4).join(', ') || '-' },
+            { key: 'price', label: 'Fiyat', render: (row) => quickEditId === row.id ? <input type="number" value={quickEdit.price} onChange={(event) => setQuickEdit({ ...quickEdit, price: event.target.value })} /> : formatPrice(row.price) },
+            { key: 'score', label: 'Hazirlik Durumu', render: (row) => <div className="score-cell"><strong>{readinessScore(row)}%</strong><span>{publishBlockReason(row)}</span></div> },
+            { key: 'marketplace', label: 'Pazaryeri Durumu', render: (row) => <div className="marketplace-badges"><span className="badge created">TY {marketplaceLabel(row, 'trendyol')}</span><span className="badge created">HB {marketplaceLabel(row, 'hepsiburada')}</span></div> },
             {
               key: 'actions',
               label: 'Islem',
@@ -299,6 +268,7 @@ export function ProductsPage() {
                     <Link to={`/products/${row.id}/edit`}><Edit3 size={15} /> Duzenle</Link>
                     <Link to={`/products/${row.id}`}><Eye size={15} /> Detay</Link>
                     <Link to={`/products/category-mapping?category=${encodeURIComponent(row.category || '')}`}><Layers3 size={15} /> Kategori esle</Link>
+                    <button type="button" onClick={() => startQuickEdit(row)}>Stok/fiyat duzenle</button>
                     <button type="button" disabled={loading} onClick={() => addToPublishQueue([row.id])}>Aktarima ekle</button>
                     <button type="button" disabled={loading} onClick={() => sendProducts([row.id])}><Send size={15} /> Gonder</button>
                   </div>
@@ -308,8 +278,6 @@ export function ProductsPage() {
           ]}
         />
       )}
-        </main>
-      </section>
     </>
   );
 }

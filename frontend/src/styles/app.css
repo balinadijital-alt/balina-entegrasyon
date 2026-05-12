@@ -776,6 +776,32 @@ a {
   grid-template-columns: 260px minmax(0, 1fr) minmax(300px, 0.85fr);
 }
 
+.category-help-box {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.mapping-ready-card {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 14px;
+}
+
+.mapping-ready-card strong {
+  color: var(--accent);
+  font-size: 30px;
+  line-height: 1;
+}
+
+.mapping-ready-card span {
+  color: #475569;
+  font-weight: 800;
+}
+
 .mapping-category {
   background: #f8fafc;
   border: 1px solid var(--border);
@@ -825,6 +851,46 @@ a {
 .filter-stack {
   display: grid;
   gap: 10px;
+}
+
+.compact-filter-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.compact-filter-heading {
+  align-items: baseline;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.compact-filter-heading span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.product-filter-row {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 1.5fr) repeat(8, minmax(120px, 1fr));
+}
+
+.product-filter-row input,
+.product-filter-row select {
+  min-height: 38px;
+}
+
+.product-wizard-panel {
+  grid-template-columns: 230px minmax(0, 760px);
+  justify-content: center;
+  max-width: 1040px;
+}
+
+.primary-next-button,
+.primary-save-button {
+  min-width: 150px;
 }
 
 .compact-kpis .kpi-card {
@@ -888,6 +954,33 @@ a {
   margin-bottom: 18px;
 }
 
+.result-summary-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.result-summary-grid div {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
+.result-summary-grid span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.result-summary-grid strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
 .workflow-warning {
   background: #fffbeb;
   border-color: #fde68a;
@@ -921,11 +1014,111 @@ a {
   padding: 10px 12px;
 }
 
+.simple-order-actions {
+  background: #fff;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+  margin-bottom: 18px;
+}
+
+.status-change-inline {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.status-change-inline select {
+  min-width: 170px;
+}
+
 .order-command-strip {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-bottom: 18px;
+}
+
+.marketplace-card-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 18px;
+}
+
+.marketplace-account-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 14px;
+  min-height: 260px;
+  padding: 18px;
+}
+
+.marketplace-card-top {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.marketplace-card-icon {
+  align-items: center;
+  background: #eff6ff;
+  border-radius: 12px;
+  color: var(--accent);
+  display: inline-flex;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.marketplace-card-top div {
+  display: grid;
+  gap: 3px;
+}
+
+.marketplace-card-top small,
+.marketplace-card-stats span {
+  color: #64748b;
+}
+
+.marketplace-card-stats {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.marketplace-card-stats div {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: grid;
+  gap: 4px;
+  min-height: 72px;
+  padding: 10px;
+}
+
+.marketplace-card-stats strong {
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.marketplace-card-actions {
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.marketplace-card-actions button {
+  min-height: 38px;
+}
+
+.marketplace-form-panel summary {
+  cursor: pointer;
+  font-weight: 900;
+  margin-bottom: 14px;
 }
 
 .order-command-strip div {
@@ -2445,6 +2638,10 @@ tbody td:last-child .row-actions:focus-within {
   .onboarding-grid,
   .quick-actions-panel,
   .customer-empty-guide,
+  .product-filter-row,
+  .marketplace-card-grid,
+  .marketplace-card-stats,
+  .result-summary-grid,
   .command-kpis,
   .dashboard-hero,
   .dashboard-command-grid,
@@ -2518,6 +2715,13 @@ tbody td:last-child .row-actions:focus-within {
 
   .breakdown-row {
     grid-template-columns: 1fr;
+  }
+
+  .status-change-inline,
+  .compact-filter-heading {
+    align-items: stretch;
+    flex-direction: column;
+    margin-left: 0;
   }
 
   .customer-empty-guide {

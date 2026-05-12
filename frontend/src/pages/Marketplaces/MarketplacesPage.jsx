@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, RefreshCw, ShoppingBag, Store } from 'lucide-react';
 import { api } from '../../api/client.js';
-import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
@@ -23,6 +22,19 @@ const initialForm = {
   service_password: '',
   is_active: true,
 };
+
+const marketplaceNames = {
+  trendyol: 'Trendyol',
+  hepsiburada: 'Hepsiburada',
+  ciceksepeti: 'Ciceksepeti',
+};
+
+function statusLabel(value) {
+  if (value === 'connected') return 'Bagli';
+  if (value === 'failed') return 'Hata var';
+  if (value === 'pending') return 'Bekliyor';
+  return value || 'Kontrol edilmedi';
+}
 
 export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
   const { notify } = useApp();
@@ -103,6 +115,13 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
     return new Intl.DateTimeFormat('tr-TR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
   };
 
+  const visibleAccounts = accounts.filter((account) => {
+    const query = search.trim().toLowerCase();
+    const matchesSearch = !query || [account.name, account.code, account.company?.name].some((value) => String(value || '').toLowerCase().includes(query));
+    const matchesStatus = !status || account.connection_status === status;
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <>
       <PageHeader title={title} />
@@ -119,7 +138,50 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
           </select>
         )}
       />
-      <section className="panel">
+      {loading && accounts.length === 0 ? <LoadingState /> : (
+        <section className="marketplace-card-grid">
+          {visibleAccounts.length === 0 ? (
+            <div className="panel empty-state">
+              <Store size={28} />
+              <strong>Pazaryeri baglantisi yok</strong>
+              <span>Trendyol veya Hepsiburada hesabinizi ekleyerek urun, stok/fiyat ve siparis islemlerini baslatin.</span>
+            </div>
+          ) : visibleAccounts.map((account) => {
+            const isHepsiburada = account.code === 'hepsiburada';
+            const Icon = isHepsiburada ? ShoppingBag : Store;
+            const hasError = account.connection_status === 'failed' || Boolean(account.last_error);
+
+            return (
+              <article className="marketplace-account-card" key={account.id}>
+                <div className="marketplace-card-top">
+                  <span className="marketplace-card-icon"><Icon size={20} /></span>
+                  <div>
+                    <strong>{marketplaceNames[account.code] || account.code}</strong>
+                    <small>{account.name} · {account.company?.name || 'Firma yok'}</small>
+                  </div>
+                  <span className={hasError ? 'status-pill blocked' : 'status-pill ready'}>{statusLabel(account.connection_status)}</span>
+                </div>
+                <div className="marketplace-card-stats">
+                  <div><span>Son urun</span><strong>{formatDate(account.last_product_sync_at)}</strong></div>
+                  <div><span>Son stok/fiyat</span><strong>{formatDate(account.last_price_sync_at)}</strong></div>
+                  <div><span>Son siparis</span><strong>{formatDate(account.last_order_sync_at)}</strong></div>
+                  <div><span>Hata</span><strong>{hasError ? 'Var' : 'Yok'}</strong></div>
+                </div>
+                {account.last_error && <div className="soft-empty error-state"><AlertTriangle size={16} /> {account.last_error}</div>}
+                <div className="row-actions marketplace-card-actions">
+                  <button type="button" disabled={loading || syncing} onClick={() => sync(account.id, isHepsiburada ? 'hbTest' : 'test')}><CheckCircle2 size={15} /> {syncLabel(account.id, isHepsiburada ? 'hbTest' : 'test', 'Baglantiyi Kontrol Et')}</button>
+                  <button type="button" className="secondary-button" disabled={loading || syncing} onClick={() => sync(account.id, isHepsiburada ? 'hbProducts' : 'products')}><RefreshCw size={15} /> Urunleri Gonder</button>
+                  <button type="button" className="secondary-button" disabled={loading || syncing} onClick={() => sync(account.id, isHepsiburada ? 'hbPrices' : 'prices')}>Stok/Fiyat Guncelle</button>
+                  <button type="button" className="secondary-button" disabled={loading || syncing} onClick={() => sync(account.id, isHepsiburada ? 'hbOrders' : 'orders')}>Siparisleri Al</button>
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      )}
+
+      <details className="panel marketplace-form-panel">
+        <summary>Yeni pazaryeri hesabi ekle</summary>
         <form className="form-grid" onSubmit={submit}>
           <Field label="Firma" error={errors.company_id}>
             <select value={form.company_id} onChange={(event) => setForm({ ...form, company_id: event.target.value })}>
@@ -135,26 +197,26 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
             </select>
           </Field>
           <Field label="Hesap Adi" error={errors.name}><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
-          <Field label="Supplier ID" error={errors.supplier_id}><input value={form.supplier_id} onChange={(event) => setForm({ ...form, supplier_id: event.target.value })} /></Field>
-          <Field label="Merchant ID" error={errors.merchant_id}><input value={form.merchant_id} onChange={(event) => setForm({ ...form, merchant_id: event.target.value })} /></Field>
-          <Field label="API Key / Kullanici Adi" error={errors.service_username}>
+          <Field label="Trendyol Satici No" error={errors.supplier_id}><input value={form.supplier_id} onChange={(event) => setForm({ ...form, supplier_id: event.target.value })} /></Field>
+          <Field label="Hepsiburada Magaza No" error={errors.merchant_id}><input value={form.merchant_id} onChange={(event) => setForm({ ...form, merchant_id: event.target.value })} /></Field>
+          <Field label="Kullanici Adi / Anahtar" error={errors.service_username}>
             <input
               value={form.api_key}
               onChange={(event) => setForm({ ...form, api_key: event.target.value, service_username: event.target.value })}
             />
           </Field>
-          <Field label="API Secret / Password" error={errors.service_password}>
+          <Field label="Sifre / Gizli Anahtar" error={errors.service_password}>
             <input
               type="password"
               value={form.api_secret}
               onChange={(event) => setForm({ ...form, api_secret: event.target.value, service_password: event.target.value })}
             />
           </Field>
-          <button disabled={loading}>{loading ? 'Kaydediliyor...' : 'Entegrasyon Ekle'}</button>
+          <button disabled={loading}>{loading ? 'Kaydediliyor...' : 'Baglanti Ekle'}</button>
         </form>
-      </section>
+      </details>
       {error && <ErrorState message={error} onRetry={load} />}
-      {syncing && <LoadingState label="Senkronizasyon calisiyor..." />}
+      {syncing && <LoadingState label="Islem calisiyor..." />}
       {categories.length > 0 && (
         <section className="panel compact-panel">
           <h2>Pazaryeri Kategorileri</h2>
@@ -164,54 +226,6 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
             ))}
           </div>
         </section>
-      )}
-      {loading && accounts.length === 0 ? <LoadingState /> : (
-      <DataTable
-        rows={accounts.filter((account) => {
-          const query = search.trim().toLowerCase();
-          const matchesSearch = !query || [account.name, account.code, account.company?.name].some((value) => String(value || '').toLowerCase().includes(query));
-          const matchesStatus = !status || account.connection_status === status;
-          return matchesSearch && matchesStatus;
-        })}
-        emptyTitle="Pazaryeri hesabi yok"
-        emptyText="Yeni entegrasyon ekleyin veya filtreleri temizleyin."
-        columns={[
-          { key: 'name', label: 'Hesap' },
-          { key: 'code', label: 'Pazaryeri' },
-          { key: 'company', label: 'Firma', render: (row) => row.company?.name },
-          { key: 'connection_status', label: 'Baglanti', render: (row) => <span className={`badge ${row.connection_status}`}>{row.connection_status || 'unknown'}</span> },
-          { key: 'last_product_sync_at', label: 'Son Urun', render: (row) => formatDate(row.last_product_sync_at) },
-          { key: 'last_price_sync_at', label: 'Son Stok/Fiyat', render: (row) => formatDate(row.last_price_sync_at) },
-          { key: 'last_order_sync_at', label: 'Son Siparis', render: (row) => formatDate(row.last_order_sync_at) },
-          { key: 'last_error', label: 'Son Hata', render: (row) => row.last_error || '-' },
-          {
-            key: 'actions',
-            label: 'Islemler',
-            render: (row) => (
-              <div className="row-actions">
-                {row.code === 'trendyol' && (
-                  <>
-                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'test')}><RefreshCw size={15} /> {syncLabel(row.id, 'test', 'Test')}</button>
-                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'categories')}><RefreshCw size={15} /> {syncLabel(row.id, 'categories', 'Kategori')}</button>
-                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'products')}><RefreshCw size={15} /> {syncLabel(row.id, 'products', 'Urun')}</button>
-                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'prices')}><RefreshCw size={15} /> {syncLabel(row.id, 'prices', 'Stok/Fiyat')}</button>
-                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'orders')}><RefreshCw size={15} /> {syncLabel(row.id, 'orders', 'Siparis')}</button>
-                  </>
-                )}
-                {row.code === 'hepsiburada' && (
-                  <>
-                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'hbTest')}><RefreshCw size={15} /> {syncLabel(row.id, 'hbTest', 'Test')}</button>
-                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'hbCategories')}><RefreshCw size={15} /> {syncLabel(row.id, 'hbCategories', 'Kategori')}</button>
-                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'hbProducts')}><RefreshCw size={15} /> {syncLabel(row.id, 'hbProducts', 'Urun')}</button>
-                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'hbPrices')}><RefreshCw size={15} /> {syncLabel(row.id, 'hbPrices', 'Stok/Fiyat')}</button>
-                    <button type="button" disabled={loading || syncing} onClick={() => sync(row.id, 'hbOrders')}><RefreshCw size={15} /> {syncLabel(row.id, 'hbOrders', 'Siparis')}</button>
-                  </>
-                )}
-              </div>
-            ),
-          },
-        ]}
-      />
       )}
     </>
   );

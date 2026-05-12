@@ -20,6 +20,19 @@ const tabs = [
   ['errors', 'Pazaryeri Hatalari'],
 ];
 
+const missingLabels = {
+  category_mapping: 'Kategori eslesmesi',
+  marketplace_category: 'Pazaryeri kategorisi',
+  required_attributes: 'Zorunlu ozellik',
+  image: 'Gorsel',
+  price: 'Fiyat',
+  stock: 'Stok',
+};
+
+function missingText(fields = []) {
+  return fields.map((field) => missingLabels[field] || field).join(', ');
+}
+
 export function ProductDetailPage() {
   const { id } = useParams();
   const { notify } = useApp();
@@ -64,7 +77,7 @@ export function ProductDetailPage() {
       marketplace: code,
       status: marketplaceStatus(product, code)?.status || '-',
       readiness: marketplaceStatus(product, code)?.readiness_status || (readiness?.marketplaces?.[code]?.ready ? 'Hazir' : 'Eksik'),
-      missing: readiness?.marketplaces?.[code]?.missing_fields?.join(', ') || '-',
+      missing: missingText(readiness?.marketplaces?.[code]?.missing_fields || []) || '-',
       last_sent_at: marketplaceStatus(product, code)?.last_sent_at || '-',
       error: marketplaceStatus(product, code)?.error_message || '-',
     }));
@@ -93,7 +106,7 @@ export function ProductDetailPage() {
       {missing.length > 0 && (
         <section className="state-box workflow-warning">
           <AlertTriangle size={18} />
-          <span>Eksik alanlar: {missing.join(', ')}. Gonderimden once kategori eslesmesi ve zorunlu ozellikler tamamlanmali.</span>
+          <span>Eksik alanlar: {missingText(missing)}. Gonderimden once kategori eslesmesi ve zorunlu ozellikler tamamlanmali.</span>
         </section>
       )}
 
@@ -138,7 +151,13 @@ export function ProductDetailPage() {
       {activeTab === 'variants' && (
         <section className="panel">
           <h2>Varyantlar</h2>
-          <pre className="json-preview">{JSON.stringify(product.variant_options || [], null, 2)}</pre>
+          {(product.variant_options || []).length === 0 ? (
+            <div className="soft-empty">Bu urunde varyant bulunmuyor.</div>
+          ) : (
+            <div className="category-list">
+              {(product.variant_options || []).map((variant, index) => <span key={variant.sku || variant.name || index}>{variant.name || variant.sku || `Varyant ${index + 1}`}</span>)}
+            </div>
+          )}
         </section>
       )}
 

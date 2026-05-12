@@ -11,17 +11,32 @@ import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { publishBlockReason } from './productWorkflow.js';
 
+const missingLabels = {
+  category_mapping: 'Kategori eslesmesi eksik',
+  marketplace_category: 'Pazaryeri kategorisi eksik',
+  required_attributes: 'Zorunlu ozellik eksik',
+  image: 'Gorsel eksik',
+  price: 'Fiyat kontrol edilmeli',
+  stock: 'Stok kontrol edilmeli',
+};
+
 function draftMissingText(draft) {
+  const missing = draftMissingFields(draft)
+    .map((field) => missingLabels[field] || field);
+
+  return [...new Set(missing)].join(', ');
+}
+
+function draftMissingFields(draft) {
   return Object.values(draft.readiness_report || {})
     .flatMap((report) => report?.missing_fields || [])
-    .filter(Boolean)
-    .join(', ');
+    .filter(Boolean);
 }
 
 function draftStatusLabel(draft) {
   if (draft.status === 'ready') return 'Hazir';
   if (draft.status === 'blocked') {
-    const missing = draftMissingText(draft);
+    const missing = draftMissingFields(draft);
     if (missing.includes('category_mapping')) return 'Eksik kategori';
     if (missing.includes('required_attributes')) return 'Eksik ozellik';
     if (missing.includes('image')) return 'Eksik gorsel';
@@ -42,10 +57,12 @@ export function PublishQueuePage() {
   const [selectedDrafts, setSelectedDrafts] = useState([]);
   const [marketplaceId, setMarketplaceId] = useState('');
   const [previewDraft, setPreviewDraft] = useState(null);
+  const [activeQueueTab, setActiveQueueTab] = useState('ready');
 
   const selectedMarketplace = useMemo(() => marketplaces.find((marketplace) => String(marketplace.id) === String(marketplaceId)), [marketplaces, marketplaceId]);
   const readyDrafts = drafts.filter((draft) => ['ready', 'queued'].includes(draft.status));
   const blockedDrafts = drafts.filter((draft) => !['ready', 'queued'].includes(draft.status));
+  const visibleDrafts = activeQueueTab === 'ready' ? readyDrafts : blockedDrafts;
 
   const load = async () => {
     await run(async () => {
@@ -103,7 +120,8 @@ export function PublishQueuePage() {
   };
 
   const sendSelectedDrafts = async () => {
-    await Promise.all(selectedDrafts.map((draftId) => sendDraft(draftId)));
+    const readyIds = selectedDrafts.filter((draftId) => readyDrafts.some((draft) => draft.id === draftId));
+    await Promise.all(readyIds.map((draftId) => sendDraft(draftId)));
     setSelectedDrafts([]);
   };
 
@@ -154,7 +172,11 @@ export function PublishQueuePage() {
           {previewDraft ? (
             <>
               <div className="soft-empty"><strong>Aktarim #{previewDraft.id}</strong><span>{draftStatusLabel(previewDraft)}</span></div>
-              <pre className="json-preview">{JSON.stringify(previewDraft.payload_preview || previewDraft.result_summary || previewDraft.readiness_report, null, 2)}</pre>
+              <div className="result-summary-grid">
+                <div><span>Pazaryeri</span><strong>{previewDraft.marketplace_code || selectedMarketplace?.code || '-'}</strong></div>
+                <div><span>Urun sayisi</span><strong>{previewDraft.product_ids?.length || selectedProducts.length || 0}</strong></div>
+                <div><span>Sonuc</span><strong>{previewDraft.result_summary?.message || previewDraft.error_message || draftMissingText(previewDraft) || 'Gonderime hazir'}</strong></div>
+              </div>
             </>
           ) : (
             <div className="soft-empty">Urunleri secip listeye eklediginde gonderim onizlemesi burada gorunur.</div>
@@ -165,27 +187,25 @@ export function PublishQueuePage() {
       {selectedDrafts.length > 0 && (
         <section className="state-box bulk-action-bar">
           <span>{selectedDrafts.length} aktarim kaydi secildi.</span>
-          <button type="button" disabled={loading} onClick={sendSelectedDrafts}><Send size={16} /> Secilenleri Gonder</button>
+          <button type="button" disabled={loading || activeQueueTab !== 'ready'} onClick={sendSelectedDrafts}><Send size={16} /> Secilenleri Gonder</button>
         </section>
       )}
 
-      <section className="publish-columns">
-        <div className="panel compact-panel">
-          <h2>Gonderime Hazir Urunler</h2>
-          <span className="muted-text">{readyDrafts.length} aktarim kaydi hazir veya gonderildi.</span>
-        </div>
-        <div className="panel compact-panel">
-          <h2>Duzeltilmesi Gerekenler</h2>
-          <span className="muted-text">{blockedDrafts.length} aktarim kaydi eksik bilgi bekliyor.</span>
-        </div>
-      </section>
+      <div className="tabs">
+        <button type="button" className={activeQueueTab === 'ready' ? 'tab active' : 'tab'} onClick={() => { setActiveQueueTab('ready'); setSelectedDrafts([]); }}>
+          Gonderime Hazir ({readyDrafts.length})
+        </button>
+        <button type="button" className={activeQueueTab === 'blocked' ? 'tab active' : 'tab'} onClick={() => { setActiveQueueTab('blocked'); setSelectedDrafts([]); }}>
+          Duzeltilmesi Gerekenler ({blockedDrafts.length})
+        </button>
+      </div>
 
       <section className="panel">
         <h2>Aktarim Listesi ve Sonuclar</h2>
         <DataTable
-          rows={drafts}
+          rows={visibleDrafts}
           emptyTitle="Aktarim kaydi yok"
-          emptyText="Urun listesi veya bu ekran uzerinden urunleri aktarim listesine alin."
+          emptyText={activeQueueTab === 'ready' ? 'Hazir urun yok. Once urunleri secip onizleme ile aktarim listesine alin.' : 'Duzeltilmesi gereken aktarim kaydi yok.'}
           columns={[
             { key: 'select', label: '', render: (row) => <input type="checkbox" checked={selectedDrafts.includes(row.id)} onChange={() => toggleDraft(row.id)} /> },
             { key: 'id', label: 'Kayit' },
@@ -193,8 +213,8 @@ export function PublishQueuePage() {
             { key: 'company', label: 'Firma', render: (row) => row.company?.name || '-' },
             { key: 'status', label: 'Durum', render: (row) => <span className={row.status === 'ready' || row.status === 'queued' ? 'status-pill ready' : 'status-pill blocked'}>{draftStatusLabel(row)}</span> },
             { key: 'products', label: 'Urun', render: (row) => row.product_ids?.length || 0 },
-            { key: 'missing', label: 'Eksikler', render: (row) => draftMissingText(row) || '-' },
-            { key: 'batch', label: 'Pazaryeri Sonucu', render: (row) => row.result_summary?.batch_request_id || row.result_summary?.message || '-' },
+            { key: 'missing', label: 'Eksik Sebebi', render: (row) => draftMissingText(row) || 'Eksik yok' },
+            { key: 'batch', label: 'Sonuc', render: (row) => row.result_summary?.message || row.error_message || (row.status === 'queued' ? 'Gonderildi' : '-') },
             {
               key: 'actions',
               label: 'Islem',

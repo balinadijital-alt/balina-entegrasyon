@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, ClipboardList, FileText, PackageCheck, Truck } from 'lucide-react';
+import { ClipboardList, FileText, PackageCheck, Truck } from 'lucide-react';
 import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -11,6 +11,16 @@ import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
 const statusTabs = [
+  { key: 'new', label: 'Yeni' },
+  { key: 'preparing', label: 'Hazirlaniyor' },
+  { key: 'ready_to_ship', label: 'Kargoya Hazir' },
+  { key: 'shipped', label: 'Kargoda' },
+  { key: 'delivered', label: 'Teslim Edildi' },
+  { key: 'cancel_returned', label: 'Iptal/Iade' },
+  { key: 'problematic', label: 'Sorunlu' },
+];
+
+const bulkStatusTabs = [
   { key: 'new', label: 'Yeni' },
   { key: 'preparing', label: 'Hazirlaniyor' },
   { key: 'ready_to_ship', label: 'Kargoya Hazir' },
@@ -32,8 +42,39 @@ const statusFlow = {
   returned: [],
 };
 
+const statusLabels = {
+  new: 'Yeni',
+  preparing: 'Hazirlaniyor',
+  ready_to_ship: 'Kargoya Hazir',
+  shipped: 'Kargoda',
+  delivered: 'Teslim Edildi',
+  cancelled: 'Iptal',
+  returned: 'Iade',
+  problematic: 'Sorunlu',
+  paid: 'Odendi',
+  pending: 'Bekliyor',
+  failed: 'Hatali',
+  queued: 'Bekliyor',
+  created: 'Olustu',
+};
+
 function badge(value) {
-  return value ? <span className={`badge ${value}`}>{value}</span> : '-';
+  return value ? <span className={`badge ${value}`}>{statusLabels[value] || value}</span> : '-';
+}
+
+function formatMoney(value) {
+  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(Number(value || 0));
+}
+
+function payloadItems(order) {
+  return order?.payload?.lines || order?.payload?.items || order?.payload?.orderLines || [];
+}
+
+function itemCount(order) {
+  const items = payloadItems(order);
+  if (!Array.isArray(items) || items.length === 0) return order.item_count || 1;
+
+  return items.reduce((sum, item) => sum + Number(item.quantity || item.qty || 1), 0);
 }
 
 function orderRisk(order) {
@@ -70,8 +111,12 @@ export function OrdersPage() {
 
   const load = async () => {
     await run(async () => {
+      const apiFilters = {
+        ...filters,
+        status: filters.status === 'cancel_returned' ? '' : filters.status,
+      };
       const [orderResponse, companyResponse, shippingResponse, accountingResponse] = await Promise.all([
-        api.orders.list(filters),
+        api.orders.list(apiFilters),
         api.companies.list(),
         api.shipping.accounts(),
         api.accounting.accounts(),
@@ -91,14 +136,17 @@ export function OrdersPage() {
 
   const setFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }));
 
-  const rows = useMemo(() => orders, [orders]);
+  const rows = useMemo(() => {
+    if (filters.status !== 'cancel_returned') return orders;
+    return orders.filter((order) => ['cancelled', 'returned'].includes(order.status));
+  }, [orders, filters.status]);
   const selectedOrders = useMemo(() => orders.filter((order) => selectedOrderIds.includes(order.id)), [orders, selectedOrderIds]);
 
   const toggleOrder = (id) => {
     setSelectedOrderIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   };
 
-  const runBulk = async () => {
+  const runBulk = async (actionOverride = bulkAction) => {
     if (selectedOrderIds.length === 0) {
       notify('error', 'Toplu islem icin siparis seciniz.');
       return;
@@ -106,7 +154,7 @@ export function OrdersPage() {
 
     const payload = {
       order_ids: selectedOrderIds,
-      action: bulkAction,
+      action: actionOverride,
       status: bulkStatus,
       shipping_account_id: selectedAccountId,
       accounting_account_id: selectedAccountingAccountId,
@@ -122,8 +170,8 @@ export function OrdersPage() {
   };
 
   const availableBulkStatuses = selectedOrders.length === 0
-    ? statusTabs
-    : statusTabs.filter((tab) => selectedOrders.every((order) => order.status === tab.key || (statusFlow[order.status] || []).includes(tab.key)));
+    ? bulkStatusTabs
+    : bulkStatusTabs.filter((tab) => selectedOrders.every((order) => order.status === tab.key || (statusFlow[order.status] || []).includes(tab.key)));
 
   return (
     <>
@@ -160,16 +208,16 @@ export function OrdersPage() {
             </select>
             <select value={filters.shipping_status} onChange={(event) => setFilter('shipping_status', event.target.value)}>
               <option value="">Kargo</option>
-              <option value="queued">Kuyrukta</option>
+              <option value="queued">Bekliyor</option>
               <option value="created">Olustu</option>
               <option value="shipped">Kargoda</option>
               <option value="delivered">Teslim</option>
             </select>
             <select value={filters.invoice_status} onChange={(event) => setFilter('invoice_status', event.target.value)}>
               <option value="">Fatura</option>
-              <option value="queued">Kuyrukta</option>
+              <option value="queued">Bekliyor</option>
               <option value="issued">Kesildi</option>
-              <option value="failed">Basarisiz</option>
+              <option value="failed">Hatali</option>
             </select>
             <input type="date" value={filters.date_from} onChange={(event) => setFilter('date_from', event.target.value)} />
             <input type="date" value={filters.date_to} onChange={(event) => setFilter('date_to', event.target.value)} />
@@ -183,43 +231,15 @@ export function OrdersPage() {
         <div className="kpi-card"><span>Operasyon Riski</span><strong>{orders.filter((order) => orderRisk(order) !== 'Normal').length}</strong><small>Oncelikli takip</small></div>
       </section>
 
-      {selectedOrderIds.length > 0 && (
-        <section className="state-box bulk-action-bar order-bulk-bar">
-          <strong>{selectedOrderIds.length} siparis secildi</strong>
-          <span>{selectedOrders.map((order) => order.marketplace_order_id).slice(0, 4).join(', ')}</span>
-          <button type="button" disabled={loading} onClick={runBulk}><ClipboardList size={16} /> Toplu islemi uygula</button>
-        </section>
-      )}
-
-      <section className="panel compact-panel operation-panel">
-        <div className="panel-heading">
-          <div>
-            <span>Toplu operasyon</span>
-            <h2>Depo, kargo ve muhasebe aksiyonlari</h2>
-          </div>
-          <CalendarDays size={18} />
-        </div>
-        <div className="bulk-grid">
-          <select value={bulkAction} onChange={(event) => setBulkAction(event.target.value)}>
-            <option value="change_status">Durum Degistir</option>
-            <option value="create_shipment">Kargo Olustur</option>
-            <option value="create_invoice">Fatura Olustur</option>
-          </select>
+      <section className="state-box bulk-action-bar order-bulk-bar simple-order-actions">
+        <strong>{selectedOrderIds.length || 0} siparis secildi</strong>
+        <button type="button" disabled={loading || selectedOrderIds.length === 0} onClick={() => runBulk('create_shipment')}><Truck size={16} /> Kargo Olustur</button>
+        <button type="button" disabled={loading || selectedOrderIds.length === 0} onClick={() => runBulk('create_invoice')}><FileText size={16} /> Fatura Olustur</button>
+        <div className="status-change-inline">
           <select value={bulkStatus} onChange={(event) => setBulkStatus(event.target.value)} disabled={bulkAction !== 'change_status'}>
             {availableBulkStatuses.map((tab) => <option key={tab.key} value={tab.key}>{tab.label}</option>)}
           </select>
-          <select value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)} disabled={bulkAction !== 'create_shipment'}>
-            <option value="">Kargo hesabi</option>
-            {shippingAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} - {account.carrier?.name}</option>)}
-          </select>
-          <select value={selectedAccountingAccountId} onChange={(event) => setSelectedAccountingAccountId(event.target.value)} disabled={bulkAction !== 'create_invoice'}>
-            <option value="">Muhasebe hesabi</option>
-            {accountingAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} - {account.integration?.name}</option>)}
-          </select>
-          <button type="button" disabled={loading} onClick={runBulk}><ClipboardList size={16} /> {selectedOrderIds.length} Siparise Uygula</button>
-        </div>
-        <div className="workflow-help">
-          Workflow kurallari gecersiz durum gecislerini engeller. Iptal/iade/sorun talepleri detay ekranindan neden girilerek islenir.
+          <button type="button" disabled={loading || selectedOrderIds.length === 0} onClick={() => runBulk('change_status')}><ClipboardList size={16} /> Durum Degistir</button>
         </div>
       </section>
 
@@ -228,20 +248,16 @@ export function OrdersPage() {
         <DataTable
           rows={rows}
           emptyTitle="Siparis bulunamadi"
-          emptyText="Filtreleri degistirin veya pazaryeri siparis senkronizasyonunu calistirin."
+          emptyText="Filtreleri degistirin veya pazaryeri ekranindan siparisleri kontrol edin."
           columns={[
             { key: 'select', label: '', render: (row) => <input type="checkbox" checked={selectedOrderIds.includes(row.id)} onChange={() => toggleOrder(row.id)} /> },
-            { key: 'marketplace_order_id', label: 'Siparis No', render: (row) => <Link to={`/orders/${row.id}`}>{row.marketplace_order_id}</Link> },
-            { key: 'marketplace_code', label: 'Pazaryeri' },
-            { key: 'company', label: 'Firma', render: (row) => row.company?.name },
             { key: 'customer_name', label: 'Musteri' },
-            { key: 'total_amount', label: 'Tutar' },
-            { key: 'status', label: 'Durum', render: (row) => badge(row.status) },
-            { key: 'payment', label: 'Odeme', render: (row) => badge(row.payments?.[0]?.status || row.payment_status) },
-            { key: 'invoice', label: 'Fatura', render: (row) => badge(row.invoices?.[0]?.invoice_number || row.invoices?.[0]?.status || row.invoice_status) },
+            { key: 'items', label: 'Urun Adedi', render: (row) => itemCount(row) },
+            { key: 'total_amount', label: 'Tutar', render: (row) => formatMoney(row.total_amount) },
+            { key: 'marketplace_code', label: 'Pazaryeri' },
             { key: 'shipment', label: 'Kargo', render: (row) => badge(row.shipments?.[0]?.tracking_number || row.shipments?.[0]?.status || row.shipping_status) },
-            { key: 'risk', label: 'Operasyon', render: (row) => <span className={orderRisk(row) === 'Normal' ? 'status-pill ready' : 'status-pill blocked'}>{orderRisk(row)}</span> },
-            { key: 'actions', label: 'Islem', render: (row) => <div className="row-actions"><Link className="button-link" to={`/orders/${row.id}`}><PackageCheck size={15} /> Detay</Link><span title="Fatura ve kargo aksiyonlari detay ekraninda"><FileText size={15} /><Truck size={15} /></span></div> },
+            { key: 'status', label: 'Durum', render: (row) => badge(row.status) },
+            { key: 'actions', label: 'Islem', render: (row) => <div className="row-actions"><Link className="button-link" to={`/orders/${row.id}`}><PackageCheck size={15} /> Detay</Link></div> },
           ]}
         />
       )}

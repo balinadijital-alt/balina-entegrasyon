@@ -25,12 +25,39 @@ const stepDescriptions = [
   'Urunun temel satis bilgisini ve hangi firmaya ait oldugunu belirleyin.',
   'Kategori, marka, barkod ve SKU bilgileri pazaryeri eslestirme icin kullanilir.',
   'Fiyat, stok, KDV ve desi bilgileri satis ve kargo hesaplamalarini etkiler.',
-  'Varyantli urunlerde renk, beden ve varyant bazli stok/fiyat bilgilerini girin.',
+  'Varyantli urunlerde renk, beden ve her varyant icin stok/fiyat bilgilerini girin.',
   'Pazaryerleri icin zorunlu olan ana gorsel, galeri ve video alanlarini tamamlayin.',
-  'Urun aciklamasi ve SEO bilgileri site ve pazaryeri gorunurlugunu iyilestirir.',
-  'Kategori ID ve zorunlu ozellikler urunun pazaryerine gonderilebilmesi icin kontrol edilir.',
+  'Urun aciklamasi pazaryerinde musteriye gorunecek metindir.',
+  'Pazaryeri kategori ve ozellikleri urunun gonderime hazir olmasi icin kontrol edilir.',
   'Kaydetmeden once eksik alanlari ve pazaryeri hazirlik durumunu kontrol edin.',
 ];
+
+const readinessLabels = {
+  temel: 'Temel bilgiler',
+  barkod: 'Barkod',
+  fiyatStok: 'Fiyat ve stok',
+  gorsel: 'Gorsel',
+  aciklama: 'Aciklama',
+  seo: 'SEO bilgileri',
+  trendyol: 'Trendyol bilgileri',
+  hepsiburada: 'Hepsiburada bilgileri',
+};
+
+const missingLabels = {
+  category_mapping: 'Kategori eslesmesi',
+  marketplace_category: 'Pazaryeri kategorisi',
+  required_attributes: 'Zorunlu ozellik',
+  image: 'Gorsel',
+  price: 'Fiyat',
+  stock: 'Stok',
+  barcode: 'Barkod',
+  sku: 'SKU',
+  description: 'Aciklama',
+};
+
+function missingText(fields = []) {
+  return fields.map((field) => missingLabels[field] || field).join(', ');
+}
 
 const initialForm = {
   company_id: '',
@@ -179,7 +206,7 @@ export function ProductCreatePage() {
         setForm(initialForm);
         setStep(0);
       }
-      notify('success', isEdit ? 'Urun guncellendi ve readiness kontrolu yenilendi.' : 'Urun sihirbaz uzerinden kaydedildi.');
+      notify('success', isEdit ? 'Urun guncellendi ve hazirlik kontrolu yenilendi.' : 'Urun kaydedildi.');
     }, { onError: (message) => notify('error', message) });
   };
 
@@ -188,7 +215,7 @@ export function ProductCreatePage() {
       parseJson(form[key], null);
       setErrors((current) => ({ ...current, [key]: undefined }));
     } catch {
-      setErrors((current) => ({ ...current, [key]: `${label} gecerli JSON olmali.` }));
+      setErrors((current) => ({ ...current, [key]: `${label} gecerli formatta olmali.` }));
     }
   };
 
@@ -203,7 +230,7 @@ export function ProductCreatePage() {
       )}
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && companies.length === 0 ? <LoadingState /> : null}
-      <section className="panel wizard-panel">
+      <section className="panel wizard-panel product-wizard-panel">
         <div className="wizard-steps">
           {steps.map((label, index) => (
             <button type="button" className={index === step ? 'wizard-step active' : 'wizard-step'} key={label} onClick={() => setStep(index)}>
@@ -265,8 +292,8 @@ export function ProductCreatePage() {
           {step === 3 && (
             <div className="form-grid">
               <Field label="Varyant Basligi"><input value={form.variant_group} onChange={(event) => setValue('variant_group', event.target.value)} placeholder="Renk, Beden" /></Field>
-              <Field label="Varyant Degerleri JSON" error={errors.variant_options}>
-                <textarea value={form.variant_options} onBlur={() => validateJsonField('variant_options', 'Varyant degerleri')} onChange={(event) => setValue('variant_options', event.target.value)} placeholder='[{"name":"Siyah","sku":"SKU-S","stock":5,"price":120,"barcode":"123","image":"https://..."}]' />
+              <Field label="Varyant Degerleri" error={errors.variant_options}>
+                <textarea value={form.variant_options} onBlur={() => validateJsonField('variant_options', 'Varyant degerleri')} onChange={(event) => setValue('variant_options', event.target.value)} placeholder='[{"name":"Siyah","sku":"SKU-S","stock":5,"price":120,"barcode":"123"}]' />
               </Field>
             </div>
           )}
@@ -290,18 +317,18 @@ export function ProductCreatePage() {
 
           {step === 6 && (
             <div className="form-grid">
-              <Field label="Trendyol Kategori ID"><input type="number" value={form.trendyol_category_id} onChange={(event) => setValue('trendyol_category_id', event.target.value)} /></Field>
-              <Field label="Hepsiburada Kategori ID"><input value={form.hepsiburada_category_id} onChange={(event) => setValue('hepsiburada_category_id', event.target.value)} /></Field>
-              <Field label="Trendyol Ozellikleri JSON" error={errors.trendyol_attributes}>
+              <Field label="Trendyol Kategori Kodu"><input type="number" value={form.trendyol_category_id} onChange={(event) => setValue('trendyol_category_id', event.target.value)} /></Field>
+              <Field label="Hepsiburada Kategori Kodu"><input value={form.hepsiburada_category_id} onChange={(event) => setValue('hepsiburada_category_id', event.target.value)} /></Field>
+              <Field label="Trendyol Ozellik Eslesmeleri" error={errors.trendyol_attributes}>
                 <textarea value={form.trendyol_attributes} onBlur={() => validateJsonField('trendyol_attributes', 'Trendyol ozellikleri')} onChange={(event) => setValue('trendyol_attributes', event.target.value)} placeholder='[{"attributeId":1,"attributeValueId":1}]' />
               </Field>
-              <Field label="Hepsiburada Ozellikleri JSON" error={errors.hepsiburada_attributes}>
+              <Field label="Hepsiburada Ozellik Eslesmeleri" error={errors.hepsiburada_attributes}>
                 <textarea value={form.hepsiburada_attributes} onBlur={() => validateJsonField('hepsiburada_attributes', 'Hepsiburada ozellikleri')} onChange={(event) => setValue('hepsiburada_attributes', event.target.value)} placeholder='[{"name":"Renk","value":"Siyah"}]' />
               </Field>
               <div className="readiness-grid">
                 {Object.entries(readiness).map(([key, passed]) => (
                   <span className={passed ? 'status-pill ready' : 'status-pill blocked'} key={key}>
-                    {passed ? 'Tamam' : 'Eksik'} {key}
+                    {passed ? 'Tamam' : 'Eksik'} {readinessLabels[key] || key}
                   </span>
                 ))}
               </div>
@@ -309,7 +336,7 @@ export function ProductCreatePage() {
                 {readinessReport && Object.entries(readinessReport).map(([code, report]) => (
                   <div className="soft-empty" key={code}>
                     <strong>{code} · {report.score || 0}%</strong>
-                    <span>{report.ready ? 'Hazir' : `Eksik: ${(report.missing_fields || []).join(', ')}`}</span>
+                    <span>{report.ready ? 'Hazir' : `Eksik: ${missingText(report.missing_fields || [])}`}</span>
                   </div>
                 ))}
               </div>
@@ -321,16 +348,16 @@ export function ProductCreatePage() {
               <div className="soft-empty"><strong>{form.name || 'Urun adi yok'}</strong><span>{form.sku || 'SKU yok'} / {form.barcode || 'Barkod yok'}</span></div>
               <div className="soft-empty"><strong>{form.price || 0} TL</strong><span>Stok {form.stock || 0}, KDV %{form.vat_rate}</span></div>
               <div className="soft-empty"><strong>Pazaryeri Hazirlik</strong><span>{Object.values(readiness).filter(Boolean).length}/{Object.keys(readiness).length} kontrol tamam</span></div>
-              <div className="soft-empty"><strong>Durum</strong><span>{form.status}</span></div>
+              <div className="soft-empty"><strong>Durum</strong><span>{form.status === 'draft' ? 'Taslak' : form.status === 'active' ? 'Aktif' : 'Pasif'}</span></div>
             </div>
           )}
 
           <div className="wizard-actions">
             <button type="button" className="secondary-button" disabled={step === 0} onClick={() => setStep((current) => current - 1)}><ChevronLeft size={16} /> Geri</button>
             {step < steps.length - 1 ? (
-              <button type="button" onClick={() => setStep((current) => current + 1)}>Ileri <ChevronRight size={16} /></button>
+              <button type="button" className="primary-next-button" onClick={() => setStep((current) => current + 1)}>Sonraki <ChevronRight size={16} /></button>
             ) : (
-              <button disabled={loading}><Save size={16} /> {loading ? 'Kaydediliyor...' : (isEdit ? 'Kontrol Et ve Guncelle' : 'Onayla ve Kaydet')}</button>
+              <button className="primary-save-button" disabled={loading}><Save size={16} /> {loading ? 'Kaydediliyor...' : (isEdit ? 'Kontrol Et ve Guncelle' : 'Onayla ve Kaydet')}</button>
             )}
             <span className="wizard-save-state"><CheckCircle2 size={16} /> Taslak akisi</span>
           </div>

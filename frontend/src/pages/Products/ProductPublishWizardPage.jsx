@@ -12,11 +12,28 @@ import { useAsync } from '../../hooks/useAsync.js';
 
 const steps = ['Urun Secimi', 'Kategori Kontrol', 'Zorunlu Ozellik', 'Fiyat Stok Kar', 'Gorsel Aciklama', 'Onizleme', 'Gonderim', 'Sonuc Takibi'];
 
+const missingLabels = {
+  category_mapping: 'Kategori eslesmesi',
+  marketplace_category: 'Pazaryeri kategorisi',
+  required_attributes: 'Zorunlu ozellik',
+  image: 'Gorsel',
+  price: 'Fiyat',
+  stock: 'Stok',
+};
+
 function missingText(report) {
   return Object.values(report || {})
     .flatMap((item) => item?.missing_fields || [])
     .filter(Boolean)
+    .map((field) => missingLabels[field] || field)
     .join(', ');
+}
+
+function draftStatusLabel(status) {
+  if (status === 'ready') return 'Hazir';
+  if (status === 'blocked') return 'Eksik';
+  if (status === 'queued') return 'Gonderildi';
+  return status || '-';
 }
 
 export function ProductPublishWizardPage() {
@@ -186,7 +203,7 @@ export function ProductPublishWizardPage() {
         {step === 2 && (
           <div className="form-grid">
             <Field label="Kategori Esleme"><input value={mappings.category_id} onChange={(event) => setMappings({ ...mappings, category_id: event.target.value })} /></Field>
-            <Field label="Ozellik Esleme JSON"><textarea value={mappings.attributes} onChange={(event) => setMappings({ ...mappings, attributes: event.target.value })} placeholder='{"renk":"Renk","beden":"Beden"}' /></Field>
+            <Field label="Ozellik Esleme"><textarea value={mappings.attributes} onChange={(event) => setMappings({ ...mappings, attributes: event.target.value })} placeholder='{"renk":"Renk","beden":"Beden"}' /></Field>
             {selectedMarketplace?.code === 'trendyol' && <button type="button" disabled={loading} onClick={fetchRequiredAttributes}>Trendyol Zorunlu Ozellikleri Getir</button>}
             {requiredAttributes.length > 0 && (
               <div className="soft-empty">
@@ -219,7 +236,7 @@ export function ProductPublishWizardPage() {
           <div className="preview-grid">
             {draft ? (
               <>
-                <div className="soft-empty"><strong>Aktarim #{draft.id}</strong><span>{draft.status}</span></div>
+                <div className="soft-empty"><strong>Aktarim #{draft.id}</strong><span>{draftStatusLabel(draft.status)}</span></div>
                 <div className="soft-empty"><strong>{draft.marketplace_code}</strong><span>{selectedProducts.length} urun</span></div>
                 <div className="soft-empty"><strong>Eksikler</strong><span>{missingText(draft.readiness_report) || 'Kritik eksik yok'}</span></div>
               </>

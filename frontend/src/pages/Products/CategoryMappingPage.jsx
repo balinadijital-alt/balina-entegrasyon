@@ -30,6 +30,11 @@ function mappingForm(record) {
   };
 }
 
+function catalogCategories(result) {
+  const categories = result?.categories || result?.data || result?.raw?.categories || [];
+  return Array.isArray(categories) ? categories : [];
+}
+
 export function CategoryMappingPage() {
   const [searchParams] = useSearchParams();
   const { notify } = useApp();
@@ -101,7 +106,7 @@ export function CategoryMappingPage() {
     }
     if (form.marketplace_code !== 'trendyol') {
       setCategoryAttributes([]);
-      notify('success', 'Hepsiburada icin ozellik esleme JSON alanindan yonetilir.');
+      notify('success', 'Hepsiburada icin ozellik eslesmeleri form alanindan yonetilir.');
       return;
     }
 
@@ -119,7 +124,7 @@ export function CategoryMappingPage() {
     try {
       attributes = form.attributes ? JSON.parse(form.attributes) : {};
     } catch {
-      setError('Ozellik ve deger eslemeleri gecerli JSON olmali.');
+      setError('Ozellik ve deger eslemeleri gecerli formatta olmali.');
       return;
     }
 
@@ -147,10 +152,14 @@ export function CategoryMappingPage() {
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && mappings.length === 0 ? <LoadingState /> : null}
 
+      <section className="state-box category-help-box">
+        <span>Urunleri pazaryerine gondermeden once kategori eslestirmesi yapilmalidir. Bir eslesme kaydettiginizde ayni kategorideki urunler gonderime hazirlik kontrolunde ilerler.</span>
+      </section>
+
       <section className="mapping-board">
         <section className="panel compact-panel">
-          <h2>Yerel Kategoriler</h2>
-          {localCategories.length === 0 ? <div className="soft-empty">Bu firma icin kategori bulunmuyor.</div> : localCategories.map((category) => (
+          <h2>Benim Kategorilerim</h2>
+          {localCategories.length === 0 ? <div className="soft-empty">Henuz urun kategorisi yok. Once urun ekleyin veya toplu urun yukleyin.</div> : localCategories.map((category) => (
             <button type="button" className={form.local_category === category ? 'mapping-category active' : 'mapping-category'} key={category} onClick={() => setValue('local_category', category)}>
               <span>{category}</span>
               <small>{products.filter((product) => product.category === category).length} urun</small>
@@ -159,9 +168,9 @@ export function CategoryMappingPage() {
         </section>
 
         <form className="panel compact-panel" onSubmit={save}>
-          <h2>Eslesme Sablonu</h2>
+          <h2>Pazaryeri Kategori Agaci</h2>
           <div className="soft-empty success-empty">
-            Bu eslesme kaydedilirse {affectedProductCount} urun pazaryeri hazirlik kontrolunde kategori eslesmesini tamamlamis olur.
+            Bu eslesme kaydedilirse {affectedProductCount} urun gonderime bir adim daha hazir olur.
           </div>
           <div className="form-grid">
             <Field label="Firma">
@@ -179,17 +188,28 @@ export function CategoryMappingPage() {
             <Field label="Yerel Kategori"><input value={form.local_category} onChange={(event) => setValue('local_category', event.target.value)} /></Field>
             <Field label="Pazaryeri Kategori ID"><input value={form.external_category_id} onChange={(event) => setValue('external_category_id', event.target.value)} /></Field>
             <Field label="Pazaryeri Kategori Adi"><input value={form.external_category_name} onChange={(event) => setValue('external_category_name', event.target.value)} /></Field>
-            <Field label="Ozellik ve Deger Eslemeleri JSON"><textarea value={form.attributes} onChange={(event) => setValue('attributes', event.target.value)} /></Field>
+            <Field label="Ozellik ve Deger Eslemeleri"><textarea value={form.attributes} onChange={(event) => setValue('attributes', event.target.value)} /></Field>
           </div>
           <div className="wizard-actions inline-actions">
-            <button type="button" className="secondary-button" disabled={loading} onClick={fetchMarketplaceCatalog}><RefreshCw size={16} /> Kategori Agaci</button>
+            <button type="button" className="secondary-button" disabled={loading} onClick={fetchMarketplaceCatalog}><RefreshCw size={16} /> Kategori Agacini Getir</button>
             <button type="button" className="secondary-button" disabled={loading} onClick={fetchAttributes}>Zorunlu Ozellikleri Getir</button>
             <button disabled={loading}><Save size={16} /> Sablon Kaydet</button>
           </div>
+          {catalogResult && (
+            <div className="category-list">
+              {catalogCategories(catalogResult).slice(0, 12).map((category) => (
+                <span key={category.id || category.categoryId || category.name}>{category.name || category.categoryName || category.title}</span>
+              ))}
+            </div>
+          )}
         </form>
 
         <section className="panel compact-panel">
-          <h2>Zorunlu Ozellik Kontrolu</h2>
+          <h2>Zorunlu Ozellik ve Ozet</h2>
+          <div className="mapping-ready-card">
+            <strong>{affectedProductCount}</strong>
+            <span>urun bu eslesmeden etkilenir</span>
+          </div>
           <div className="attribute-row"><strong>Marka</strong><span>Yerel marka alanina baglanir</span></div>
           <div className="attribute-row"><strong>Renk</strong><span>Varyant veya ozel alan</span></div>
           <div className="attribute-row"><strong>Beden</strong><span>Varyant degeri</span></div>
@@ -204,7 +224,6 @@ export function CategoryMappingPage() {
               <span>{attribute.required ? 'Zorunlu' : 'Opsiyonel'}</span>
             </div>
           ))}
-          {catalogResult && <pre className="json-preview">{JSON.stringify(catalogResult, null, 2)}</pre>}
         </section>
       </section>
 
