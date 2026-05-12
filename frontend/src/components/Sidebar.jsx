@@ -1,10 +1,14 @@
-import { Bell, Bolt, ChevronsLeft, KeyRound, PanelLeft, Plus, Search } from 'lucide-react';
+import { Bell, ChevronDown, ChevronsLeft, KeyRound, PanelLeft, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { navigationGroups } from '../navigation.js';
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
+  const [openGroups, setOpenGroups] = useState(() => navigationGroups.reduce((acc, group, index) => ({ ...acc, [group.label]: index < 2 }), {}));
+
+  const toggleGroup = (label) => setOpenGroups((current) => ({ ...current, [label]: !current[label] }));
 
   return (
     <aside className={collapsed ? 'sidebar collapsed' : 'sidebar'}>
@@ -35,12 +39,17 @@ export function Sidebar() {
       <nav className="sidebar-nav">
         {navigationGroups.map((group) => (
           <div className="nav-group" key={group.label}>
-            <span className="nav-group-label">{group.label}</span>
-            {group.items.map(({ to, label, icon: Icon, end }) => (
-              <NavLink key={to} to={to} end={end}>
+            <button type="button" className="nav-group-toggle" onClick={() => toggleGroup(group.label)}>
+              <span>{group.label}</span>
+              <ChevronDown size={14} className={openGroups[group.label] ? 'open' : ''} />
+            </button>
+            {openGroups[group.label] && group.items.map(({ to, label, icon: Icon, end }) => (
+              <NavLink key={`${group.label}-${to}-${label}`} to={to} end={end} className={({ isActive }) => {
+                const current = isActive || (!end && location.pathname.startsWith(to));
+                return current ? 'active' : undefined;
+              }}>
                 <Icon size={18} />
                 <span>{label}</span>
-                {label === 'Queue' && <Bolt size={13} className="nav-bolt" />}
               </NavLink>
             ))}
           </div>

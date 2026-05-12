@@ -44,6 +44,8 @@ export function PublishQueuePage() {
   const [previewDraft, setPreviewDraft] = useState(null);
 
   const selectedMarketplace = useMemo(() => marketplaces.find((marketplace) => String(marketplace.id) === String(marketplaceId)), [marketplaces, marketplaceId]);
+  const readyDrafts = drafts.filter((draft) => ['ready', 'queued'].includes(draft.status));
+  const blockedDrafts = drafts.filter((draft) => !['ready', 'queued'].includes(draft.status));
 
   const load = async () => {
     await run(async () => {
@@ -167,8 +169,19 @@ export function PublishQueuePage() {
         </section>
       )}
 
+      <section className="publish-columns">
+        <div className="panel compact-panel">
+          <h2>Gonderime Hazir Urunler</h2>
+          <span className="muted-text">{readyDrafts.length} aktarim kaydi hazir veya gonderildi.</span>
+        </div>
+        <div className="panel compact-panel">
+          <h2>Duzeltilmesi Gerekenler</h2>
+          <span className="muted-text">{blockedDrafts.length} aktarim kaydi eksik bilgi bekliyor.</span>
+        </div>
+      </section>
+
       <section className="panel">
-        <h2>Aktarim Kuyrugu</h2>
+        <h2>Aktarim Kuyrugu ve Batch Takibi</h2>
         <DataTable
           rows={drafts}
           emptyTitle="Aktarim kaydi yok"

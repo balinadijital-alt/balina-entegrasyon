@@ -1,24 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ClipboardList, Edit3, Eye, Grid2X2, ImagePlus, Layers3, List, PackagePlus, Send, Upload } from 'lucide-react';
+import { ClipboardList, Edit3, Eye, Grid2X2, Layers3, List, MoreHorizontal, PackagePlus, Send, UploadCloud } from 'lucide-react';
 import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { PageToolbar } from '../../components/PageToolbar.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { marketplaceStatus, missingFields, productImage, publishBlockReason, readinessScore } from './productWorkflow.js';
 
 export function ProductsPage() {
   const { notify } = useApp();
-  const { loading, error, setError, run } = useAsync();
+  const { loading, error, run } = useAsync();
   const [products, setProducts] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [marketplaces, setMarketplaces] = useState([]);
-  const [imageProductId, setImageProductId] = useState('');
-  const [imageFile, setImageFile] = useState(null);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [companyId, setCompanyId] = useState('');
@@ -46,21 +43,6 @@ export function ProductsPage() {
   useEffect(() => {
     load();
   }, []);
-
-  const uploadImage = async (event) => {
-    event.preventDefault();
-    if (!imageProductId || !imageFile) {
-      setError('Gorsel yuklemek icin urun ve dosya secimi zorunludur.');
-      return;
-    }
-    const body = new FormData();
-    body.append('image', imageFile);
-    await run(async () => {
-      await api.products.uploadImage(imageProductId, body);
-      notify('success', 'Gorsel yuklendi.');
-      await load();
-    }, { onError: (message) => notify('error', message) });
-  };
 
   const toggleSelected = (id) => {
     setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
@@ -157,16 +139,16 @@ export function ProductsPage() {
             </div>
             <Link className="button-link secondary-link" to="/products/category-mapping"><Layers3 size={16} /> Kategori Esle</Link>
             <Link className="button-link secondary-link" to="/products/publish-queue"><ClipboardList size={16} /> Aktarim Listesi</Link>
+            <Link className="button-link secondary-link" to="/products/import"><UploadCloud size={16} /> Toplu Urun Yukle</Link>
             <Link className="button-link" to="/products/new"><PackagePlus size={16} /> Urun Ekle</Link>
           </>
         )}
       />
-      <PageToolbar
-        search={search}
-        onSearch={setSearch}
-        searchPlaceholder="Urun, SKU veya barkod ara"
-        filters={(
-          <>
+      <section className="catalog-shell">
+        <aside className="filter-panel">
+          <h2>Filtreler</h2>
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Urun, SKU veya barkod ara" />
+          <div className="filter-stack">
             <select value={companyId} onChange={(event) => setCompanyId(event.target.value)}>
               <option value="">Tum firmalar</option>
               {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
@@ -212,29 +194,14 @@ export function ProductsPage() {
               <option value="queued">Queued</option>
               <option value="failed">Failed</option>
             </select>
-          </>
-        )}
-      />
-      <section className="kpi-grid">
+          </div>
+        </aside>
+        <main className="catalog-main">
+      <section className="kpi-grid compact-kpis">
         <div className="kpi-card"><span>Toplam Urun</span><strong>{products.length}</strong><small>Katalog kaydi</small></div>
         <div className="kpi-card"><span>Pazaryerine Hazir</span><strong>{products.filter((product) => product.marketplace_ready).length}</strong><small>Eksiksiz urun</small></div>
         <div className="kpi-card"><span>Eksik Alan</span><strong>{products.filter((product) => !product.marketplace_ready).length}</strong><small>Kontrol gerekli</small></div>
         <div className="kpi-card"><span>Secili</span><strong>{selected.length}</strong><small>Toplu aksiyon</small></div>
-      </section>
-      <section className="panel compact-panel">
-        <h2>Gorsel Yukleme</h2>
-        <form className="form-grid" onSubmit={uploadImage}>
-          <select value={imageProductId} onChange={(event) => setImageProductId(event.target.value)}>
-            <option value="">Urun seciniz</option>
-            {products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
-          </select>
-          <label className="drag-drop-card">
-            <ImagePlus size={18} />
-            <span>{imageFile ? imageFile.name : 'Gorsel surukle veya sec'}</span>
-            <input type="file" accept="image/*" onChange={(event) => setImageFile(event.target.files[0])} />
-          </label>
-          <button disabled={loading}><Upload size={16} /> Gorsel Yukle</button>
-        </form>
       </section>
       {selected.length > 0 && (
         <section className="state-box bulk-action-bar">
@@ -326,18 +293,23 @@ export function ProductsPage() {
                   <button type="button" disabled={loading} onClick={() => saveQuickEdit(row)}>Kaydet</button>
                 </div>
               ) : (
-                <div className="row-actions">
-                  <Link className="button-link secondary-link" to={`/products/${row.id}/edit`}><Edit3 size={15} /> Duzenle</Link>
-                  <Link className="button-link secondary-link" to={`/products/${row.id}`}><Eye size={15} /> Detay</Link>
-                  <Link className="button-link secondary-link" to={`/products/category-mapping?category=${encodeURIComponent(row.category || '')}`}><Layers3 size={15} /> Esle</Link>
-                  <button type="button" className="secondary-button" disabled={loading} onClick={() => addToPublishQueue([row.id])}>Listeye ekle</button>
-                  <button type="button" disabled={loading} onClick={() => sendProducts([row.id])}><Send size={15} /> Gonder</button>
-                </div>
+                <details className="action-menu">
+                  <summary><MoreHorizontal size={16} /> Islemler</summary>
+                  <div>
+                    <Link to={`/products/${row.id}/edit`}><Edit3 size={15} /> Duzenle</Link>
+                    <Link to={`/products/${row.id}`}><Eye size={15} /> Detay</Link>
+                    <Link to={`/products/category-mapping?category=${encodeURIComponent(row.category || '')}`}><Layers3 size={15} /> Kategori esle</Link>
+                    <button type="button" disabled={loading} onClick={() => addToPublishQueue([row.id])}>Aktarima ekle</button>
+                    <button type="button" disabled={loading} onClick={() => sendProducts([row.id])}><Send size={15} /> Gonder</button>
+                  </div>
+                </details>
               ),
             },
           ]}
         />
       )}
+        </main>
+      </section>
     </>
   );
 }

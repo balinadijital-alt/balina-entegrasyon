@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { AlertTriangle, Edit3, Layers3, Send } from 'lucide-react';
+import { AlertTriangle, Edit3, ImagePlus, Layers3, Send, Upload } from 'lucide-react';
 import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { marketplaceStatus, missingFields, productImage, publishBlockReason, readinessScore } from './productWorkflow.js';
 
@@ -21,10 +22,12 @@ const tabs = [
 
 export function ProductDetailPage() {
   const { id } = useParams();
+  const { notify } = useApp();
   const { loading, error, run } = useAsync();
   const [product, setProduct] = useState(null);
   const [readiness, setReadiness] = useState(null);
   const [activeTab, setActiveTab] = useState('general');
+  const [imageFile, setImageFile] = useState(null);
 
   const load = async () => {
     await run(async () => {
@@ -37,6 +40,22 @@ export function ProductDetailPage() {
   useEffect(() => {
     load();
   }, [id]);
+
+  const uploadImage = async (event) => {
+    event.preventDefault();
+    if (!imageFile) {
+      notify('error', 'Yuklemek icin gorsel seciniz.');
+      return;
+    }
+    const body = new FormData();
+    body.append('image', imageFile);
+    await run(async () => {
+      await api.products.uploadImage(id, body);
+      setImageFile(null);
+      notify('success', 'Urun gorseli yuklendi.');
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
 
   const statusRows = useMemo(() => {
     if (!product) return [];
@@ -124,11 +143,24 @@ export function ProductDetailPage() {
       )}
 
       {activeTab === 'images' && (
-        <section className="product-image-grid">
-          {[product.main_image_url, ...(product.gallery_images || []), ...(product.images || []).map((item) => item.url || item.path)].filter(Boolean).map((url) => (
-            <div className="product-image-card" key={url}><img src={url} alt={product.name} /></div>
-          ))}
-        </section>
+        <>
+          <section className="panel compact-panel">
+            <h2>Gorsel Yukleme</h2>
+            <form className="form-grid" onSubmit={uploadImage}>
+              <label className="drag-drop-card">
+                <ImagePlus size={18} />
+                <span>{imageFile ? imageFile.name : 'Ana veya galeri gorseli sec'}</span>
+                <input type="file" accept="image/*" onChange={(event) => setImageFile(event.target.files[0])} />
+              </label>
+              <button disabled={loading}><Upload size={16} /> Gorsel Yukle</button>
+            </form>
+          </section>
+          <section className="product-image-grid">
+            {[product.main_image_url, ...(product.gallery_images || []), ...(product.images || []).map((item) => item.url || item.path)].filter(Boolean).map((url) => (
+              <div className="product-image-card" key={url}><img src={url} alt={product.name} /></div>
+            ))}
+          </section>
+        </>
       )}
 
       {activeTab === 'seo' && (

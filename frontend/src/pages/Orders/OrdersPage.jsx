@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ClipboardList, FileText, PackageCheck, Truck } from 'lucide-react';
+import { CalendarDays, ClipboardList, FileText, PackageCheck, Truck } from 'lucide-react';
 import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -21,8 +21,27 @@ const statusTabs = [
   { key: 'problematic', label: 'Sorunlu' },
 ];
 
+const statusFlow = {
+  new: ['preparing', 'cancelled', 'problematic'],
+  preparing: ['ready_to_ship', 'cancelled', 'problematic'],
+  ready_to_ship: ['shipped', 'cancelled', 'problematic'],
+  shipped: ['delivered', 'returned', 'problematic'],
+  delivered: ['returned'],
+  problematic: ['preparing', 'cancelled', 'returned'],
+  cancelled: [],
+  returned: [],
+};
+
 function badge(value) {
   return value ? <span className={`badge ${value}`}>{value}</span> : '-';
+}
+
+function orderRisk(order) {
+  if (order.status === 'problematic') return 'Sorunlu islem';
+  if (!order.shipments?.[0] && ['preparing', 'ready_to_ship'].includes(order.status)) return 'Kargo bekliyor';
+  if (!order.invoices?.[0] && ['shipped', 'delivered'].includes(order.status)) return 'Fatura bekliyor';
+  if ((order.payments?.[0]?.status || order.payment_status) === 'failed') return 'Odeme hatasi';
+  return 'Normal';
 }
 
 export function OrdersPage() {
@@ -73,6 +92,7 @@ export function OrdersPage() {
   const setFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }));
 
   const rows = useMemo(() => orders, [orders]);
+  const selectedOrders = useMemo(() => orders.filter((order) => selectedOrderIds.includes(order.id)), [orders, selectedOrderIds]);
 
   const toggleOrder = (id) => {
     setSelectedOrderIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
@@ -100,6 +120,10 @@ export function OrdersPage() {
       await load();
     }, { onError: (message) => notify('error', message) });
   };
+
+  const availableBulkStatuses = selectedOrders.length === 0
+    ? statusTabs
+    : statusTabs.filter((tab) => selectedOrders.every((order) => order.status === tab.key || (statusFlow[order.status] || []).includes(tab.key)));
 
   return (
     <>
@@ -156,11 +180,25 @@ export function OrdersPage() {
         <div className="kpi-card"><span>Bu Sekme</span><strong>{orders.length}</strong><small>{statusTabs.find((tab) => tab.key === filters.status)?.label}</small></div>
         <div className="kpi-card"><span>Odeme Bekleyen</span><strong>{orders.filter((order) => ['pending', null, undefined].includes(order.payments?.[0]?.status || order.payment_status)).length}</strong><small>Kontrol gerekli</small></div>
         <div className="kpi-card"><span>Kargo Bekleyen</span><strong>{orders.filter((order) => !order.shipments?.[0]).length}</strong><small>Etiket aksiyonu</small></div>
-        <div className="kpi-card"><span>Secili</span><strong>{selectedOrderIds.length}</strong><small>Toplu islem</small></div>
+        <div className="kpi-card"><span>Operasyon Riski</span><strong>{orders.filter((order) => orderRisk(order) !== 'Normal').length}</strong><small>Oncelikli takip</small></div>
       </section>
 
-      <section className="panel compact-panel">
-        <h2>Toplu Operasyon</h2>
+      {selectedOrderIds.length > 0 && (
+        <section className="state-box bulk-action-bar order-bulk-bar">
+          <strong>{selectedOrderIds.length} siparis secildi</strong>
+          <span>{selectedOrders.map((order) => order.marketplace_order_id).slice(0, 4).join(', ')}</span>
+          <button type="button" disabled={loading} onClick={runBulk}><ClipboardList size={16} /> Toplu islemi uygula</button>
+        </section>
+      )}
+
+      <section className="panel compact-panel operation-panel">
+        <div className="panel-heading">
+          <div>
+            <span>Toplu operasyon</span>
+            <h2>Depo, kargo ve muhasebe aksiyonlari</h2>
+          </div>
+          <CalendarDays size={18} />
+        </div>
         <div className="bulk-grid">
           <select value={bulkAction} onChange={(event) => setBulkAction(event.target.value)}>
             <option value="change_status">Durum Degistir</option>
@@ -168,7 +206,7 @@ export function OrdersPage() {
             <option value="create_invoice">Fatura Olustur</option>
           </select>
           <select value={bulkStatus} onChange={(event) => setBulkStatus(event.target.value)} disabled={bulkAction !== 'change_status'}>
-            {statusTabs.map((tab) => <option key={tab.key} value={tab.key}>{tab.label}</option>)}
+            {availableBulkStatuses.map((tab) => <option key={tab.key} value={tab.key}>{tab.label}</option>)}
           </select>
           <select value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)} disabled={bulkAction !== 'create_shipment'}>
             <option value="">Kargo hesabi</option>
@@ -179,6 +217,9 @@ export function OrdersPage() {
             {accountingAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} - {account.integration?.name}</option>)}
           </select>
           <button type="button" disabled={loading} onClick={runBulk}><ClipboardList size={16} /> {selectedOrderIds.length} Siparise Uygula</button>
+        </div>
+        <div className="workflow-help">
+          Workflow kurallari gecersiz durum gecislerini engeller. Iptal/iade/sorun talepleri detay ekranindan neden girilerek islenir.
         </div>
       </section>
 
@@ -199,6 +240,7 @@ export function OrdersPage() {
             { key: 'payment', label: 'Odeme', render: (row) => badge(row.payments?.[0]?.status || row.payment_status) },
             { key: 'invoice', label: 'Fatura', render: (row) => badge(row.invoices?.[0]?.invoice_number || row.invoices?.[0]?.status || row.invoice_status) },
             { key: 'shipment', label: 'Kargo', render: (row) => badge(row.shipments?.[0]?.tracking_number || row.shipments?.[0]?.status || row.shipping_status) },
+            { key: 'risk', label: 'Operasyon', render: (row) => <span className={orderRisk(row) === 'Normal' ? 'status-pill ready' : 'status-pill blocked'}>{orderRisk(row)}</span> },
             { key: 'actions', label: 'Islem', render: (row) => <div className="row-actions"><Link className="button-link" to={`/orders/${row.id}`}><PackageCheck size={15} /> Detay</Link><span title="Fatura ve kargo aksiyonlari detay ekraninda"><FileText size={15} /><Truck size={15} /></span></div> },
           ]}
         />

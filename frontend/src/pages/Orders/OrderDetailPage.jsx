@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, FileText, MessageSquarePlus, PackageCheck, RotateCcw, Truck } from 'lucide-react';
+import { ArrowLeft, Banknote, FileText, MessageSquarePlus, PackageCheck, ReceiptText, RotateCcw, Truck } from 'lucide-react';
 import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -20,6 +20,17 @@ const statuses = [
   ['problematic', 'Sorunlu'],
 ];
 
+const statusFlow = {
+  new: ['preparing', 'cancelled', 'problematic'],
+  preparing: ['ready_to_ship', 'cancelled', 'problematic'],
+  ready_to_ship: ['shipped', 'cancelled', 'problematic'],
+  shipped: ['delivered', 'returned', 'problematic'],
+  delivered: ['returned'],
+  problematic: ['preparing', 'cancelled', 'returned'],
+  cancelled: [],
+  returned: [],
+};
+
 function payloadItems(order) {
   return order?.payload?.lines || order?.payload?.items || order?.payload?.orderLines || [];
 }
@@ -28,6 +39,10 @@ function addressText(address) {
   if (!address) return '-';
   if (typeof address === 'string') return address;
   return [address.fullName, address.address, address.city, address.district, address.postalCode].filter(Boolean).join(' / ') || JSON.stringify(address);
+}
+
+function statusBadge(value) {
+  return value ? <span className={`badge ${value}`}>{value}</span> : <span>-</span>;
 }
 
 export function OrderDetailPage() {
@@ -46,6 +61,7 @@ export function OrderDetailPage() {
   const items = useMemo(() => payloadItems(order), [order]);
   const latestShipment = order?.shipments?.[0];
   const latestInvoice = order?.invoices?.[0];
+  const latestPayment = order?.payments?.[0];
 
   const load = async () => {
     await run(async () => {
@@ -124,6 +140,78 @@ export function OrderDetailPage() {
     }, { onError: (message) => notify('error', message) });
   };
 
+  const trackShipment = async () => {
+    if (!latestShipment?.id) {
+      notify('error', 'Takip icin once kargo kaydi olusturun.');
+      return;
+    }
+    await run(async () => {
+      const response = await api.shipping.track(latestShipment.id);
+      notify('success', response.message || 'Kargo takip sorgusu kuyruga alindi.');
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
+  const createReturnCode = async () => {
+    if (!latestShipment?.id) {
+      notify('error', 'Iade kodu icin once kargo kaydi olusturun.');
+      return;
+    }
+    await run(async () => {
+      const response = await api.shipping.returnCode(latestShipment.id);
+      notify('success', response.message || 'Iade kargo kodu kuyruga alindi.');
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
+  const queryInvoice = async () => {
+    if (!latestInvoice?.id) {
+      notify('error', 'Sorgulama icin once fatura olusturun.');
+      return;
+    }
+    await run(async () => {
+      const response = await api.accounting.queryInvoice(latestInvoice.id);
+      notify('success', response.message || 'Fatura durum sorgusu kuyruga alindi.');
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
+  const createInvoicePdf = async () => {
+    if (!latestInvoice?.id) {
+      notify('error', 'PDF icin once fatura olusturun.');
+      return;
+    }
+    await run(async () => {
+      const response = await api.accounting.createPdf(latestInvoice.id);
+      notify('success', response.message || 'Fatura PDF olusturma kuyruga alindi.');
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
+  const returnInvoice = async () => {
+    if (!latestInvoice?.id) {
+      notify('error', 'Iade faturasi icin once fatura olusturun.');
+      return;
+    }
+    await run(async () => {
+      const response = await api.accounting.returnInvoice(latestInvoice.id);
+      notify('success', response.message || 'Iade faturasi kuyruga alindi.');
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
+  const queryPayment = async () => {
+    if (!latestPayment?.id) {
+      notify('error', 'Odeme kaydi bulunmuyor.');
+      return;
+    }
+    await run(async () => {
+      const response = await api.payments.query(latestPayment.id);
+      notify('success', response.message || 'Odeme durumu sorgulandi.');
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
   const sendResolution = async () => {
     if (!resolution.reason.trim()) {
       notify('error', 'Iptal/iade/sorun nedeni zorunludur.');
@@ -145,6 +233,25 @@ export function OrderDetailPage() {
       {error && <ErrorState message={error} onRetry={load} />}
       {order && (
         <>
+          <section className="order-command-strip">
+            <div>
+              <span>Durum</span>
+              <strong>{statuses.find(([key]) => key === order.status)?.[1] || order.status}</strong>
+            </div>
+            <div>
+              <span>Odeme</span>
+              <strong>{latestPayment?.status || order.payment_status || '-'}</strong>
+            </div>
+            <div>
+              <span>Kargo</span>
+              <strong>{latestShipment?.tracking_number || latestShipment?.status || order.shipping_status || '-'}</strong>
+            </div>
+            <div>
+              <span>Fatura</span>
+              <strong>{latestInvoice?.invoice_number || latestInvoice?.status || order.invoice_status || '-'}</strong>
+            </div>
+          </section>
+
           <section className="detail-grid">
             <div className="panel detail-card">
               <h2>Musteri</h2>
@@ -171,10 +278,19 @@ export function OrderDetailPage() {
           </section>
 
           <section className="panel compact-panel">
-            <h2>Operasyon Aksiyonlari</h2>
+            <div className="panel-heading">
+              <div>
+                <span>Workflow</span>
+                <h2>Operasyon Aksiyonlari</h2>
+              </div>
+              <PackageCheck size={18} />
+            </div>
             <div className="bulk-grid">
               <select value={nextStatus} onChange={(event) => setNextStatus(event.target.value)}>
-                {statuses.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+                {statuses.map(([key, label]) => {
+                  const allowed = key === order.status || (statusFlow[order.status] || []).includes(key);
+                  return <option key={key} value={key} disabled={!allowed}>{label}{allowed ? '' : ' (workflow kapali)'}</option>;
+                })}
               </select>
               <button type="button" disabled={loading} onClick={transition}><PackageCheck size={16} /> Durum Gecir</button>
               <select value={selectedShippingAccount} onChange={(event) => setSelectedShippingAccount(event.target.value)}>
@@ -189,6 +305,7 @@ export function OrderDetailPage() {
               </select>
               <button type="button" disabled={loading} onClick={createInvoice}><FileText size={16} /> Fatura Olustur</button>
             </div>
+            <div className="workflow-help">Bu alandaki durum gecisleri backend workflow kurallariyla tekrar dogrulanir.</div>
           </section>
 
           <section className="detail-grid two">
@@ -208,9 +325,40 @@ export function OrderDetailPage() {
             </div>
             <div className="panel status-stack">
               <h2>Odeme / Kargo / Fatura</h2>
-              <div><strong>Odeme</strong><span>{order.payments?.[0]?.status || order.payment_status || '-'}</span></div>
-              <div><strong>Kargo</strong><span>{latestShipment?.tracking_number || latestShipment?.status || order.shipping_status || '-'}</span></div>
-              <div><strong>Fatura</strong><span>{latestInvoice?.invoice_number || latestInvoice?.status || order.invoice_status || '-'}</span></div>
+              <div><strong>Odeme</strong>{statusBadge(latestPayment?.status || order.payment_status)}</div>
+              <div><strong>Kargo</strong>{statusBadge(latestShipment?.tracking_number || latestShipment?.status || order.shipping_status)}</div>
+              <div><strong>Fatura</strong>{statusBadge(latestInvoice?.invoice_number || latestInvoice?.status || order.invoice_status)}</div>
+            </div>
+          </section>
+
+          <section className="order-operation-grid">
+            <div className="panel operation-card">
+              <Banknote size={20} />
+              <h2>Odeme Operasyonu</h2>
+              <p>{latestPayment?.provider_code || latestPayment?.method || 'Odeme kaydi bekleniyor.'}</p>
+              <div className="row-actions">
+                <button type="button" className="secondary-button" disabled={loading || !latestPayment?.id} onClick={queryPayment}>Durum Sorgula</button>
+              </div>
+            </div>
+            <div className="panel operation-card">
+              <Truck size={20} />
+              <h2>Kargo Operasyonu</h2>
+              <p>{latestShipment?.tracking_number || latestShipment?.carrier_code || 'Kargo kaydi bekleniyor.'}</p>
+              <div className="row-actions">
+                <button type="button" className="secondary-button" disabled={loading} onClick={trackShipment}>Takip Sorgula</button>
+                <button type="button" className="secondary-button" disabled={loading} onClick={createReturnCode}>Iade Kodu</button>
+                <button type="button" disabled={loading} onClick={createLabel}>Etiket Olustur</button>
+              </div>
+            </div>
+            <div className="panel operation-card">
+              <ReceiptText size={20} />
+              <h2>Fatura Operasyonu</h2>
+              <p>{latestInvoice?.invoice_number || latestInvoice?.status || 'Fatura kaydi bekleniyor.'}</p>
+              <div className="row-actions">
+                <button type="button" className="secondary-button" disabled={loading} onClick={queryInvoice}>Durum Sorgula</button>
+                <button type="button" className="secondary-button" disabled={loading} onClick={createInvoicePdf}>PDF Olustur</button>
+                <button type="button" disabled={loading} onClick={returnInvoice}>Iade Faturasi</button>
+              </div>
             </div>
           </section>
 

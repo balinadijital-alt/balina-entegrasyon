@@ -11,16 +11,17 @@ import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
 const tabs = [
-  ['connection', 'Baglanti', Link2],
-  ['catalog', 'Kategori Marka', Layers3],
-  ['mapping', 'Ozellik Esleme', Tags],
-  ['queue', 'Urun Kuyrugu', Send],
+  ['connection', 'Genel Durum', Link2],
+  ['account', 'Hesap Bilgileri', Link2],
+  ['catalog', 'Kategori Marka Senkron', Layers3],
+  ['mapping', 'Kategori Esleme', Tags],
+  ['queue', 'Urun Aktarim', Send],
   ['batch', 'Batch Sonuclari', Activity],
   ['price', 'Stok Fiyat', Boxes],
-  ['orders', 'Siparis Webhook', ClipboardList],
-  ['returns', 'Iade', RotateCcw],
-  ['questions', 'Soru Cevap', HelpCircle],
-  ['invoice', 'Fatura', FileText],
+  ['orders', 'Siparisler', ClipboardList],
+  ['returns', 'Iadeler', RotateCcw],
+  ['questions', 'Sorular', HelpCircle],
+  ['invoice', 'Faturalar', FileText],
   ['logs', 'API Loglari', PackageCheck],
 ];
 
@@ -149,6 +150,18 @@ export function TrendyolPage() {
       {loading && accounts.length === 0 ? <LoadingState /> : null}
 
       {activeTab === 'connection' && (
+        <section className="panel compact-panel">
+          <h2>Operasyon Ozeti</h2>
+          <div className="detail-grid">
+            <div className="detail-card"><span>Baglanti</span><strong>{selectedAccount?.connection_status || 'unknown'}</strong></div>
+            <div className="detail-card"><span>Son urun sync</span><strong>{formatDate(selectedAccount?.last_product_sync_at)}</strong></div>
+            <div className="detail-card"><span>Son stok/fiyat sync</span><strong>{formatDate(selectedAccount?.last_price_sync_at)}</strong></div>
+            <div className="detail-card"><span>Son hata</span><strong>{selectedAccount?.last_error ? 'Var' : 'Yok'}</strong></div>
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'account' && (
         <section className="panel">
           <h2>Baglanti Bilgileri</h2>
           <form className="form-grid" onSubmit={saveAccount}>

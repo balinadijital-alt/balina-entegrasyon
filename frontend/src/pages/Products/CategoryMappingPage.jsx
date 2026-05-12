@@ -36,6 +36,7 @@ export function CategoryMappingPage() {
   const { loading, error, setError, run } = useAsync();
   const [companies, setCompanies] = useState([]);
   const [marketplaces, setMarketplaces] = useState([]);
+  const [products, setProducts] = useState([]);
   const [mappings, setMappings] = useState([]);
   const [form, setForm] = useState({ ...initialForm, local_category: searchParams.get('category') || '' });
   const [editingId, setEditingId] = useState(null);
@@ -45,17 +46,26 @@ export function CategoryMappingPage() {
   const selectedAccount = useMemo(() => marketplaces.find((marketplace) => (
     marketplace.code === form.marketplace_code && String(marketplace.company_id) === String(form.company_id)
   )) || marketplaces.find((marketplace) => marketplace.code === form.marketplace_code), [marketplaces, form.company_id, form.marketplace_code]);
+  const localCategories = useMemo(() => [...new Set(products
+    .filter((product) => !form.company_id || String(product.company_id) === String(form.company_id))
+    .map((product) => product.category)
+    .filter(Boolean))], [products, form.company_id]);
+  const affectedProductCount = products.filter((product) => (
+    String(product.company_id) === String(form.company_id) && product.category === form.local_category
+  )).length;
 
   const load = async () => {
     await run(async () => {
-      const [companyResponse, marketplaceResponse, mappingResponse] = await Promise.all([
+      const [companyResponse, marketplaceResponse, mappingResponse, productResponse] = await Promise.all([
         api.companies.list(),
         api.marketplaces.list(),
         api.categoryMappings.list(),
+        api.products.list(),
       ]);
       setCompanies(companyResponse.data || []);
       setMarketplaces(marketplaceResponse.data || []);
       setMappings(mappingResponse.data || []);
+      setProducts(productResponse.data || []);
       setForm((current) => ({
         ...current,
         company_id: current.company_id || companyResponse.data?.[0]?.id || '',
@@ -137,9 +147,22 @@ export function CategoryMappingPage() {
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && mappings.length === 0 ? <LoadingState /> : null}
 
-      <section className="workflow-grid">
+      <section className="mapping-board">
+        <section className="panel compact-panel">
+          <h2>Yerel Kategoriler</h2>
+          {localCategories.length === 0 ? <div className="soft-empty">Bu firma icin kategori bulunmuyor.</div> : localCategories.map((category) => (
+            <button type="button" className={form.local_category === category ? 'mapping-category active' : 'mapping-category'} key={category} onClick={() => setValue('local_category', category)}>
+              <span>{category}</span>
+              <small>{products.filter((product) => product.category === category).length} urun</small>
+            </button>
+          ))}
+        </section>
+
         <form className="panel compact-panel" onSubmit={save}>
           <h2>Eslesme Sablonu</h2>
+          <div className="soft-empty success-empty">
+            Bu eslesme kaydedilirse {affectedProductCount} urun pazaryeri hazirlik kontrolunde kategori eslesmesini tamamlamis olur.
+          </div>
           <div className="form-grid">
             <Field label="Firma">
               <select value={form.company_id} onChange={(event) => setValue('company_id', event.target.value)}>
@@ -167,6 +190,12 @@ export function CategoryMappingPage() {
 
         <section className="panel compact-panel">
           <h2>Zorunlu Ozellik Kontrolu</h2>
+          <div className="attribute-row"><strong>Marka</strong><span>Yerel marka alanina baglanir</span></div>
+          <div className="attribute-row"><strong>Renk</strong><span>Varyant veya ozel alan</span></div>
+          <div className="attribute-row"><strong>Beden</strong><span>Varyant degeri</span></div>
+          <div className="attribute-row"><strong>Cinsiyet</strong><span>Sabit veya kategori bazli</span></div>
+          <div className="attribute-row"><strong>Yas Grubu</strong><span>Sabit veya kategori bazli</span></div>
+          <div className="attribute-row"><strong>Materyal</strong><span>Ozel alan</span></div>
           {categoryAttributes.length === 0 ? (
             <div className="soft-empty">Kategori ID girip zorunlu ozellikleri getirin. Eslesme yoksa urun gonderimi engellenir.</div>
           ) : categoryAttributes.map((attribute) => (

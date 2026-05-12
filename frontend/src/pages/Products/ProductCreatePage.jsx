@@ -11,13 +11,25 @@ import { useAsync } from '../../hooks/useAsync.js';
 import { firstError, required, validateProduct } from '../../utils/validation.js';
 
 const steps = [
-  'Temel Bilgiler',
+  'Urun Turu',
+  'Kategori Kimlik',
   'Fiyat Stok',
-  'Varyant',
-  'Gorsel',
+  'Varyantlar',
+  'Gorseller',
   'Aciklama SEO',
   'Pazaryeri',
   'Onizleme',
+];
+
+const stepDescriptions = [
+  'Urunun temel satis bilgisini ve hangi firmaya ait oldugunu belirleyin.',
+  'Kategori, marka, barkod ve SKU bilgileri pazaryeri eslestirme icin kullanilir.',
+  'Fiyat, stok, KDV ve desi bilgileri satis ve kargo hesaplamalarini etkiler.',
+  'Varyantli urunlerde renk, beden ve varyant bazli stok/fiyat bilgilerini girin.',
+  'Pazaryerleri icin zorunlu olan ana gorsel, galeri ve video alanlarini tamamlayin.',
+  'Urun aciklamasi ve SEO bilgileri site ve pazaryeri gorunurlugunu iyilestirir.',
+  'Kategori ID ve zorunlu ozellikler urunun pazaryerine gonderilebilmesi icin kontrol edilir.',
+  'Kaydetmeden once eksik alanlari ve pazaryeri hazirlik durumunu kontrol edin.',
 ];
 
 const initialForm = {
@@ -202,6 +214,11 @@ export function ProductCreatePage() {
         </div>
 
         <form onSubmit={submit}>
+          <div className="wizard-step-header">
+            <span>Adim {step + 1} / {steps.length}</span>
+            <h2>{steps[step]}</h2>
+            <p>{stepDescriptions[step]}</p>
+          </div>
           {step === 0 && (
             <div className="form-grid">
               <Field label="Firma" error={errors.company_id}>
@@ -211,10 +228,6 @@ export function ProductCreatePage() {
                 </select>
               </Field>
               <Field label="Urun Adi" error={errors.name}><input value={form.name} onChange={(event) => setValue('name', event.target.value)} /></Field>
-              <Field label="Marka"><input value={form.brand} onChange={(event) => setValue('brand', event.target.value)} /></Field>
-              <Field label="Kategori"><input value={form.category} onChange={(event) => setValue('category', event.target.value)} /></Field>
-              <Field label="Barkod"><input value={form.barcode} onChange={(event) => setValue('barcode', event.target.value)} /></Field>
-              <Field label="SKU" error={errors.sku}><input value={form.sku} onChange={(event) => setValue('sku', event.target.value)} /></Field>
               <Field label="Urun Tipi">
                 <select value={form.product_type} onChange={(event) => setValue('product_type', event.target.value)}>
                   <option value="standard">Standart</option>
@@ -228,6 +241,15 @@ export function ProductCreatePage() {
 
           {step === 1 && (
             <div className="form-grid">
+              <Field label="Kategori"><input value={form.category} onChange={(event) => setValue('category', event.target.value)} /></Field>
+              <Field label="Marka"><input value={form.brand} onChange={(event) => setValue('brand', event.target.value)} /></Field>
+              <Field label="Barkod"><input value={form.barcode} onChange={(event) => setValue('barcode', event.target.value)} /></Field>
+              <Field label="SKU" error={errors.sku}><input value={form.sku} onChange={(event) => setValue('sku', event.target.value)} /></Field>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="form-grid">
               <Field label="Alis Fiyati"><input type="number" value={form.purchase_price} onChange={(event) => setValue('purchase_price', event.target.value)} /></Field>
               <Field label="Satis Fiyati" error={errors.price}><input type="number" value={form.price} onChange={(event) => setValue('price', event.target.value)} /></Field>
               <Field label="Liste Fiyati"><input type="number" value={form.list_price} onChange={(event) => setValue('list_price', event.target.value)} /></Field>
@@ -240,7 +262,7 @@ export function ProductCreatePage() {
             </div>
           )}
 
-          {step === 2 && (
+          {step === 3 && (
             <div className="form-grid">
               <Field label="Varyant Basligi"><input value={form.variant_group} onChange={(event) => setValue('variant_group', event.target.value)} placeholder="Renk, Beden" /></Field>
               <Field label="Varyant Degerleri JSON" error={errors.variant_options}>
@@ -249,7 +271,7 @@ export function ProductCreatePage() {
             </div>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <div className="form-grid">
               <Field label="Ana Gorsel URL"><input value={form.main_image_url} onChange={(event) => setValue('main_image_url', event.target.value)} /></Field>
               <Field label="Galeri Gorselleri"><textarea value={form.gallery_images} onChange={(event) => setValue('gallery_images', event.target.value)} placeholder="Her satira bir gorsel URL" /></Field>
@@ -257,7 +279,7 @@ export function ProductCreatePage() {
             </div>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <div className="form-grid">
               <Field label="Kisa Aciklama"><textarea value={form.short_description} onChange={(event) => setValue('short_description', event.target.value)} /></Field>
               <Field label="Detayli Aciklama"><textarea value={form.description} onChange={(event) => setValue('description', event.target.value)} /></Field>
@@ -266,7 +288,7 @@ export function ProductCreatePage() {
             </div>
           )}
 
-          {step === 5 && (
+          {step === 6 && (
             <div className="form-grid">
               <Field label="Trendyol Kategori ID"><input type="number" value={form.trendyol_category_id} onChange={(event) => setValue('trendyol_category_id', event.target.value)} /></Field>
               <Field label="Hepsiburada Kategori ID"><input value={form.hepsiburada_category_id} onChange={(event) => setValue('hepsiburada_category_id', event.target.value)} /></Field>
@@ -294,7 +316,7 @@ export function ProductCreatePage() {
             </div>
           )}
 
-          {step === 6 && (
+          {step === 7 && (
             <div className="preview-grid">
               <div className="soft-empty"><strong>{form.name || 'Urun adi yok'}</strong><span>{form.sku || 'SKU yok'} / {form.barcode || 'Barkod yok'}</span></div>
               <div className="soft-empty"><strong>{form.price || 0} TL</strong><span>Stok {form.stock || 0}, KDV %{form.vat_rate}</span></div>
