@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, Boxes, ClipboardList, FileText, HelpCircle, Layers3, Link2, PackageCheck, RefreshCw, RotateCcw, Send, Tags } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -126,10 +127,10 @@ export function TrendyolPage() {
       <PageHeader title="Trendyol Yonetim Merkezi" />
       <section className="queue-summary">
         <div className="stat-card"><span>Baglanti</span><strong>{selectedAccount?.connection_status || 'unknown'}</strong><small>{formatDate(selectedAccount?.connection_checked_at)}</small></div>
-        <div className="stat-card"><span>Ortam</span><strong>{selectedAccount?.metadata?.environment || 'production'}</strong><small>{selectedAccount?.supplier_id || '-'}</small></div>
-        <div className="stat-card"><span>Urun Sync</span><strong>{formatDate(selectedAccount?.last_product_sync_at)}</strong><small>{selectedAccount?.metadata?.last_product_batch_request_id || '-'}</small></div>
-        <div className="stat-card"><span>Stok Fiyat</span><strong>{formatDate(selectedAccount?.last_price_sync_at)}</strong><small>{selectedAccount?.metadata?.last_price_batch_request_id || '-'}</small></div>
-        <div className="stat-card"><span>Son Hata</span><strong>{selectedAccount?.last_error ? 'Var' : 'Yok'}</strong><small>{selectedAccount?.last_error || '-'}</small></div>
+        <div className="stat-card"><span>Hazir Urun</span><strong>{selectedAccount?.metadata?.ready_product_count || 0}</strong><small>Aktarima uygun</small></div>
+        <div className="stat-card"><span>Eksik Urun</span><strong>{selectedAccount?.metadata?.blocked_product_count || 0}</strong><small>Kategori/ozellik bekliyor</small></div>
+        <div className="stat-card"><span>Bekleyen Batch</span><strong>{selectedAccount?.metadata?.pending_batch_count || 0}</strong><small>{selectedAccount?.metadata?.last_product_batch_request_id || '-'}</small></div>
+        <div className="stat-card"><span>Hatali Urun</span><strong>{selectedAccount?.last_error ? 'Var' : 'Yok'}</strong><small>{selectedAccount?.last_error || 'Son siparis sync ' + formatDate(selectedAccount?.last_order_sync_at)}</small></div>
       </section>
 
       <div className="tabs">
@@ -192,7 +193,11 @@ export function TrendyolPage() {
         <section className="panel">
           <h2>Kategori - Ozellik Esleştirme</h2>
           <p className="muted-text">Urun gonderme wizard'i Trendyol kategori ID degerine gore bu servislerden zorunlu ozellikleri alir. Eksik zorunlu ozellik varsa gonderim engellenir.</p>
-          <div className="bulk-grid"><input value={categoryId} onChange={(event) => setCategoryId(event.target.value)} placeholder="Kategori ID" /><button disabled={!accountId || !categoryId} onClick={() => execute('Zorunlu ozellik kontrolu', () => api.marketplaces.trendyolCategoryAttributes(accountId, categoryId))}>Zorunlu Ozellikleri Kontrol Et</button></div>
+          <div className="bulk-grid">
+            <input value={categoryId} onChange={(event) => setCategoryId(event.target.value)} placeholder="Kategori ID" />
+            <button disabled={!accountId || !categoryId} onClick={() => execute('Zorunlu ozellik kontrolu', () => api.marketplaces.trendyolCategoryAttributes(accountId, categoryId))}>Zorunlu Ozellikleri Kontrol Et</button>
+            <Link className="button-link" to="/products/category-mapping">Kategori Esleme Sayfasina Git</Link>
+          </div>
         </section>
       )}
 
@@ -200,6 +205,7 @@ export function TrendyolPage() {
         <section className="panel">
           <h2>Urun Aktarim Kuyrugu</h2>
           <div className="bulk-grid">
+            <Link className="button-link secondary-link" to="/products/publish-queue">Aktarim Listesini Ac</Link>
             <button disabled={!accountId || loading} onClick={() => execute('Toplu urun gonderimi', () => api.marketplaces.trendyolSendProducts(accountId))}><Send size={16} /> Toplu Urun Gonder</button>
             <button disabled={!accountId || loading} onClick={() => execute('Onayli urunler', () => api.marketplaces.trendyolFilterProducts(accountId, { state: 'approved' }))}>Onayli Urunler</button>
             <button disabled={!accountId || loading} onClick={() => execute('Onaysiz urunler', () => api.marketplaces.trendyolFilterProducts(accountId, { state: 'unapproved' }))}>Onaysiz Urunler</button>

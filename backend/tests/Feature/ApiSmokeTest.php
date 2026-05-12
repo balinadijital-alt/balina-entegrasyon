@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Company;
 use App\Models\AuditLog;
+use App\Models\CategoryMapping;
 use App\Models\MarketplaceAccount;
 use App\Models\Order;
 use App\Models\Product;
@@ -83,6 +84,24 @@ class ApiSmokeTest extends TestCase
             'name' => 'Test Trendyol',
             'supplier_id' => '12345',
             'is_active' => true,
+        ]);
+
+        CategoryMapping::create([
+            'company_id' => $this->company->id,
+            'marketplace_code' => 'trendyol',
+            'local_category' => 'Demo Kategori',
+            'external_category_id' => '123',
+            'external_category_name' => 'Demo Trendyol Kategori',
+            'attributes' => ['brand' => 'Marka', 'color' => 'Renk'],
+        ]);
+
+        CategoryMapping::create([
+            'company_id' => $this->company->id,
+            'marketplace_code' => 'hepsiburada',
+            'local_category' => 'Demo Kategori',
+            'external_category_id' => 'HB-123',
+            'external_category_name' => 'Demo Hepsiburada Kategori',
+            'attributes' => ['brand' => 'Marka', 'color' => 'Renk'],
         ]);
 
         $this->getJson("/api/products/{$product['id']}/readiness")

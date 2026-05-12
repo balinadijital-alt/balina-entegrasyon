@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, ChevronLeft, ChevronRight, Send } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -9,7 +10,7 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
-const steps = ['Urun Secimi', 'Pazaryeri', 'Esleme', 'Fiyat Kontrol', 'Kontrol', 'Onizleme', 'Gonderim'];
+const steps = ['Urun Secimi', 'Kategori Kontrol', 'Zorunlu Ozellik', 'Fiyat Stok Kar', 'Gorsel Aciklama', 'Onizleme', 'Gonderim', 'Batch Takip'];
 
 function missingText(report) {
   return Object.values(report || {})
@@ -19,6 +20,7 @@ function missingText(report) {
 }
 
 export function ProductPublishWizardPage() {
+  const [searchParams] = useSearchParams();
   const { notify } = useApp();
   const { loading, error, setError, run } = useAsync();
   const [products, setProducts] = useState([]);
@@ -46,6 +48,10 @@ export function ProductPublishWizardPage() {
       const [productResponse, marketplaceResponse] = await Promise.all([api.products.list(), api.marketplaces.list()]);
       setProducts(productResponse.data || []);
       setMarketplaces(marketplaceResponse.data || []);
+      const productId = searchParams.get('product');
+      if (productId) {
+        setSelectedProducts([Number(productId)]);
+      }
     });
   };
 
@@ -86,6 +92,16 @@ export function ProductPublishWizardPage() {
   const validateDraft = async () => {
     if (!marketplaceId || selectedProducts.length === 0) {
       setError('Urun ve pazaryeri secimi zorunludur.');
+      return;
+    }
+    const categoryBlocked = selectedRows.some((product) => {
+      const report = product.marketplace_readiness?.[selectedMarketplace?.code];
+      return (report?.missing_fields || []).includes('category_mapping') || (report?.missing_fields || []).includes('marketplace_category');
+    });
+    if (categoryBlocked) {
+      const message = 'Kategori eslesmesi olmayan urunler gonderilemez. Once kategori eslestirme sayfasindan sablon olusturun.';
+      setError(message);
+      notify('error', message);
       return;
     }
     const missingAttributes = missingRequiredAttributes();
@@ -159,6 +175,11 @@ export function ProductPublishWizardPage() {
               </select>
             </Field>
             <div className="soft-empty"><strong>{selectedProducts.length} urun secildi</strong><span>{selectedMarketplace?.name || 'Pazaryeri secilmedi'}</span></div>
+            <div className="soft-empty">
+              <strong>Kategori eslesmesi kontrolu</strong>
+              <span>Eksik kategori eslesmesi varsa gonderim engellenir.</span>
+              <Link className="button-link secondary-link" to="/products/category-mapping">Kategori Esleme Sayfasina Git</Link>
+            </div>
           </div>
         )}
 
@@ -188,7 +209,7 @@ export function ProductPublishWizardPage() {
             {selectedRows.map((product) => (
               <div className="soft-empty" key={product.id}>
                 <strong>{product.name}</strong>
-                <span>{missingRequiredAttributes().some((item) => item.startsWith(`${product.sku}:`)) ? 'Trendyol zorunlu ozellik eksigi var.' : (product.marketplace_ready ? 'Genel pazaryeri kontrolleri tamam.' : missingText(product.marketplace_readiness) || 'Readiness kontrolu bekleniyor.')}</span>
+                <span>{missingRequiredAttributes().some((item) => item.startsWith(`${product.sku}:`)) ? 'Zorunlu ozellik eksigi var.' : (product.marketplace_ready ? 'Gorsel/aciklama kontrolleri tamam.' : missingText(product.marketplace_readiness) || 'Readiness kontrolu bekleniyor.')}</span>
               </div>
             ))}
           </div>
@@ -215,11 +236,19 @@ export function ProductPublishWizardPage() {
           </div>
         )}
 
+        {step === 7 && (
+          <div className="preview-grid">
+            <div className="soft-empty"><strong>Batch takip</strong><span>{draft?.result_summary?.batch_request_id || draft?.id || 'Batch numarasi gonderimden sonra olusur.'}</span></div>
+            <div className="soft-empty"><strong>API sonucu</strong><span>{draft?.result_summary?.message || draft?.error_message || 'Sonuc bekleniyor.'}</span></div>
+          </div>
+        )}
+
         <div className="wizard-actions">
           <button type="button" className="secondary-button" disabled={step === 0} onClick={() => setStep((current) => current - 1)}><ChevronLeft size={16} /> Geri</button>
           {step < 4 && <button type="button" onClick={() => setStep((current) => current + 1)}>Ileri <ChevronRight size={16} /></button>}
           {step === 4 && <button type="button" disabled={loading} onClick={validateDraft}><CheckCircle2 size={16} /> Validasyon ve Onizleme</button>}
           {step === 5 && <button type="button" disabled={loading || draft?.status === 'blocked'} onClick={() => { setStep(6); sendDraft(); }}><Send size={16} /> Pazaryerine Gonder</button>}
+          {step === 6 && <button type="button" onClick={() => setStep(7)}>Batch Takibe Gec <ChevronRight size={16} /></button>}
         </div>
       </section>
     </>

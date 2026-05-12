@@ -65,6 +65,7 @@ export const api = {
   },
   products: {
     list: (params) => http.get('/products', { params }).then((response) => response.data),
+    show: (id) => http.get(`/products/${id}`).then((response) => response.data),
     create: (payload) => http.post('/products', payload).then((response) => response.data),
     update: (id, payload) => http.put(`/products/${id}`, payload).then((response) => response.data),
     readiness: (id) => http.get(`/products/${id}/readiness`).then((response) => response.data),
@@ -94,6 +95,7 @@ export const api = {
   marketplaces: {
     list: () => http.get('/marketplaces').then((response) => response.data),
     create: (payload) => http.post('/marketplaces', payload).then((response) => response.data),
+    update: (id, payload) => http.put(`/marketplaces/${id}`, payload).then((response) => response.data),
     syncProducts: (id) => http.post(`/marketplaces/${id}/sync-products`).then((response) => response.data),
     syncOrders: (id) => http.post(`/marketplaces/${id}/sync-orders`).then((response) => response.data),
     trendyolTest: (id) => http.post(`/marketplaces/${id}/trendyol/test`).then((response) => response.data),
@@ -121,6 +123,8 @@ export const api = {
   categoryMappings: {
     list: (params) => http.get('/category-mappings', { params }).then((response) => response.data),
     create: (payload) => http.post('/category-mappings', payload).then((response) => response.data),
+    update: (id, payload) => http.put(`/category-mappings/${id}`, payload).then((response) => response.data),
+    remove: (id) => http.delete(`/category-mappings/${id}`),
   },
   orders: {
     list: (params) => http.get('/orders', { params }).then((response) => response.data),

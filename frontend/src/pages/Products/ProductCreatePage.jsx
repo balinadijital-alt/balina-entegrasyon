@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, ChevronLeft, ChevronRight, Save } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
 import { api } from '../../api/client.js';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
@@ -60,13 +61,42 @@ function parseList(value) {
   return value.split('\n').map((item) => item.trim()).filter(Boolean);
 }
 
+function stringifyJson(value) {
+  if (!value) return '';
+  return JSON.stringify(value, null, 2);
+}
+
+function productToForm(product) {
+  return {
+    ...initialForm,
+    ...product,
+    company_id: product.company_id || '',
+    purchase_price: product.purchase_price ?? '',
+    price: product.price ?? '',
+    list_price: product.list_price ?? '',
+    stock: product.stock ?? 0,
+    critical_stock: product.critical_stock ?? 0,
+    dimensional_weight: product.dimensional_weight ?? 1,
+    weight: product.weight ?? '',
+    trendyol_category_id: product.trendyol_category_id ?? '',
+    hepsiburada_category_id: product.hepsiburada_category_id ?? '',
+    gallery_images: Array.isArray(product.gallery_images) ? product.gallery_images.join('\n') : '',
+    variant_options: stringifyJson(product.variant_options),
+    trendyol_attributes: stringifyJson(product.trendyol_attributes),
+    hepsiburada_attributes: stringifyJson(product.hepsiburada_attributes),
+  };
+}
+
 export function ProductCreatePage() {
+  const { id } = useParams();
   const { notify } = useApp();
   const { loading, error, setError, run } = useAsync();
   const [companies, setCompanies] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [step, setStep] = useState(0);
+  const [readinessReport, setReadinessReport] = useState(null);
+  const isEdit = Boolean(id);
 
   const readiness = useMemo(() => {
     const checks = {
@@ -86,8 +116,15 @@ export function ProductCreatePage() {
 
   const load = async () => {
     await run(async () => {
-      const response = await api.companies.list();
-      setCompanies(response.data || []);
+      const [companyResponse, productResponse] = await Promise.all([
+        api.companies.list(),
+        isEdit ? api.products.show(id) : Promise.resolve(null),
+      ]);
+      setCompanies(companyResponse.data || []);
+      if (productResponse) {
+        setForm(productToForm(productResponse));
+        setReadinessReport(productResponse.marketplace_readiness || null);
+      }
     });
   };
 
@@ -106,7 +143,7 @@ export function ProductCreatePage() {
     }
 
     await run(async () => {
-      await api.products.create({
+      const payload = {
         ...form,
         product_type: form.product_type,
         purchase_price: form.purchase_price === '' ? null : Number(form.purchase_price),
@@ -122,10 +159,15 @@ export function ProductCreatePage() {
         variant_options: parseJson(form.variant_options, null),
         trendyol_attributes: parseJson(form.trendyol_attributes, null),
         hepsiburada_attributes: parseJson(form.hepsiburada_attributes, null),
-      });
-      setForm(initialForm);
-      setStep(0);
-      notify('success', 'Urun sihirbaz uzerinden kaydedildi.');
+      };
+      const saved = isEdit ? await api.products.update(id, payload) : await api.products.create(payload);
+      const readinessResponse = await api.products.readiness(saved.id);
+      setReadinessReport(readinessResponse.marketplaces || readinessResponse);
+      if (!isEdit) {
+        setForm(initialForm);
+        setStep(0);
+      }
+      notify('success', isEdit ? 'Urun guncellendi ve readiness kontrolu yenilendi.' : 'Urun sihirbaz uzerinden kaydedildi.');
     }, { onError: (message) => notify('error', message) });
   };
 
@@ -140,7 +182,13 @@ export function ProductCreatePage() {
 
   return (
     <>
-      <PageHeader title="Urun Ekleme Sihirbazi" />
+      <PageHeader title={isEdit ? 'Urun Duzenleme Sihirbazi' : 'Urun Ekleme Sihirbazi'} />
+      {isEdit && (
+        <section className="state-box workflow-warning">
+          <span>Duzenleme modu: Kaydetmeden once pazaryeri hazirlik kontrolleri tekrar calisir.</span>
+          <Link className="button-link secondary-link" to={`/products/${id}`}>Detaya Don</Link>
+        </section>
+      )}
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && companies.length === 0 ? <LoadingState /> : null}
       <section className="panel wizard-panel">
@@ -235,6 +283,14 @@ export function ProductCreatePage() {
                   </span>
                 ))}
               </div>
+              <div className="workflow-warning readiness-grid">
+                {readinessReport && Object.entries(readinessReport).map(([code, report]) => (
+                  <div className="soft-empty" key={code}>
+                    <strong>{code} · {report.score || 0}%</strong>
+                    <span>{report.ready ? 'Hazir' : `Eksik: ${(report.missing_fields || []).join(', ')}`}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -252,7 +308,7 @@ export function ProductCreatePage() {
             {step < steps.length - 1 ? (
               <button type="button" onClick={() => setStep((current) => current + 1)}>Ileri <ChevronRight size={16} /></button>
             ) : (
-              <button disabled={loading}><Save size={16} /> {loading ? 'Kaydediliyor...' : 'Onayla ve Kaydet'}</button>
+              <button disabled={loading}><Save size={16} /> {loading ? 'Kaydediliyor...' : (isEdit ? 'Kontrol Et ve Guncelle' : 'Onayla ve Kaydet')}</button>
             )}
             <span className="wizard-save-state"><CheckCircle2 size={16} /> Taslak akisi</span>
           </div>

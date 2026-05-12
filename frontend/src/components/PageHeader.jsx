@@ -4,6 +4,10 @@ import { flatNavigation } from '../navigation.js';
 const descriptions = {
   'Urunler': 'Katalog hazirlik, pazaryeri uygunlugu, stok ve hizli operasyonlari tek ekrandan yonetin.',
   'Urun Ekleme Sihirbazi': 'Urunu temel bilgilerden pazaryeri hazirligina kadar adim adim eksiksiz olusturun.',
+  'Urun Duzenleme Sihirbazi': 'Mevcut urunu ayni wizard akisiyle guncelleyip kayit oncesi readiness kontrolunu calistirin.',
+  'Urun Detay': 'Urun bilgileri, pazaryeri hazirligi, gonderim gecmisi ve API hatalarini tek detay ekraninda izleyin.',
+  'Kategori Eslestirme': 'Yerel kategorileri pazaryeri kategori agaci ve zorunlu ozelliklerle sablon olarak eslestirin.',
+  'Pazaryeri Aktarim Listesi': 'Urunleri once aktarim listesine alip eksik kategori, ozellik, gorsel ve fiyat kontrollerini tamamlayin.',
   'Pazaryerine Urun Gonderme Sihirbazi': 'Secilen urunleri pazaryeri kurallari, fiyat ve zorunlu ozellik kontrolleriyle gonderin.',
   'Trendyol Yonetim Merkezi': 'Baglanti, katalog, batch, siparis, iade, soru-cevap ve fatura operasyonlarini tek merkezden izleyin.',
   'Siparis Operasyonu': 'Depo, kargo, muhasebe ve musteri sureclerini durum bazli operasyon panosunda takip edin.',

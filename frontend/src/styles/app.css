@@ -709,6 +709,27 @@ a {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.workflow-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.75fr);
+}
+
+.workflow-warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.bulk-action-bar {
+  justify-content: flex-start;
+}
+
+.inline-actions {
+  margin: 0;
+  position: static;
+}
+
 .detail-grid {
   display: grid;
   gap: 18px;
@@ -731,6 +752,86 @@ a {
 .detail-card span,
 .detail-card small {
   color: #64748b;
+}
+
+.product-detail-hero {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 20px;
+  grid-template-columns: 240px minmax(0, 1fr);
+  margin-bottom: 18px;
+  padding: 18px;
+}
+
+.product-detail-media {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: #94a3b8;
+  display: flex;
+  justify-content: center;
+  min-height: 220px;
+  overflow: hidden;
+}
+
+.product-detail-media img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.product-detail-summary {
+  align-content: center;
+  display: grid;
+  gap: 16px;
+}
+
+.product-detail-summary h2 {
+  color: var(--text);
+  font-size: 28px;
+  margin: 0;
+}
+
+.product-image-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 18px;
+}
+
+.product-image-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.product-image-card img {
+  aspect-ratio: 1;
+  display: block;
+  object-fit: cover;
+  width: 100%;
+}
+
+.attribute-row {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.attribute-row span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .status-stack {
@@ -823,6 +924,43 @@ a {
 .table-tools small {
   color: #64748b;
   white-space: nowrap;
+}
+
+.table-product-image,
+.table-product-placeholder {
+  border-radius: 10px;
+  height: 42px;
+  width: 42px;
+}
+
+.table-product-image {
+  object-fit: cover;
+}
+
+.table-product-placeholder {
+  align-items: center;
+  background: #eff6ff;
+  color: #2563eb;
+  display: inline-flex;
+  justify-content: center;
+}
+
+.table-product-title {
+  display: grid;
+  gap: 3px;
+  min-width: 180px;
+}
+
+.table-product-title span,
+.score-cell span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.score-cell {
+  display: grid;
+  gap: 3px;
+  min-width: 130px;
 }
 
 table {
@@ -1859,6 +1997,9 @@ tbody td:last-child .row-actions:focus-within {
   .dashboard-hero,
   .dashboard-command-grid,
   .product-grid,
+  .workflow-grid,
+  .product-detail-hero,
+  .product-image-grid,
   .mapping-grid,
   .stats-grid,
   .dashboard-grid,

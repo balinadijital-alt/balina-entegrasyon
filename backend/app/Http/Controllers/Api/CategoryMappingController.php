@@ -20,14 +20,7 @@ class CategoryMappingController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $data = $request->validate([
-            'company_id' => ['required', 'exists:companies,id'],
-            'marketplace_code' => ['required', 'in:trendyol,hepsiburada'],
-            'local_category' => ['required', 'string', 'max:255'],
-            'external_category_id' => ['required', 'string', 'max:255'],
-            'external_category_name' => ['nullable', 'string', 'max:255'],
-            'attributes' => ['nullable', 'array'],
-        ]);
+        $data = $this->validated($request);
 
         $mapping = CategoryMapping::updateOrCreate(
             [
@@ -39,5 +32,31 @@ class CategoryMappingController extends Controller
         );
 
         return response()->json($mapping, 201);
+    }
+
+    public function update(Request $request, CategoryMapping $categoryMapping): JsonResponse
+    {
+        $categoryMapping->update($this->validated($request));
+
+        return response()->json($categoryMapping->refresh());
+    }
+
+    public function destroy(CategoryMapping $categoryMapping): JsonResponse
+    {
+        $categoryMapping->delete();
+
+        return response()->json(status: 204);
+    }
+
+    private function validated(Request $request): array
+    {
+        return $request->validate([
+            'company_id' => ['required', 'exists:companies,id'],
+            'marketplace_code' => ['required', 'in:trendyol,hepsiburada'],
+            'local_category' => ['required', 'string', 'max:255'],
+            'external_category_id' => ['required', 'string', 'max:255'],
+            'external_category_name' => ['nullable', 'string', 'max:255'],
+            'attributes' => ['nullable', 'array'],
+        ]);
     }
 }

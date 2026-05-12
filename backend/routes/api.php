@@ -123,6 +123,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::apiResource('marketplaces', MarketplaceAccountController::class)->middleware('plan.limit:marketplaces');
     Route::get('/category-mappings', [CategoryMappingController::class, 'index']);
     Route::post('/category-mappings', [CategoryMappingController::class, 'store']);
+    Route::put('/category-mappings/{categoryMapping}', [CategoryMappingController::class, 'update']);
+    Route::delete('/category-mappings/{categoryMapping}', [CategoryMappingController::class, 'destroy']);
     Route::prefix('marketplaces/{marketplace}/trendyol')->group(function () {
         Route::post('/test', [TrendyolController::class, 'test']);
         Route::get('/categories', [TrendyolController::class, 'categories']);
