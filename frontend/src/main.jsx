@@ -41,6 +41,7 @@ import { MarketplaceOnboardingPage } from './pages/Marketplaces/MarketplaceOnboa
 import { TrendyolPage } from './pages/Marketplaces/TrendyolPage.jsx';
 import { OrderDetailPage } from './pages/Orders/OrderDetailPage.jsx';
 import { OrdersPage } from './pages/Orders/OrdersPage.jsx';
+import { OperationsCenterPage } from './pages/Operations/OperationsCenterPage.jsx';
 import { PaymentsPage } from './pages/Payments/PaymentsPage.jsx';
 import { CategoryMappingPage } from './pages/Products/CategoryMappingPage.jsx';
 import { CatalogResourcePage } from './pages/Products/CatalogResourcePage.jsx';
@@ -72,6 +73,7 @@ function CustomerRoutes() {
       <Route path="resources" element={<DeveloperCenterPage />} />
       <Route path="companies" element={<CompaniesPage />} />
       <Route path="accounting" element={<AccountingPage />} />
+      <Route path="operations" element={<OperationsCenterPage />} />
       <Route path="products" element={<ProductsPage />} />
       <Route path="products/new" element={<ProductCreatePage />} />
       <Route path="products/category-mapping" element={<CategoryMappingPage />} />
@@ -136,6 +138,7 @@ function AdminRoutes() {
   return (
     <>
       <Route index element={<DashboardPage title="Super Admin Dashboard" />} />
+      <Route path="operations" element={<OperationsCenterPage />} />
       <Route path="companies" element={<CompaniesPage />} />
       <Route path="saas" element={<SaasPage />} />
       <Route path="payments" element={<PaymentsPage />} />

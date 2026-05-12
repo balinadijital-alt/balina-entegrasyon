@@ -1,4 +1,5 @@
 import {
+  Activity,
   AlertTriangle,
   BarChart3,
   BookOpen,
@@ -91,6 +92,7 @@ export const appNavigationGroups = [
   {
     label: 'Operasyon',
     items: [
+      { to: '/operations', label: 'Operasyon Merkezi', icon: Activity },
       { to: '/shipping', label: 'Kargo Yonetimi', icon: Truck },
       { to: '/payments', label: 'Odeme Yonetimi', icon: CreditCard },
       { to: '/accounting', label: 'Fatura/Cari', icon: Landmark },
@@ -197,6 +199,7 @@ export const adminNavigationGroups = [
     label: 'Sistem Operasyonu',
     items: [
       { to: '/admin/reports', label: 'Sistem Sagligi', icon: BarChart3 },
+      { to: '/admin/operations', label: 'Operasyon Merkezi', icon: Activity },
       { to: '/admin/queue', label: 'Queue Horizon', icon: Workflow },
       { to: '/admin/api-logs', label: 'API Loglari', icon: FileText },
       { to: '/admin/queue', label: 'Failed Jobs', icon: AlertTriangle },
