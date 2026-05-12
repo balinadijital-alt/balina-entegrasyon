@@ -152,6 +152,12 @@ export function OrdersPage() {
           </>
         )}
       />
+      <section className="kpi-grid">
+        <div className="kpi-card"><span>Bu Sekme</span><strong>{orders.length}</strong><small>{statusTabs.find((tab) => tab.key === filters.status)?.label}</small></div>
+        <div className="kpi-card"><span>Odeme Bekleyen</span><strong>{orders.filter((order) => ['pending', null, undefined].includes(order.payments?.[0]?.status || order.payment_status)).length}</strong><small>Kontrol gerekli</small></div>
+        <div className="kpi-card"><span>Kargo Bekleyen</span><strong>{orders.filter((order) => !order.shipments?.[0]).length}</strong><small>Etiket aksiyonu</small></div>
+        <div className="kpi-card"><span>Secili</span><strong>{selectedOrderIds.length}</strong><small>Toplu islem</small></div>
+      </section>
 
       <section className="panel compact-panel">
         <h2>Toplu Operasyon</h2>

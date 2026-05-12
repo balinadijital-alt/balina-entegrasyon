@@ -101,6 +101,12 @@ export function ShippingPage() {
   return (
     <>
       <PageHeader title="Kargo Yonetimi" />
+      <section className="kpi-grid">
+        <div className="kpi-card"><span>Kargo Hesabi</span><strong>{accounts.length}</strong><small>Aktif entegrasyon</small></div>
+        <div className="kpi-card"><span>Etiket Bekleyen</span><strong>{shipments.filter((shipment) => !shipment.label_path && !shipment.label_url).length}</strong><small>Olusturulacak</small></div>
+        <div className="kpi-card"><span>Kargoda</span><strong>{shipments.filter((shipment) => ['created', 'in_transit', 'shipped'].includes(shipment.status)).length}</strong><small>Takipte</small></div>
+        <div className="kpi-card"><span>Secili</span><strong>{selectedShipments.length}</strong><small>Toplu etiket</small></div>
+      </section>
       <section className="panel">
         <form className="form-grid" onSubmit={createAccount}>
           <Field label="Firma">

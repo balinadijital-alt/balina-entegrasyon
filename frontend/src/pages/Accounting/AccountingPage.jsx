@@ -98,6 +98,12 @@ export function AccountingPage() {
   return (
     <>
       <PageHeader title="Cari ve Fatura Yonetimi" />
+      <section className="kpi-grid">
+        <div className="kpi-card"><span>Cari Kart</span><strong>{currentAccounts.length}</strong><small>Musteri / tedarikci</small></div>
+        <div className="kpi-card"><span>Fatura</span><strong>{invoices.length}</strong><small>Toplam kayit</small></div>
+        <div className="kpi-card"><span>Tahsilat Odeme</span><strong>{transactions.length}</strong><small>Cari hareket</small></div>
+        <div className="kpi-card"><span>Entegrasyon</span><strong>{accounts.length}</strong><small>Muhasebe hesabi</small></div>
+      </section>
       <section className="split">
         <form className="panel compact-panel" onSubmit={saveCurrent}>
           <h2>Cari Kart</h2>

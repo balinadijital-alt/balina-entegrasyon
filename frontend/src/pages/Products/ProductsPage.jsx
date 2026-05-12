@@ -125,6 +125,12 @@ export function ProductsPage() {
           </>
         )}
       />
+      <section className="kpi-grid">
+        <div className="kpi-card"><span>Toplam Urun</span><strong>{products.length}</strong><small>Katalog kaydi</small></div>
+        <div className="kpi-card"><span>Pazaryerine Hazir</span><strong>{products.filter((product) => product.marketplace_ready).length}</strong><small>Eksiksiz urun</small></div>
+        <div className="kpi-card"><span>Eksik Alan</span><strong>{products.filter((product) => !product.marketplace_ready).length}</strong><small>Kontrol gerekli</small></div>
+        <div className="kpi-card"><span>Secili</span><strong>{selected.length}</strong><small>Toplu aksiyon</small></div>
+      </section>
       <section className="panel compact-panel">
         <h2>Gorsel Yukleme</h2>
         <form className="form-grid" onSubmit={uploadImage}>

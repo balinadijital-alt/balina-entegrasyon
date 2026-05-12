@@ -1,4 +1,4 @@
-import { KeyRound } from 'lucide-react';
+import { KeyRound, PanelLeft } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { navigationGroups } from '../navigation.js';
 
@@ -6,8 +6,15 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="brand">
-        <KeyRound size={22} />
-        <span>Balina Entegrasyon</span>
+        <span className="brand-mark"><KeyRound size={21} /></span>
+        <div>
+          <strong>Balina</strong>
+          <small>Entegrasyon Paneli</small>
+        </div>
+      </div>
+      <div className="sidebar-status">
+        <PanelLeft size={15} />
+        <span>Operasyon Merkezi</span>
       </div>
       <nav className="sidebar-nav">
         {navigationGroups.map((group) => (

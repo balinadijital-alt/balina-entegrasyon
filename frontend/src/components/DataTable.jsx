@@ -3,6 +3,10 @@ import { PackageOpen } from 'lucide-react';
 export function DataTable({ columns, rows, emptyText = 'Kayit bulunamadi.', emptyTitle = 'Kayit yok' }) {
   return (
     <div className="table-wrap">
+      <div className="table-meta">
+        <span>{rows.length} kayit</span>
+        <small>Guncel liste</small>
+      </div>
       <table>
         <thead>
           <tr>

@@ -96,6 +96,12 @@ export function SaasPage() {
   return (
     <>
       <PageHeader title="SaaS Abonelik ve Lisans" />
+      <section className="kpi-grid">
+        <div className="kpi-card"><span>Paket</span><strong>{plans.length}</strong><small>Satilabilir plan</small></div>
+        <div className="kpi-card"><span>Abonelik</span><strong>{subscriptions.length}</strong><small>Firma bazli</small></div>
+        <div className="kpi-card"><span>Lisans</span><strong>{licenses.length}</strong><small>Anahtar</small></div>
+        <div className="kpi-card"><span>Partner</span><strong>{partners.length}</strong><small>Bayi kanali</small></div>
+      </section>
       <section className="panel compact-panel">
         <h2>Abonelik Durumu</h2>
         <div className="form-grid">

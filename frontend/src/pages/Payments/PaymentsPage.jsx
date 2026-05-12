@@ -80,6 +80,12 @@ export function PaymentsPage() {
   return (
     <>
       <PageHeader title="Odeme Yonetimi" />
+      <section className="kpi-grid">
+        <div className="kpi-card"><span>POS Hesabi</span><strong>{accounts.length}</strong><small>Entegrasyon</small></div>
+        <div className="kpi-card"><span>Basarili</span><strong>{payments.filter((payment) => payment.status === 'paid').length}</strong><small>Odeme</small></div>
+        <div className="kpi-card"><span>Bekleyen</span><strong>{payments.filter((payment) => payment.status === 'pending').length}</strong><small>Sorgulanacak</small></div>
+        <div className="kpi-card"><span>Log</span><strong>{logs.length}</strong><small>Son kayit</small></div>
+      </section>
       <section className="panel">
         <form className="form-grid" onSubmit={createAccount}>
           <Field label="Firma">
