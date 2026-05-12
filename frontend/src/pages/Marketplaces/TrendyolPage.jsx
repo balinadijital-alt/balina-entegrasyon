@@ -13,16 +13,16 @@ import { useAsync } from '../../hooks/useAsync.js';
 const tabs = [
   ['connection', 'Genel Durum', Link2],
   ['account', 'Hesap Bilgileri', Link2],
-  ['catalog', 'Kategori Marka Senkron', Layers3],
+  ['catalog', 'Kategori Marka Guncelle', Layers3],
   ['mapping', 'Kategori Esleme', Tags],
   ['queue', 'Urun Aktarim', Send],
-  ['batch', 'Batch Sonuclari', Activity],
+  ['batch', 'Aktarim Sonuclari', Activity],
   ['price', 'Stok Fiyat', Boxes],
   ['orders', 'Siparisler', ClipboardList],
   ['returns', 'Iadeler', RotateCcw],
   ['questions', 'Sorular', HelpCircle],
   ['invoice', 'Faturalar', FileText],
-  ['logs', 'API Loglari', PackageCheck],
+  ['logs', 'Hata Kayitlari', PackageCheck],
 ];
 
 function formatDate(value) {
@@ -31,8 +31,8 @@ function formatDate(value) {
 }
 
 function userMessage(error) {
-  if (String(error || '').includes('401')) return 'Trendyol API bilgileri hatali veya ortam bilgileri uyumsuz.';
-  if (String(error || '').includes('429')) return 'Trendyol rate limit doldu. Biraz bekleyip tekrar deneyin.';
+  if (String(error || '').includes('401')) return 'Trendyol baglanti bilgileri hatali veya ortam bilgileri uyumsuz.';
+  if (String(error || '').includes('429')) return 'Trendyol istek limiti doldu. Biraz bekleyip tekrar deneyin.';
   return error;
 }
 
@@ -130,7 +130,7 @@ export function TrendyolPage() {
         <div className="stat-card"><span>Baglanti</span><strong>{selectedAccount?.connection_status || 'unknown'}</strong><small>{formatDate(selectedAccount?.connection_checked_at)}</small></div>
         <div className="stat-card"><span>Hazir Urun</span><strong>{selectedAccount?.metadata?.ready_product_count || 0}</strong><small>Aktarima uygun</small></div>
         <div className="stat-card"><span>Eksik Urun</span><strong>{selectedAccount?.metadata?.blocked_product_count || 0}</strong><small>Kategori/ozellik bekliyor</small></div>
-        <div className="stat-card"><span>Bekleyen Batch</span><strong>{selectedAccount?.metadata?.pending_batch_count || 0}</strong><small>{selectedAccount?.metadata?.last_product_batch_request_id || '-'}</small></div>
+        <div className="stat-card"><span>Bekleyen Aktarim</span><strong>{selectedAccount?.metadata?.pending_batch_count || 0}</strong><small>{selectedAccount?.metadata?.last_product_batch_request_id || '-'}</small></div>
         <div className="stat-card"><span>Hatali Urun</span><strong>{selectedAccount?.last_error ? 'Var' : 'Yok'}</strong><small>{selectedAccount?.last_error || 'Son siparis sync ' + formatDate(selectedAccount?.last_order_sync_at)}</small></div>
       </section>
 
@@ -154,8 +154,8 @@ export function TrendyolPage() {
           <h2>Operasyon Ozeti</h2>
           <div className="detail-grid">
             <div className="detail-card"><span>Baglanti</span><strong>{selectedAccount?.connection_status || 'unknown'}</strong></div>
-            <div className="detail-card"><span>Son urun sync</span><strong>{formatDate(selectedAccount?.last_product_sync_at)}</strong></div>
-            <div className="detail-card"><span>Son stok/fiyat sync</span><strong>{formatDate(selectedAccount?.last_price_sync_at)}</strong></div>
+            <div className="detail-card"><span>Son urun guncelleme</span><strong>{formatDate(selectedAccount?.last_product_sync_at)}</strong></div>
+            <div className="detail-card"><span>Son stok/fiyat guncelleme</span><strong>{formatDate(selectedAccount?.last_price_sync_at)}</strong></div>
             <div className="detail-card"><span>Son hata</span><strong>{selectedAccount?.last_error ? 'Var' : 'Yok'}</strong></div>
           </div>
         </section>
@@ -190,7 +190,7 @@ export function TrendyolPage() {
 
       {activeTab === 'catalog' && (
         <section className="panel">
-          <h2>Kategori ve Marka Senkronizasyonu</h2>
+          <h2>Kategori ve Marka Guncelleme</h2>
           <div className="bulk-grid">
             <button disabled={!accountId || loading} onClick={() => accountRequired() && execute('Kategori agaci', () => api.marketplaces.trendyolCategories(accountId))}><RefreshCw size={16} /> Kategori Agaci</button>
             <button disabled={!accountId || loading} onClick={() => accountRequired() && execute('Marka listesi', () => api.marketplaces.trendyolBrands(accountId))}><RefreshCw size={16} /> Marka Listesi</button>
@@ -205,7 +205,7 @@ export function TrendyolPage() {
       {activeTab === 'mapping' && (
         <section className="panel">
           <h2>Kategori - Ozellik Esleştirme</h2>
-          <p className="muted-text">Urun gonderme wizard'i Trendyol kategori ID degerine gore bu servislerden zorunlu ozellikleri alir. Eksik zorunlu ozellik varsa gonderim engellenir.</p>
+          <p className="muted-text">Urun gonderme sihirbazi Trendyol kategori bilgisine gore zorunlu ozellikleri kontrol eder. Eksik zorunlu ozellik varsa gonderim engellenir.</p>
           <div className="bulk-grid">
             <input value={categoryId} onChange={(event) => setCategoryId(event.target.value)} placeholder="Kategori ID" />
             <button disabled={!accountId || !categoryId} onClick={() => execute('Zorunlu ozellik kontrolu', () => api.marketplaces.trendyolCategoryAttributes(accountId, categoryId))}>Zorunlu Ozellikleri Kontrol Et</button>
@@ -216,7 +216,7 @@ export function TrendyolPage() {
 
       {activeTab === 'queue' && (
         <section className="panel">
-          <h2>Urun Aktarim Kuyrugu</h2>
+          <h2>Urun Aktarim Listesi</h2>
           <div className="bulk-grid">
             <Link className="button-link secondary-link" to="/products/publish-queue">Aktarim Listesini Ac</Link>
             <button disabled={!accountId || loading} onClick={() => execute('Toplu urun gonderimi', () => api.marketplaces.trendyolSendProducts(accountId))}><Send size={16} /> Toplu Urun Gonder</button>
@@ -228,8 +228,8 @@ export function TrendyolPage() {
 
       {activeTab === 'batch' && (
         <section className="panel">
-          <h2>Batch Sonuclari</h2>
-          <div className="bulk-grid"><input value={batchId} onChange={(event) => setBatchId(event.target.value)} placeholder="Batch Request ID" /><button disabled={!accountId || !batchId || loading} onClick={() => execute('Batch sonucu', () => api.marketplaces.trendyolBatchResult(accountId, batchId))}>Sorgula</button></div>
+          <h2>Aktarim Sonuclari</h2>
+          <div className="bulk-grid"><input value={batchId} onChange={(event) => setBatchId(event.target.value)} placeholder="Pazaryeri takip numarasi" /><button disabled={!accountId || !batchId || loading} onClick={() => execute('Aktarim sonucu', () => api.marketplaces.trendyolBatchResult(accountId, batchId))}>Sorgula</button></div>
         </section>
       )}
 
@@ -242,10 +242,10 @@ export function TrendyolPage() {
 
       {activeTab === 'orders' && (
         <section className="panel">
-          <h2>Siparis ve Webhook</h2>
+          <h2>Siparisleri Al</h2>
           <div className="bulk-grid">
-            <button disabled={!accountId || loading} onClick={() => execute('Siparis stream', () => api.marketplaces.trendyolOrdersStream(accountId))}>getShipmentPackagesStream</button>
-            <button disabled={!accountId || loading} onClick={() => execute('Klasik siparis cekme', () => api.marketplaces.trendyolPullOrders(accountId))}>Klasik Siparis Cek</button>
+            <button disabled={!accountId || loading} onClick={() => execute('Yeni siparisleri alma', () => api.marketplaces.trendyolOrdersStream(accountId))}>Yeni Siparisleri Al</button>
+            <button disabled={!accountId || loading} onClick={() => execute('Tum siparisleri alma', () => api.marketplaces.trendyolPullOrders(accountId))}>Tum Siparisleri Kontrol Et</button>
           </div>
         </section>
       )}
@@ -279,11 +279,11 @@ export function TrendyolPage() {
       {activeTab === 'logs' && (
         <DataTable
           rows={logs}
-          emptyTitle="Trendyol API logu yok"
-          emptyText="Bir Trendyol islemi calistiginda loglar burada gorunur."
+          emptyTitle="Trendyol hata kaydi yok"
+          emptyText="Bir Trendyol isleminde hata veya uyari olusursa burada gorunur."
           columns={[
-            { key: 'method', label: 'Method' },
-            { key: 'endpoint', label: 'Endpoint' },
+            { key: 'method', label: 'Islem Turu' },
+            { key: 'endpoint', label: 'Islem Adresi' },
             { key: 'status_code', label: 'Kod' },
             { key: 'duration_ms', label: 'Sure' },
             { key: 'error_message', label: 'Hata', render: (row) => row.error_message || '-' },

@@ -109,7 +109,7 @@ export function ImportCenterPage() {
 
   const queueExcel = async () => {
     if (!excelCompanyId || !excelFile || !mapping.sku) {
-      setError('Import icin firma, dosya ve SKU eslestirmesi zorunludur.');
+      setError('Yukleme icin firma, dosya ve SKU eslestirmesi zorunludur.');
       return;
     }
 
@@ -175,7 +175,7 @@ export function ImportCenterPage() {
 
   return (
     <>
-      <PageHeader title="Import Merkezi" />
+      <PageHeader title="Toplu Urun Yukleme" />
       <section className="split">
         <form className="panel compact-panel" onSubmit={createXmlSource}>
           <h2>XML Kaynagi</h2>
@@ -216,7 +216,7 @@ export function ImportCenterPage() {
       </section>
 
       {error && <ErrorState message={error} onRetry={load} />}
-      {loading && <LoadingState label="Import islemi hazirlaniyor..." />}
+      {loading && <LoadingState label="Yukleme islemi hazirlaniyor..." />}
 
       {preview && (
         <section className="panel">
@@ -254,8 +254,8 @@ export function ImportCenterPage() {
             </div>
           </div>
           <div className="row-actions">
-            {!activeXmlSource && <button type="button" onClick={queueExcel} disabled={loading || !excelFile}><Play size={16} /> Excel Import Baslat</button>}
-            {activeXmlSource && <button type="button" onClick={() => importXml(activeXmlSource)} disabled={loading}><Play size={16} /> XML Import Baslat</button>}
+            {!activeXmlSource && <button type="button" onClick={queueExcel} disabled={loading || !excelFile}><Play size={16} /> Excel Yuklemeyi Baslat</button>}
+            {activeXmlSource && <button type="button" onClick={() => importXml(activeXmlSource)} disabled={loading}><Play size={16} /> XML Yuklemeyi Baslat</button>}
             {activeXmlSource && <button type="button" onClick={saveXmlMapping} disabled={loading}>XML Eslestirmeyi Kaydet</button>}
           </div>
         </section>
@@ -271,13 +271,13 @@ export function ImportCenterPage() {
             { key: 'supplier_name', label: 'Tedarikci' },
             { key: 'frequency_minutes', label: 'Siklik' },
             { key: 'last_status', label: 'Son Durum', render: (row) => <span className={`badge ${row.last_status || 'unknown'}`}>{row.last_status || 'unknown'}</span> },
-            { key: 'actions', label: 'Islem', render: (row) => <div className="row-actions"><button type="button" onClick={() => previewXml(row)}><Eye size={15} /> Onizle</button><button type="button" onClick={() => importXml(row)}><Play size={15} /> Import</button></div> },
+            { key: 'actions', label: 'Islem', render: (row) => <div className="row-actions"><button type="button" onClick={() => previewXml(row)}><Eye size={15} /> Onizle</button><button type="button" onClick={() => importXml(row)}><Play size={15} /> Yukle</button></div> },
           ]}
         />
       </section>
 
       <section className="panel">
-        <h2>Import Gecmisi</h2>
+        <h2>Yukleme Gecmisi</h2>
         <DataTable
           rows={runs}
           columns={[
@@ -285,10 +285,10 @@ export function ImportCenterPage() {
             { key: 'source_type', label: 'Kaynak' },
             { key: 'supplier_name', label: 'Tedarikci' },
             { key: 'status', label: 'Durum', render: (row) => <span className={`badge ${row.status}`}>{row.status}</span> },
-            { key: 'progress', label: 'Progress', render: (row) => <div className="progress inline-progress"><span style={{ width: `${row.progress || 0}%` }} /></div> },
+            { key: 'progress', label: 'Ilerleme', render: (row) => <div className="progress inline-progress"><span style={{ width: `${row.progress || 0}%` }} /></div> },
             { key: 'success_count', label: 'Basarili' },
             { key: 'error_count', label: 'Hatali' },
-            { key: 'actions', label: 'Islem', render: (row) => <div className="row-actions"><button type="button" onClick={() => showRun(row.id)}><Eye size={15} /> Rapor</button><button type="button" onClick={() => retryImport(row.id)} disabled={!['failed', 'completed', 'completed_with_errors'].includes(row.status)}><RotateCcw size={15} /> Retry</button></div> },
+            { key: 'actions', label: 'Islem', render: (row) => <div className="row-actions"><button type="button" onClick={() => showRun(row.id)}><Eye size={15} /> Rapor</button><button type="button" onClick={() => retryImport(row.id)} disabled={!['failed', 'completed', 'completed_with_errors'].includes(row.status)}><RotateCcw size={15} /> Tekrar Dene</button></div> },
           ]}
         />
       </section>

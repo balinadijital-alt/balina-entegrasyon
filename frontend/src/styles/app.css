@@ -1688,6 +1688,205 @@ tbody td:last-child .row-actions:focus-within {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.customer-hero {
+  align-items: center;
+  background: linear-gradient(135deg, #ffffff, #f0f9ff);
+  border: 1px solid #dbeafe;
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 22px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+  margin-bottom: 18px;
+  padding: 24px;
+}
+
+.customer-hero h2,
+.customer-hero p,
+.customer-empty-guide h2,
+.customer-empty-guide p {
+  margin: 0;
+}
+
+.customer-hero h2 {
+  color: var(--text);
+  font-size: 28px;
+  line-height: 1.15;
+  margin-top: 8px;
+}
+
+.customer-hero p {
+  color: #475569;
+  line-height: 1.55;
+  margin-top: 10px;
+  max-width: 760px;
+}
+
+.setup-progress {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+}
+
+.setup-progress strong {
+  color: var(--accent);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.setup-progress span {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.customer-kpis {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin-bottom: 18px;
+}
+
+.customer-kpis .kpi-card {
+  border-radius: 12px;
+  min-height: 126px;
+}
+
+.customer-kpis .kpi-card strong {
+  font-size: 28px;
+}
+
+.onboarding-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+  margin-bottom: 18px;
+}
+
+.onboarding-step,
+.marketplace-connect-card {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.onboarding-step {
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+}
+
+.onboarding-step > span {
+  align-items: center;
+  background: #eff6ff;
+  border-radius: 999px;
+  color: var(--accent);
+  display: inline-flex;
+  font-weight: 900;
+  height: 30px;
+  justify-content: center;
+  width: 30px;
+}
+
+.onboarding-step div {
+  display: grid;
+  gap: 3px;
+}
+
+.onboarding-step small,
+.marketplace-connect-card span {
+  color: #64748b;
+}
+
+.onboarding-step.completed {
+  border-color: rgb(16 185 129 / 34%);
+}
+
+.onboarding-step.completed > span {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.onboarding-step.completed svg {
+  color: var(--success);
+}
+
+.marketplace-connect-card {
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  margin-bottom: 12px;
+}
+
+.marketplace-connect-card svg {
+  color: var(--accent);
+}
+
+.marketplace-connect-card.disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.marketplace-connect-card.disabled svg,
+.marketplace-connect-card.disabled span {
+  color: #94a3b8;
+}
+
+.customer-empty-guide {
+  align-items: center;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  margin-bottom: 18px;
+}
+
+.customer-empty-guide svg {
+  color: var(--accent);
+}
+
+.customer-empty-guide p {
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.quick-actions-panel {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin-bottom: 18px;
+  padding: 14px;
+}
+
+.quick-actions-panel a {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  color: #0f172a;
+  display: flex;
+  font-weight: 800;
+  gap: 8px;
+  justify-content: center;
+  min-height: 52px;
+  padding: 8px 10px;
+  text-align: center;
+}
+
+.quick-actions-panel a:hover,
+.onboarding-step:hover,
+.marketplace-connect-card:hover {
+  border-color: #bfdbfe;
+  box-shadow: 0 10px 24px rgb(37 99 235 / 9%);
+}
+
 .breakdown-row {
   align-items: center;
   display: grid;
@@ -2241,6 +2440,11 @@ tbody td:last-child .row-actions:focus-within {
 
   .form-grid,
   .kpi-grid,
+  .customer-kpis,
+  .customer-hero,
+  .onboarding-grid,
+  .quick-actions-panel,
+  .customer-empty-guide,
   .command-kpis,
   .dashboard-hero,
   .dashboard-command-grid,
@@ -2314,6 +2518,10 @@ tbody td:last-child .row-actions:focus-within {
 
   .breakdown-row {
     grid-template-columns: 1fr;
+  }
+
+  .customer-empty-guide {
+    align-items: flex-start;
   }
 }
 

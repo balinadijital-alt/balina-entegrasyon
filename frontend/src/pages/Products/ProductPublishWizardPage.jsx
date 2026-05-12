@@ -10,7 +10,7 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
-const steps = ['Urun Secimi', 'Kategori Kontrol', 'Zorunlu Ozellik', 'Fiyat Stok Kar', 'Gorsel Aciklama', 'Onizleme', 'Gonderim', 'Batch Takip'];
+const steps = ['Urun Secimi', 'Kategori Kontrol', 'Zorunlu Ozellik', 'Fiyat Stok Kar', 'Gorsel Aciklama', 'Onizleme', 'Gonderim', 'Sonuc Takibi'];
 
 function missingText(report) {
   return Object.values(report || {})
@@ -209,7 +209,7 @@ export function ProductPublishWizardPage() {
             {selectedRows.map((product) => (
               <div className="soft-empty" key={product.id}>
                 <strong>{product.name}</strong>
-                <span>{missingRequiredAttributes().some((item) => item.startsWith(`${product.sku}:`)) ? 'Zorunlu ozellik eksigi var.' : (product.marketplace_ready ? 'Gorsel/aciklama kontrolleri tamam.' : missingText(product.marketplace_readiness) || 'Readiness kontrolu bekleniyor.')}</span>
+                <span>{missingRequiredAttributes().some((item) => item.startsWith(`${product.sku}:`)) ? 'Zorunlu ozellik eksigi var.' : (product.marketplace_ready ? 'Gorsel/aciklama kontrolleri tamam.' : missingText(product.marketplace_readiness) || 'Hazirlik kontrolu bekleniyor.')}</span>
               </div>
             ))}
           </div>
@@ -219,12 +219,12 @@ export function ProductPublishWizardPage() {
           <div className="preview-grid">
             {draft ? (
               <>
-                <div className="soft-empty"><strong>Draft #{draft.id}</strong><span>{draft.status}</span></div>
+                <div className="soft-empty"><strong>Aktarim #{draft.id}</strong><span>{draft.status}</span></div>
                 <div className="soft-empty"><strong>{draft.marketplace_code}</strong><span>{selectedProducts.length} urun</span></div>
                 <div className="soft-empty"><strong>Eksikler</strong><span>{missingText(draft.readiness_report) || 'Kritik eksik yok'}</span></div>
               </>
             ) : (
-              <div className="soft-empty"><strong>Onizleme hazir degil</strong><span>Kontrol butonu ile pazaryeri validasyonunu calistirin.</span></div>
+              <div className="soft-empty"><strong>Onizleme hazir degil</strong><span>Kontrol butonu ile pazaryeri uygunluk kontrolunu calistirin.</span></div>
             )}
           </div>
         )}
@@ -232,23 +232,23 @@ export function ProductPublishWizardPage() {
         {step === 6 && (
           <div className="preview-grid">
             <div className="soft-empty"><strong>Sonuc</strong><span>{draft?.result_summary?.message || draft?.error_message || 'Gonderim bekliyor.'}</span></div>
-            <div className="soft-empty"><strong>API Log</strong><span>Gonderim sonrasi pazaryeri joblari API log ekraninda izlenir.</span></div>
+            <div className="soft-empty"><strong>Hata Merkezi</strong><span>Gonderim sonrasi pazaryeri uyarilari Hata Merkezi ekraninda izlenir.</span></div>
           </div>
         )}
 
         {step === 7 && (
           <div className="preview-grid">
-            <div className="soft-empty"><strong>Batch takip</strong><span>{draft?.result_summary?.batch_request_id || draft?.id || 'Batch numarasi gonderimden sonra olusur.'}</span></div>
-            <div className="soft-empty"><strong>API sonucu</strong><span>{draft?.result_summary?.message || draft?.error_message || 'Sonuc bekleniyor.'}</span></div>
+            <div className="soft-empty"><strong>Pazaryeri takip no</strong><span>{draft?.result_summary?.batch_request_id || draft?.id || 'Takip numarasi gonderimden sonra olusur.'}</span></div>
+            <div className="soft-empty"><strong>Pazaryeri sonucu</strong><span>{draft?.result_summary?.message || draft?.error_message || 'Sonuc bekleniyor.'}</span></div>
           </div>
         )}
 
         <div className="wizard-actions">
           <button type="button" className="secondary-button" disabled={step === 0} onClick={() => setStep((current) => current - 1)}><ChevronLeft size={16} /> Geri</button>
           {step < 4 && <button type="button" onClick={() => setStep((current) => current + 1)}>Ileri <ChevronRight size={16} /></button>}
-          {step === 4 && <button type="button" disabled={loading} onClick={validateDraft}><CheckCircle2 size={16} /> Validasyon ve Onizleme</button>}
+          {step === 4 && <button type="button" disabled={loading} onClick={validateDraft}><CheckCircle2 size={16} /> Kontrol Et ve Onizle</button>}
           {step === 5 && <button type="button" disabled={loading || draft?.status === 'blocked'} onClick={() => { setStep(6); sendDraft(); }}><Send size={16} /> Pazaryerine Gonder</button>}
-          {step === 6 && <button type="button" onClick={() => setStep(7)}>Batch Takibe Gec <ChevronRight size={16} /></button>}
+          {step === 6 && <button type="button" onClick={() => setStep(7)}>Sonuc Takibine Gec <ChevronRight size={16} /></button>}
         </div>
       </section>
     </>

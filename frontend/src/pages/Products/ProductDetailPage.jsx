@@ -17,7 +17,7 @@ const tabs = [
   ['seo', 'Aciklama/SEO'],
   ['readiness', 'Pazaryeri Hazirligi'],
   ['history', 'Gonderim Gecmisi'],
-  ['errors', 'API Hatalari'],
+  ['errors', 'Pazaryeri Hatalari'],
 ];
 
 export function ProductDetailPage() {
@@ -108,7 +108,7 @@ export function ProductDetailPage() {
             <div className="detail-card"><span>SKU</span><strong>{product.sku}</strong></div>
             <div className="detail-card"><span>Barkod</span><strong>{product.barcode || '-'}</strong></div>
             <div className="detail-card"><span>Kategori</span><strong>{product.category || '-'}</strong></div>
-            <div className="detail-card"><span>Readiness</span><strong>{readinessScore(product)}%</strong></div>
+            <div className="detail-card"><span>Hazirlik</span><strong>{readinessScore(product)}%</strong></div>
           </div>
           <div className="readiness-meter">
             <div><span style={{ width: `${readinessScore(product)}%` }} /></div>
@@ -197,7 +197,7 @@ export function ProductDetailPage() {
       {activeTab === 'errors' && (
         <DataTable
           rows={statusRows.filter((row) => row.error !== '-')}
-          emptyTitle="API hatasi yok"
+          emptyTitle="Pazaryeri hatasi yok"
           emptyText="Bu urune ait pazaryeri hatasi bulunmuyor."
           columns={[
             { key: 'marketplace', label: 'Pazaryeri' },

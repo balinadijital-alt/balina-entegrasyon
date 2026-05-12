@@ -114,7 +114,7 @@ export function PublishQueuePage() {
         actions={(
           <>
             <Link className="button-link secondary-link" to="/products/category-mapping"><Layers3 size={16} /> Kategori Esle</Link>
-            <Link className="button-link" to="/products/publish"><Send size={16} /> Gonderim Wizard</Link>
+            <Link className="button-link" to="/products/publish"><Send size={16} /> Gonderim Sihirbazi</Link>
           </>
         )}
       />
@@ -153,7 +153,7 @@ export function PublishQueuePage() {
           <h2>Gonderim Onizleme</h2>
           {previewDraft ? (
             <>
-              <div className="soft-empty"><strong>Draft #{previewDraft.id}</strong><span>{draftStatusLabel(previewDraft)}</span></div>
+              <div className="soft-empty"><strong>Aktarim #{previewDraft.id}</strong><span>{draftStatusLabel(previewDraft)}</span></div>
               <pre className="json-preview">{JSON.stringify(previewDraft.payload_preview || previewDraft.result_summary || previewDraft.readiness_report, null, 2)}</pre>
             </>
           ) : (
@@ -181,20 +181,20 @@ export function PublishQueuePage() {
       </section>
 
       <section className="panel">
-        <h2>Aktarim Kuyrugu ve Batch Takibi</h2>
+        <h2>Aktarim Listesi ve Sonuclar</h2>
         <DataTable
           rows={drafts}
           emptyTitle="Aktarim kaydi yok"
           emptyText="Urun listesi veya bu ekran uzerinden urunleri aktarim listesine alin."
           columns={[
             { key: 'select', label: '', render: (row) => <input type="checkbox" checked={selectedDrafts.includes(row.id)} onChange={() => toggleDraft(row.id)} /> },
-            { key: 'id', label: 'Draft' },
+            { key: 'id', label: 'Kayit' },
             { key: 'marketplace_code', label: 'Pazaryeri' },
             { key: 'company', label: 'Firma', render: (row) => row.company?.name || '-' },
             { key: 'status', label: 'Durum', render: (row) => <span className={row.status === 'ready' || row.status === 'queued' ? 'status-pill ready' : 'status-pill blocked'}>{draftStatusLabel(row)}</span> },
             { key: 'products', label: 'Urun', render: (row) => row.product_ids?.length || 0 },
             { key: 'missing', label: 'Eksikler', render: (row) => draftMissingText(row) || '-' },
-            { key: 'batch', label: 'Batch/API', render: (row) => row.result_summary?.batch_request_id || row.result_summary?.message || '-' },
+            { key: 'batch', label: 'Pazaryeri Sonucu', render: (row) => row.result_summary?.batch_request_id || row.result_summary?.message || '-' },
             {
               key: 'actions',
               label: 'Islem',

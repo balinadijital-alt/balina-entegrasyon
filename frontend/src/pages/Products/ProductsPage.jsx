@@ -182,17 +182,17 @@ export function ProductsPage() {
             </select>
             <select value={trendyolFilter} onChange={(event) => setTrendyolFilter(event.target.value)}>
               <option value="">Trendyol durumu</option>
-              <option value="ready">Ready</option>
-              <option value="not_ready">Not ready</option>
-              <option value="queued">Queued</option>
-              <option value="failed">Failed</option>
+              <option value="ready">Hazir</option>
+              <option value="not_ready">Eksik</option>
+              <option value="queued">Gonderildi</option>
+              <option value="failed">Hatali</option>
             </select>
             <select value={hepsiburadaFilter} onChange={(event) => setHepsiburadaFilter(event.target.value)}>
               <option value="">Hepsiburada durumu</option>
-              <option value="ready">Ready</option>
-              <option value="not_ready">Not ready</option>
-              <option value="queued">Queued</option>
-              <option value="failed">Failed</option>
+              <option value="ready">Hazir</option>
+              <option value="not_ready">Eksik</option>
+              <option value="queued">Gonderildi</option>
+              <option value="failed">Hatali</option>
             </select>
           </div>
         </aside>
@@ -276,7 +276,7 @@ export function ProductsPage() {
             { key: 'category', label: 'Kategori', render: (row) => row.category || <span className="bad-text">Eksik</span> },
             { key: 'stock', label: 'Stok', render: (row) => quickEditId === row.id ? <input type="number" value={quickEdit.stock} onChange={(event) => setQuickEdit({ ...quickEdit, stock: event.target.value })} /> : <span className={Number(row.stock || 0) <= Number(row.critical_stock || 0) ? 'badge running' : 'badge active'}>{row.stock}</span> },
             { key: 'price', label: 'Fiyat', render: (row) => quickEditId === row.id ? <input type="number" value={quickEdit.price} onChange={(event) => setQuickEdit({ ...quickEdit, price: event.target.value })} /> : row.price },
-            { key: 'score', label: 'Readiness', render: (row) => <div className="score-cell"><strong>{readinessScore(row)}%</strong><span>{publishBlockReason(row)}</span></div> },
+            { key: 'score', label: 'Hazirlik', render: (row) => <div className="score-cell"><strong>{readinessScore(row)}%</strong><span>{publishBlockReason(row)}</span></div> },
             { key: 'trendyol', label: 'Trendyol', render: (row) => marketplaceStatus(row, 'trendyol')?.status || marketplaceStatus(row, 'trendyol')?.readiness_status || '-' },
             { key: 'hepsiburada', label: 'Hepsiburada', render: (row) => marketplaceStatus(row, 'hepsiburada')?.status || marketplaceStatus(row, 'hepsiburada')?.readiness_status || '-' },
             { key: 'missing', label: 'Eksikler', render: (row) => missingFields(row).slice(0, 4).join(', ') || '-' },

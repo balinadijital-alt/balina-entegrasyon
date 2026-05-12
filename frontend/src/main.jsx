@@ -32,6 +32,7 @@ import { SeoRobotsSitemapPage } from './pages/CommerceModules/SeoRobotsSitemapPa
 import { SeoSettingsPage } from './pages/CommerceModules/SeoSettingsPage.jsx';
 import { WorkflowRulesPage } from './pages/CommerceModules/WorkflowRulesPage.jsx';
 import { DashboardPage } from './pages/Dashboard/DashboardPage.jsx';
+import { CustomerDashboardPage } from './pages/Dashboard/CustomerDashboardPage.jsx';
 import { ApiLogsPage } from './pages/Logs/ApiLogsPage.jsx';
 import { ImportCenterPage } from './pages/Imports/ImportCenterPage.jsx';
 import { ProductImportPage } from './pages/Imports/ProductImportPage.jsx';
@@ -48,7 +49,7 @@ import { ProductPublishWizardPage } from './pages/Products/ProductPublishWizardP
 import { PublishQueuePage } from './pages/Products/PublishQueuePage.jsx';
 import { ProductsPage } from './pages/Products/ProductsPage.jsx';
 import { QueuePage } from './pages/Queue/QueuePage.jsx';
-import { ReportsPage } from './pages/Reports/ReportsPage.jsx';
+import { CustomerReportsPage, ReportsPage } from './pages/Reports/ReportsPage.jsx';
 import { RolesPage } from './pages/Roles/RolesPage.jsx';
 import { ShippingPage } from './pages/Shipping/ShippingPage.jsx';
 import { SaasPage } from './pages/Saas/SaasPage.jsx';
@@ -62,8 +63,8 @@ function Protected({ children }) {
 function CustomerRoutes() {
   return (
     <>
-      <Route index element={<DashboardPage />} />
-      <Route path="reports" element={<ReportsPage />} />
+      <Route index element={<CustomerDashboardPage />} />
+      <Route path="reports" element={<CustomerReportsPage />} />
       <Route path="companies" element={<CompaniesPage />} />
       <Route path="accounting" element={<AccountingPage />} />
       <Route path="products" element={<ProductsPage />} />
@@ -83,7 +84,7 @@ function CustomerRoutes() {
       <Route path="payments" element={<PaymentsPage />} />
       <Route path="shipping" element={<ShippingPage />} />
       <Route path="saas" element={<SaasPage />} />
-      <Route path="settings" element={<SettingsPage />} />
+      <Route path="settings" element={<SettingsPage audience="customer" />} />
       <Route path="api-logs" element={<ApiLogsPage />} />
       <Route path="queue" element={<QueuePage />} />
       <Route path="roles" element={<RolesPage />} />

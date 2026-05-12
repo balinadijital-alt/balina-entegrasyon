@@ -25,8 +25,8 @@ export function ApiLogsPage() {
 
   return (
     <>
-      <PageHeader title="API Loglari" />
-      <PageToolbar search={search} onSearch={setSearch} searchPlaceholder="Endpoint, metod veya pazaryeri ara" />
+      <PageHeader title="Hata Merkezi" />
+      <PageToolbar search={search} onSearch={setSearch} searchPlaceholder="Pazaryeri, islem veya durum ara" />
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && logs.length === 0 ? <LoadingState /> : (
       <DataTable
@@ -34,12 +34,12 @@ export function ApiLogsPage() {
           const query = search.trim().toLowerCase();
           return !query || [log.marketplace_code, log.method, log.endpoint, log.status_code].some((value) => String(value || '').toLowerCase().includes(query));
         })}
-        emptyTitle="API log yok"
-        emptyText="Entegrasyonlar calistikca API loglari burada gorunur."
+        emptyTitle="Hata kaydi yok"
+        emptyText="Pazaryeri islemlerinde hata veya uyari olustugunda burada gorunur."
         columns={[
           { key: 'marketplace_code', label: 'Pazaryeri' },
-          { key: 'method', label: 'Metod' },
-          { key: 'endpoint', label: 'Endpoint' },
+          { key: 'method', label: 'Islem Turu' },
+          { key: 'endpoint', label: 'Islem Adresi' },
           { key: 'status_code', label: 'Durum Kodu' },
           { key: 'duration_ms', label: 'Sure' },
           { key: 'created_at', label: 'Tarih' },

@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { flatNavigation } from '../navigation.js';
 
 const descriptions = {
+  'Baslangic': 'Kurulumu tamamlayin, pazaryerlerini baglayin ve gunluk satis operasyonunu tek ekrandan takip edin.',
   'Urunler': 'Katalog hazirlik, pazaryeri uygunlugu, stok ve hizli operasyonlari tek ekrandan yonetin.',
   'Urun Ekleme Sihirbazi': 'Urunu temel bilgilerden pazaryeri hazirligina kadar adim adim eksiksiz olusturun.',
   'Urun Duzenleme Sihirbazi': 'Mevcut urunu ayni wizard akisiyle guncelleyip kayit oncesi readiness kontrolunu calistirin.',
@@ -9,24 +10,32 @@ const descriptions = {
   'Kategori Eslestirme': 'Yerel kategorileri pazaryeri kategori agaci ve zorunlu ozelliklerle sablon olarak eslestirin.',
   'Pazaryeri Aktarim Listesi': 'Urunleri once aktarim listesine alip eksik kategori, ozellik, gorsel ve fiyat kontrollerini tamamlayin.',
   'Pazaryerine Urun Gonderme Sihirbazi': 'Secilen urunleri pazaryeri kurallari, fiyat ve zorunlu ozellik kontrolleriyle gonderin.',
-  'Trendyol Yonetim Merkezi': 'Baglanti, katalog, batch, siparis, iade, soru-cevap ve fatura operasyonlarini tek merkezden izleyin.',
+  'Trendyol Yonetim Merkezi': 'Baglanti, urun aktarimi, stok/fiyat, siparis, iade, soru-cevap ve fatura islemlerini tek merkezden izleyin.',
   'Siparis Operasyonu': 'Depo, kargo, muhasebe ve musteri sureclerini durum bazli operasyon panosunda takip edin.',
   'Kargo Yonetimi': 'Kargo hesaplari, etiketler, takip ve iade kodlarini operasyonel akisa baglayin.',
   'Odeme Yonetimi': 'POS hesaplari, odeme durumlari, iade islemleri ve loglari takip edin.',
   'Cari/Fatura': 'Cari hesap, tahsilat, fatura ve muhasebe entegrasyon sureclerini yonetin.',
+  'Cari ve Fatura Yonetimi': 'Fatura, cari hesap ve tahsilat islemlerini siparis operasyonuyla birlikte takip edin.',
+  'Pazaryerleri': 'Trendyol ve Hepsiburada hesaplarinizi baglayin, kategori ve urun aktarimlarini yonetin.',
+  'Hepsiburada Entegrasyonu': 'Hepsiburada hesap bilgilerini kaydedin, urun, stok/fiyat ve siparis islemlerini baslatin.',
+  'Hata Merkezi': 'Pazaryeri islemlerinde aksiyon gerektiren hata ve uyari kayitlarini kontrol edin.',
+  'Toplu Urun Yukleme': 'Excel veya XML ile urunlerinizi yukleyin, alanlari eslestirin ve yukleme sonucunu takip edin.',
+  'Kupon ve Kampanyalar': 'Pazaryeri ve magaza kampanyalarinizi planlayip takip edin.',
   'SaaS': 'Paket, abonelik, lisans ve kullanim limitlerini izleyin.',
 };
 
 export function PageHeader({ title, actions, description }) {
   const location = useLocation();
-  const current = flatNavigation.find((item) => item.to === location.pathname || (item.to !== '/' && location.pathname.startsWith(item.to)));
+  const normalizedPath = location.pathname.startsWith('/app') ? location.pathname.replace(/^\/app/, '') || '/' : location.pathname;
+  const current = flatNavigation.find((item) => item.to === normalizedPath || (item.to !== '/' && normalizedPath.startsWith(item.to)));
   const fallbackDescription = description || descriptions[title] || 'Operasyonel kayitlari filtreleyin, durumlari izleyin ve gerekli aksiyonlari hizlica alin.';
+  const homePath = location.pathname.startsWith('/app') ? '/app' : '/';
 
   return (
     <div className="page-header">
       <div className="page-title-block">
         <div className="page-mini-breadcrumb">
-          <Link to="/">Panel</Link>
+          <Link to={homePath}>Panel</Link>
           {current && <span>{current.label}</span>}
         </div>
         <h1>{title}</h1>
