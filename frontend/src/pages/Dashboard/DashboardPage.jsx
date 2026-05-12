@@ -1,14 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
+  AlertTriangle,
   Banknote,
   Building2,
+  CheckCircle2,
   ClipboardList,
   CreditCard,
   FileText,
   Package,
   PackageCheck,
+  RadioTower,
   RefreshCcw,
+  ShieldCheck,
+  Timer,
+  TrendingUp,
   Truck,
 } from 'lucide-react';
 import { api } from '../../api/client.js';
@@ -101,6 +107,25 @@ function Breakdown({ title, items }) {
   );
 }
 
+function metricByLabel(report, labels, fallback) {
+  return report.summary.find((metric) => labels.includes(metric.label)) || fallback;
+}
+
+function MarketplaceHealthCard({ name, status, pending, failed }) {
+  const healthy = Number(failed || 0) === 0;
+
+  return (
+    <div className="market-health-card">
+      <div>
+        <span>{name}</span>
+        <strong>{status}</strong>
+      </div>
+      <span className={`health-dot ${healthy ? 'online' : 'warning'}`} />
+      <small>{pending} bekleyen sync · {failed} hata</small>
+    </div>
+  );
+}
+
 export function DashboardPage({ title = 'Yonetim Paneli' }) {
   const { loading, error, run } = useAsync();
   const [report, setReport] = useState(null);
@@ -123,6 +148,13 @@ export function DashboardPage({ title = 'Yonetim Paneli' }) {
     return report.empty_states.company_count > 0 || report.empty_states.product_count > 0 || report.empty_states.order_count > 0;
   }, [report]);
 
+  const revenueMetric = report ? metricByLabel(report, ['Toplam Satis'], { label: 'Toplam Satis', value: 0, prefix: 'TRY' }) : null;
+  const orderMetric = report ? metricByLabel(report, ['Siparis'], { label: 'Siparis', value: 0 }) : null;
+  const shippingMetric = report ? metricByLabel(report, ['Kargo'], { label: 'Kargo', value: 0 }) : null;
+  const apiMetric = report ? metricByLabel(report, ['API Cagrisi'], { label: 'API Cagrisi', value: 0 }) : null;
+  const failedLogs = report?.recent_activity.logs.filter((log) => Number(log.status_code || 0) >= 400).slice(0, 4) || [];
+  const pendingJobs = report?.breakdowns.orders.filter((item) => ['pending', 'queued', 'processing', 'preparing', 'new'].includes(item.label)) || [];
+
   return (
     <>
       <PageHeader
@@ -142,6 +174,98 @@ export function DashboardPage({ title = 'Yonetim Paneli' }) {
 
       {report ? (
         <>
+          <section className="dashboard-hero">
+            <div className="hero-copy">
+              <span className="eyebrow">Operasyon komuta merkezi</span>
+              <h2>Satis, senkronizasyon ve servis sagligini tek ekrandan takip edin.</h2>
+              <p>Canli metrikler, kritik uyarilar ve son aktiviteler operasyon ekiplerinin gunluk aksiyonlarini daha gorunur hale getirir.</p>
+            </div>
+            <div className="hero-health-grid">
+              <div>
+                <ShieldCheck size={18} />
+                <span>API Health</span>
+                <strong>{failedLogs.length === 0 ? 'Stabil' : 'Kontrol gerekli'}</strong>
+              </div>
+              <div>
+                <Timer size={18} />
+                <span>Sync Queue</span>
+                <strong>{pendingJobs.reduce((sum, item) => sum + Number(item.value || 0), 0)} bekleyen</strong>
+              </div>
+            </div>
+          </section>
+
+          <div className="command-kpis">
+            {[
+              { metric: revenueMetric, icon: Banknote, note: 'Net satis gorunumu' },
+              { metric: orderMetric, icon: ClipboardList, note: 'Siparis operasyonu' },
+              { metric: shippingMetric, icon: Truck, note: 'Kargo aksiyonlari' },
+              { metric: apiMetric, icon: RadioTower, note: 'Entegrasyon trafigi' },
+            ].map(({ metric, icon: Icon, note }) => (
+              <div className="command-kpi-card" key={metric.label}>
+                <div className="metric-top">
+                  <Icon size={19} />
+                  <span className={`trend-pill ${Number(metric.change || 0) >= 0 ? 'up' : 'down'}`}>
+                    <TrendingUp size={12} /> {Number(metric.change || 0) >= 0 ? '+' : ''}{metric.change || 0}%
+                  </span>
+                </div>
+                <strong>{formatValue(metric)}</strong>
+                <span>{metric.label}</span>
+                <small>{note}</small>
+              </div>
+            ))}
+          </div>
+
+          <div className="dashboard-command-grid">
+            <section className="panel chart-panel">
+              <div className="panel-heading">
+                <div>
+                  <span>Gelir trendi</span>
+                  <h2>7 Gunluk Satis</h2>
+                </div>
+                <span className="badge active">Canli</span>
+              </div>
+              <TrendBars series={report.charts.sales} />
+            </section>
+            <section className="panel chart-panel">
+              <div className="panel-heading">
+                <div>
+                  <span>Siparis hacmi</span>
+                  <h2>7 Gunluk Siparis</h2>
+                </div>
+                <span className="badge created">Trend</span>
+              </div>
+              <TrendBars series={report.charts.orders} tone="secondary" />
+            </section>
+            <section className="panel compact-panel">
+              <div className="panel-heading">
+                <div>
+                  <span>Pazaryeri sagligi</span>
+                  <h2>Marketplace Health</h2>
+                </div>
+                <CheckCircle2 size={18} />
+              </div>
+              <MarketplaceHealthCard name="Trendyol" status="Senkron izleniyor" pending={pendingJobs.length} failed={failedLogs.length} />
+              <MarketplaceHealthCard name="Hepsiburada" status="Senkron izleniyor" pending={report.breakdowns.shipping.length} failed={0} />
+            </section>
+            <section className="panel compact-panel">
+              <div className="panel-heading">
+                <div>
+                  <span>Kritik uyarilar</span>
+                  <h2>Operasyon Riskleri</h2>
+                </div>
+                <AlertTriangle size={18} />
+              </div>
+              {failedLogs.length === 0 ? (
+                <div className="soft-empty success-empty">Kritik API hatasi gorunmuyor.</div>
+              ) : failedLogs.map((log) => (
+                <div className="alert-row" key={log.id || `${log.endpoint}-${log.status_code}`}>
+                  <strong>{log.marketplace_code || 'API'} · HTTP {log.status_code}</strong>
+                  <span>{log.endpoint}</span>
+                </div>
+              ))}
+            </section>
+          </div>
+
           <div className="stats-grid dashboard-stats">
             {report.summary.map((metric) => {
               const Icon = iconMap[metric.label] || Activity;

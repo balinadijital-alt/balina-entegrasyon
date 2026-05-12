@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { PackagePlus, Send, Upload } from 'lucide-react';
+import { Grid2X2, ImagePlus, List, PackagePlus, Send, Upload } from 'lucide-react';
 import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -19,6 +19,28 @@ function missingFields(product) {
   return [...new Set(statuses.flatMap((status) => status.missing_fields || []))];
 }
 
+function productImage(product) {
+  if (product.main_image_url) {
+    return product.main_image_url;
+  }
+
+  const firstGalleryItem = product.gallery_images?.[0] || product.images?.[0];
+  if (typeof firstGalleryItem === 'string') {
+    return firstGalleryItem;
+  }
+
+  return firstGalleryItem?.url || firstGalleryItem?.path || '';
+}
+
+function readinessScore(product) {
+  if (product.marketplace_ready) {
+    return 100;
+  }
+
+  const missing = missingFields(product).length;
+  return Math.max(20, 100 - (missing * 14));
+}
+
 export function ProductsPage() {
   const { notify } = useApp();
   const { loading, error, setError, run } = useAsync();
@@ -32,6 +54,7 @@ export function ProductsPage() {
   const [selected, setSelected] = useState([]);
   const [quickEditId, setQuickEditId] = useState(null);
   const [quickEdit, setQuickEdit] = useState({ price: '', stock: '', status: 'active' });
+  const [viewMode, setViewMode] = useState('list');
 
   const load = async () => {
     await run(async () => {
@@ -101,6 +124,10 @@ export function ProductsPage() {
         title="Urunler"
         actions={(
           <>
+            <div className="view-switch">
+              <button type="button" className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}><List size={15} /> Liste</button>
+              <button type="button" className={viewMode === 'grid' ? 'active' : ''} onClick={() => setViewMode('grid')}><Grid2X2 size={15} /> Grid</button>
+            </div>
             <Link className="button-link secondary-link" to="/products/publish"><Send size={16} /> Toplu Gonder</Link>
             <Link className="button-link" to="/products/new"><PackagePlus size={16} /> Urun Ekle</Link>
           </>
@@ -138,7 +165,11 @@ export function ProductsPage() {
             <option value="">Urun seciniz</option>
             {products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
           </select>
-          <input type="file" accept="image/*" onChange={(event) => setImageFile(event.target.files[0])} />
+          <label className="drag-drop-card">
+            <ImagePlus size={18} />
+            <span>{imageFile ? imageFile.name : 'Gorsel surukle veya sec'}</span>
+            <input type="file" accept="image/*" onChange={(event) => setImageFile(event.target.files[0])} />
+          </label>
           <button disabled={loading}><Upload size={16} /> Gorsel Yukle</button>
         </form>
       </section>
@@ -149,7 +180,56 @@ export function ProductsPage() {
         </section>
       )}
       {error && <ErrorState message={error} onRetry={load} />}
-      {loading && products.length === 0 ? <LoadingState /> : (
+      {loading && products.length === 0 ? <LoadingState /> : viewMode === 'grid' ? (
+        <section className="product-grid">
+          {filteredProducts.length === 0 ? (
+            <div className="panel empty-state">
+              <PackagePlus size={30} />
+              <strong>Urun bulunamadi</strong>
+              <span>Filtreleri temizleyin veya yeni urun ekleyin.</span>
+            </div>
+          ) : filteredProducts.map((product) => {
+            const score = readinessScore(product);
+            const image = productImage(product);
+
+            return (
+              <article className="product-card" key={product.id}>
+                <label className="product-select">
+                  <input type="checkbox" checked={selected.includes(product.id)} onChange={() => toggleSelected(product.id)} />
+                </label>
+                <div className="product-thumb">
+                  {image ? <img src={image} alt={product.name} /> : <PackagePlus size={28} />}
+                </div>
+                <div className="product-card-body">
+                  <div>
+                    <span className="muted-text">{product.sku || 'SKU yok'}</span>
+                    <h3>{product.name}</h3>
+                  </div>
+                  <div className="product-card-meta">
+                    <span>{product.stock} stok</span>
+                    <strong>{product.price}</strong>
+                  </div>
+                  <div className="readiness-meter">
+                    <div>
+                      <span style={{ width: `${score}%` }} />
+                    </div>
+                    <small>{score}% pazaryeri hazirlik</small>
+                  </div>
+                  <div className="marketplace-badges">
+                    <span className={product.marketplace_ready ? 'status-pill ready' : 'status-pill blocked'}>{product.marketplace_ready ? 'Hazir' : 'Eksik'}</span>
+                    <span className="badge created">TY {marketplaceStatus(product, 'trendyol')?.status || '-'}</span>
+                    <span className="badge created">HB {marketplaceStatus(product, 'hepsiburada')?.status || '-'}</span>
+                  </div>
+                  <div className="row-actions">
+                    <button type="button" className="secondary-button" onClick={() => startQuickEdit(product)}>Hizli Duzenle</button>
+                    <Link className="button-link" to="/products/publish"><Send size={15} /> Gonder</Link>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      ) : (
         <DataTable
           rows={filteredProducts}
           emptyTitle="Urun bulunamadi"
