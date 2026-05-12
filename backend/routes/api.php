@@ -80,7 +80,12 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/import-runs/excel', [ProductImportRunController::class, 'queueExcel']);
     Route::post('/import-runs/{importRun}/retry', [ProductImportRunController::class, 'retry']);
 
+    Route::get('/orders/statuses', [OrderController::class, 'statuses']);
+    Route::post('/orders/bulk', [OrderController::class, 'bulk']);
     Route::apiResource('orders', OrderController::class)->only(['index', 'show', 'update']);
+    Route::post('/orders/{order}/notes', [OrderController::class, 'addNote']);
+    Route::post('/orders/{order}/transition', [OrderController::class, 'transition']);
+    Route::post('/orders/{order}/resolution-request', [OrderController::class, 'requestResolution']);
     Route::get('/accounting-integrations', [AccountingIntegrationController::class, 'index']);
     Route::apiResource('accounting-accounts', AccountingAccountController::class)->parameters(['accounting-accounts' => 'accountingAccount'])->except(['show', 'destroy']);
     Route::get('/current-accounts', [CurrentAccountController::class, 'index']);

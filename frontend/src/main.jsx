@@ -37,6 +37,7 @@ import { ProductImportPage } from './pages/Imports/ProductImportPage.jsx';
 import { HepsiburadaPage } from './pages/Marketplaces/HepsiburadaPage.jsx';
 import { MarketplacesPage } from './pages/Marketplaces/MarketplacesPage.jsx';
 import { TrendyolPage } from './pages/Marketplaces/TrendyolPage.jsx';
+import { OrderDetailPage } from './pages/Orders/OrderDetailPage.jsx';
 import { OrdersPage } from './pages/Orders/OrdersPage.jsx';
 import { PaymentsPage } from './pages/Payments/PaymentsPage.jsx';
 import { ProductCreatePage } from './pages/Products/ProductCreatePage.jsx';
@@ -82,6 +83,7 @@ createRoot(document.getElementById('root')).render(
             <Route path="marketplaces/trendyol" element={<TrendyolPage />} />
             <Route path="marketplaces/hepsiburada" element={<HepsiburadaPage />} />
             <Route path="orders" element={<OrdersPage />} />
+            <Route path="orders/:id" element={<OrderDetailPage />} />
             <Route path="payments" element={<PaymentsPage />} />
             <Route path="shipping" element={<ShippingPage />} />
             <Route path="saas" element={<SaasPage />} />

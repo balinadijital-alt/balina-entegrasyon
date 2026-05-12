@@ -374,6 +374,92 @@ a {
   color: #991b1b;
 }
 
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tab {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  color: #334155;
+}
+
+.tab.active {
+  background: #0f766e;
+  color: #fff;
+}
+
+.bulk-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.detail-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.detail-grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.detail-card {
+  display: grid;
+  gap: 6px;
+}
+
+.detail-card strong {
+  font-size: 18px;
+}
+
+.detail-card span,
+.detail-card small {
+  color: #64748b;
+}
+
+.status-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.status-stack div {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.note-form {
+  display: grid;
+  gap: 10px;
+}
+
+.timeline {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.timeline div {
+  border-left: 3px solid #0f766e;
+  display: grid;
+  gap: 3px;
+  padding-left: 12px;
+}
+
+.timeline span,
+.timeline small {
+  color: #64748b;
+}
+
 .table-wrap {
   overflow: auto;
 }
@@ -951,6 +1037,9 @@ th {
   .wizard-steps,
   .readiness-grid,
   .preview-grid,
+  .bulk-grid,
+  .detail-grid,
+  .detail-grid.two,
   .page-toolbar {
     grid-template-columns: 1fr;
   }

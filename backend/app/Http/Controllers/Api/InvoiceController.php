@@ -9,6 +9,7 @@ use App\Models\CurrentAccount;
 use App\Models\CurrentAccountTransaction;
 use App\Models\Invoice;
 use App\Models\Order;
+use App\Services\Orders\OrderOperationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -27,7 +28,7 @@ class InvoiceController extends Controller
         return response()->json(AccountingLog::latest()->paginate(50));
     }
 
-    public function createForOrder(Order $order, Request $request): JsonResponse
+    public function createForOrder(Order $order, Request $request, OrderOperationService $operations): JsonResponse
     {
         $data = $request->validate([
             'accounting_account_id' => ['required', 'exists:accounting_accounts,id'],
@@ -64,6 +65,8 @@ class InvoiceController extends Controller
         ]);
         $current->increment('balance', $grandTotal);
         ProcessInvoiceJob::dispatch($invoice, 'create');
+        $order->update(['invoice_status' => 'queued']);
+        $operations->recordHistory($order, 'invoice_queued', $order->status, $order->status, ['invoice_id' => $invoice->id], $request->user());
 
         return response()->json(['message' => 'Fatura kuyruga alindi.', 'invoice_id' => $invoice->id, 'queued' => true], 202);
     }

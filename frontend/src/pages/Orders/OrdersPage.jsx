@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ClipboardList, FileText, PackageCheck, Truck } from 'lucide-react';
 import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -8,131 +10,192 @@ import { PageToolbar } from '../../components/PageToolbar.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
+const statusTabs = [
+  { key: 'new', label: 'Yeni' },
+  { key: 'preparing', label: 'Hazirlaniyor' },
+  { key: 'ready_to_ship', label: 'Kargoya Hazir' },
+  { key: 'shipped', label: 'Kargoda' },
+  { key: 'delivered', label: 'Teslim Edildi' },
+  { key: 'cancelled', label: 'Iptal' },
+  { key: 'returned', label: 'Iade' },
+  { key: 'problematic', label: 'Sorunlu' },
+];
+
+function badge(value) {
+  return value ? <span className={`badge ${value}`}>{value}</span> : '-';
+}
+
 export function OrdersPage() {
   const { notify } = useApp();
   const { loading, error, run } = useAsync();
   const [orders, setOrders] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [shippingAccounts, setShippingAccounts] = useState([]);
-  const [paymentAccounts, setPaymentAccounts] = useState([]);
   const [accountingAccounts, setAccountingAccounts] = useState([]);
+  const [selectedOrderIds, setSelectedOrderIds] = useState([]);
+  const [bulkAction, setBulkAction] = useState('change_status');
+  const [bulkStatus, setBulkStatus] = useState('preparing');
   const [selectedAccountId, setSelectedAccountId] = useState('');
-  const [selectedPaymentAccountId, setSelectedPaymentAccountId] = useState('');
   const [selectedAccountingAccountId, setSelectedAccountingAccountId] = useState('');
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('');
+  const [filters, setFilters] = useState({
+    search: '',
+    status: 'new',
+    marketplace_code: '',
+    company_id: '',
+    payment_status: '',
+    shipping_status: '',
+    invoice_status: '',
+    date_from: '',
+    date_to: '',
+  });
 
   const load = async () => {
     await run(async () => {
-      const [response, accountResponse, paymentResponse, accountingResponse] = await Promise.all([api.orders.list(), api.shipping.accounts(), api.payments.accounts(), api.accounting.accounts()]);
-      setOrders(response.data || []);
-      setShippingAccounts(accountResponse.data || []);
-      setPaymentAccounts(paymentResponse.data || []);
+      const [orderResponse, companyResponse, shippingResponse, accountingResponse] = await Promise.all([
+        api.orders.list(filters),
+        api.companies.list(),
+        api.shipping.accounts(),
+        api.accounting.accounts(),
+      ]);
+      setOrders(orderResponse.data || []);
+      setCompanies(companyResponse.data || []);
+      setShippingAccounts(shippingResponse.data || []);
       setAccountingAccounts(accountingResponse.data || []);
-      setSelectedAccountId((accountResponse.data || [])[0]?.id || '');
-      setSelectedPaymentAccountId((paymentResponse.data || [])[0]?.id || '');
+      setSelectedAccountId((shippingResponse.data || [])[0]?.id || '');
       setSelectedAccountingAccountId((accountingResponse.data || [])[0]?.id || '');
     });
   };
 
   useEffect(() => {
     load();
-  }, []);
+  }, [filters.status]);
 
-  const createShipment = async (orderId) => {
-    if (!selectedAccountId) {
-      notify('error', 'Kargo hesabi seciniz.');
-      return;
-    }
+  const setFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }));
 
-    await run(async () => {
-      const response = await api.shipping.createShipment(orderId, { shipping_account_id: selectedAccountId });
-      notify('success', response.message);
-      await load();
-    }, { onError: (message) => notify('error', message) });
+  const rows = useMemo(() => orders, [orders]);
+
+  const toggleOrder = (id) => {
+    setSelectedOrderIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   };
 
-  const createPayment = async (order) => {
-    if (!selectedPaymentAccountId) {
-      notify('error', 'POS hesabi seciniz.');
+  const runBulk = async () => {
+    if (selectedOrderIds.length === 0) {
+      notify('error', 'Toplu islem icin siparis seciniz.');
       return;
     }
 
-    await run(async () => {
-      const payment = await api.payments.create(order.id, { payment_account_id: selectedPaymentAccountId, amount: order.total_amount, method: 'three_d' });
-      notify('success', payment.payment_url ? 'Odeme linki olusturuldu.' : 'Odeme kaydi olusturuldu.');
-      await load();
-    }, { onError: (message) => notify('error', message) });
-  };
+    const payload = {
+      order_ids: selectedOrderIds,
+      action: bulkAction,
+      status: bulkStatus,
+      shipping_account_id: selectedAccountId,
+      accounting_account_id: selectedAccountingAccountId,
+      type: 'earchive',
+    };
 
-  const createInvoice = async (orderId) => {
-    if (!selectedAccountingAccountId) {
-      notify('error', 'Muhasebe entegrasyon hesabi seciniz.');
-      return;
-    }
     await run(async () => {
-      const response = await api.accounting.createInvoice(orderId, { accounting_account_id: selectedAccountingAccountId, type: 'earchive' });
+      const response = await api.orders.bulk(payload);
       notify('success', response.message);
+      setSelectedOrderIds([]);
       await load();
     }, { onError: (message) => notify('error', message) });
   };
 
   return (
     <>
-      <PageHeader title="Siparis Yonetimi" />
+      <PageHeader title="Siparis Operasyonu" />
+      <div className="tabs">
+        {statusTabs.map((tab) => (
+          <button type="button" className={filters.status === tab.key ? 'tab active' : 'tab'} key={tab.key} onClick={() => setFilter('status', tab.key)}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
       <PageToolbar
-        search={search}
-        onSearch={setSearch}
-        searchPlaceholder="Siparis no veya musteri ara"
+        search={filters.search}
+        onSearch={(value) => setFilter('search', value)}
+        searchPlaceholder="Siparis, musteri, e-posta veya telefon ara"
+        actions={<button type="button" className="secondary-button" onClick={load}>Filtrele</button>}
         filters={(
-          <select value={status} onChange={(event) => setStatus(event.target.value)}>
-            <option value="">Tum durumlar</option>
-            <option value="new">Yeni</option>
-            <option value="processing">Hazirlaniyor</option>
-            <option value="shipped">Kargoda</option>
-            <option value="delivered">Teslim</option>
-            <option value="cancelled">Iptal</option>
-          </select>
+          <>
+            <select value={filters.company_id} onChange={(event) => setFilter('company_id', event.target.value)}>
+              <option value="">Tum firmalar</option>
+              {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+            </select>
+            <select value={filters.marketplace_code} onChange={(event) => setFilter('marketplace_code', event.target.value)}>
+              <option value="">Tum pazaryerleri</option>
+              <option value="trendyol">Trendyol</option>
+              <option value="hepsiburada">Hepsiburada</option>
+              <option value="test">Test</option>
+            </select>
+            <select value={filters.payment_status} onChange={(event) => setFilter('payment_status', event.target.value)}>
+              <option value="">Odeme</option>
+              <option value="paid">Odendi</option>
+              <option value="pending">Bekliyor</option>
+              <option value="failed">Basarisiz</option>
+            </select>
+            <select value={filters.shipping_status} onChange={(event) => setFilter('shipping_status', event.target.value)}>
+              <option value="">Kargo</option>
+              <option value="queued">Kuyrukta</option>
+              <option value="created">Olustu</option>
+              <option value="shipped">Kargoda</option>
+              <option value="delivered">Teslim</option>
+            </select>
+            <select value={filters.invoice_status} onChange={(event) => setFilter('invoice_status', event.target.value)}>
+              <option value="">Fatura</option>
+              <option value="queued">Kuyrukta</option>
+              <option value="issued">Kesildi</option>
+              <option value="failed">Basarisiz</option>
+            </select>
+            <input type="date" value={filters.date_from} onChange={(event) => setFilter('date_from', event.target.value)} />
+            <input type="date" value={filters.date_to} onChange={(event) => setFilter('date_to', event.target.value)} />
+          </>
         )}
       />
+
       <section className="panel compact-panel">
-        <h2>Siparis Kargo Islemleri</h2>
-        <select value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)}>
-          <option value="">Kargo hesabi seciniz</option>
-          {shippingAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} - {account.carrier?.name}</option>)}
-        </select>
-        <select value={selectedPaymentAccountId} onChange={(event) => setSelectedPaymentAccountId(event.target.value)}>
-          <option value="">POS hesabi seciniz</option>
-          {paymentAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} - {account.provider?.name}</option>)}
-        </select>
-        <select value={selectedAccountingAccountId} onChange={(event) => setSelectedAccountingAccountId(event.target.value)}>
-          <option value="">Muhasebe hesabi seciniz</option>
-          {accountingAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} - {account.integration?.name}</option>)}
-        </select>
+        <h2>Toplu Operasyon</h2>
+        <div className="bulk-grid">
+          <select value={bulkAction} onChange={(event) => setBulkAction(event.target.value)}>
+            <option value="change_status">Durum Degistir</option>
+            <option value="create_shipment">Kargo Olustur</option>
+            <option value="create_invoice">Fatura Olustur</option>
+          </select>
+          <select value={bulkStatus} onChange={(event) => setBulkStatus(event.target.value)} disabled={bulkAction !== 'change_status'}>
+            {statusTabs.map((tab) => <option key={tab.key} value={tab.key}>{tab.label}</option>)}
+          </select>
+          <select value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)} disabled={bulkAction !== 'create_shipment'}>
+            <option value="">Kargo hesabi</option>
+            {shippingAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} - {account.carrier?.name}</option>)}
+          </select>
+          <select value={selectedAccountingAccountId} onChange={(event) => setSelectedAccountingAccountId(event.target.value)} disabled={bulkAction !== 'create_invoice'}>
+            <option value="">Muhasebe hesabi</option>
+            {accountingAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} - {account.integration?.name}</option>)}
+          </select>
+          <button type="button" disabled={loading} onClick={runBulk}><ClipboardList size={16} /> {selectedOrderIds.length} Siparise Uygula</button>
+        </div>
       </section>
+
       {error && <ErrorState message={error} onRetry={load} />}
-      {loading && orders.length === 0 ? <LoadingState /> : (
-      <DataTable
-        rows={orders.filter((order) => {
-          const query = search.trim().toLowerCase();
-          const matchesSearch = !query || [order.marketplace_order_id, order.customer_name, order.company?.name].some((value) => String(value || '').toLowerCase().includes(query));
-          const matchesStatus = !status || order.status === status;
-          return matchesSearch && matchesStatus;
-        })}
-        emptyTitle="Siparis bulunamadi"
-        emptyText="Filtreleri temizleyin veya pazaryeri siparis senkronizasyonunu calistirin."
-        columns={[
-          { key: 'marketplace_code', label: 'Pazaryeri' },
-          { key: 'marketplace_order_id', label: 'Siparis No' },
-          { key: 'company', label: 'Firma', render: (row) => row.company?.name },
-          { key: 'customer_name', label: 'Musteri' },
-          { key: 'total_amount', label: 'Tutar' },
-          { key: 'status', label: 'Durum' },
-          { key: 'payment', label: 'Odeme', render: (row) => row.payments?.[0] ? <span className={`badge ${row.payments[0].status}`}>{row.payments[0].status}</span> : '-' },
-          { key: 'invoice', label: 'Fatura', render: (row) => row.invoices?.[0] ? <span className={`badge ${row.invoices[0].status}`}>{row.invoices[0].invoice_number || row.invoices[0].status}</span> : '-' },
-          { key: 'shipment', label: 'Kargo', render: (row) => row.shipments?.[0] ? <span className={`badge ${row.shipments[0].status}`}>{row.shipments[0].tracking_number || row.shipments[0].status}</span> : '-' },
-          { key: 'actions', label: 'Islem', render: (row) => <div className="row-actions"><button type="button" disabled={loading} onClick={() => createPayment(row)}>Odeme Linki</button><button type="button" disabled={loading} onClick={() => createInvoice(row.id)}>Fatura</button><button type="button" disabled={loading} onClick={() => createShipment(row.id)}>Kargo Olustur</button></div> },
-        ]}
-      />
+      {loading && rows.length === 0 ? <LoadingState /> : (
+        <DataTable
+          rows={rows}
+          emptyTitle="Siparis bulunamadi"
+          emptyText="Filtreleri degistirin veya pazaryeri siparis senkronizasyonunu calistirin."
+          columns={[
+            { key: 'select', label: '', render: (row) => <input type="checkbox" checked={selectedOrderIds.includes(row.id)} onChange={() => toggleOrder(row.id)} /> },
+            { key: 'marketplace_order_id', label: 'Siparis No', render: (row) => <Link to={`/orders/${row.id}`}>{row.marketplace_order_id}</Link> },
+            { key: 'marketplace_code', label: 'Pazaryeri' },
+            { key: 'company', label: 'Firma', render: (row) => row.company?.name },
+            { key: 'customer_name', label: 'Musteri' },
+            { key: 'total_amount', label: 'Tutar' },
+            { key: 'status', label: 'Durum', render: (row) => badge(row.status) },
+            { key: 'payment', label: 'Odeme', render: (row) => badge(row.payments?.[0]?.status || row.payment_status) },
+            { key: 'invoice', label: 'Fatura', render: (row) => badge(row.invoices?.[0]?.invoice_number || row.invoices?.[0]?.status || row.invoice_status) },
+            { key: 'shipment', label: 'Kargo', render: (row) => badge(row.shipments?.[0]?.tracking_number || row.shipments?.[0]?.status || row.shipping_status) },
+            { key: 'actions', label: 'Islem', render: (row) => <div className="row-actions"><Link className="button-link" to={`/orders/${row.id}`}><PackageCheck size={15} /> Detay</Link><span title="Fatura ve kargo aksiyonlari detay ekraninda"><FileText size={15} /><Truck size={15} /></span></div> },
+          ]}
+        />
       )}
     </>
   );

@@ -112,7 +112,14 @@ export const api = {
     create: (payload) => http.post('/category-mappings', payload).then((response) => response.data),
   },
   orders: {
-    list: () => http.get('/orders').then((response) => response.data),
+    list: (params) => http.get('/orders', { params }).then((response) => response.data),
+    show: (id) => http.get(`/orders/${id}`).then((response) => response.data),
+    statuses: () => http.get('/orders/statuses').then((response) => response.data),
+    update: (id, payload) => http.put(`/orders/${id}`, payload).then((response) => response.data),
+    transition: (id, payload) => http.post(`/orders/${id}/transition`, payload).then((response) => response.data),
+    addNote: (id, payload) => http.post(`/orders/${id}/notes`, payload).then((response) => response.data),
+    resolution: (id, payload) => http.post(`/orders/${id}/resolution-request`, payload).then((response) => response.data),
+    bulk: (payload) => http.post('/orders/bulk', payload).then((response) => response.data),
   },
   payments: {
     providers: () => http.get('/payment-providers').then((response) => response.data),

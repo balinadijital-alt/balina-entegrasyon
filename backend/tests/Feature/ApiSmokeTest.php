@@ -227,6 +227,12 @@ class ApiSmokeTest extends TestCase
             'name' => 'Test Kargo',
         ])->assertCreated()->json();
         $this->postJson("/api/orders/{$order->id}/shipments", ['shipping_account_id' => $shippingAccount['id']])->assertAccepted();
+        $this->postJson("/api/orders/{$order->id}/notes", ['note' => 'Depo kontrol etti.', 'type' => 'warehouse'])
+            ->assertCreated()
+            ->assertJsonPath('note', 'Depo kontrol etti.');
+        $this->postJson("/api/orders/{$order->id}/transition", ['status' => 'preparing'])
+            ->assertOk()
+            ->assertJsonPath('status', 'preparing');
 
         $integration = $this->getJson('/api/accounting-integrations')->assertOk()->json('0');
         $account = $this->postJson('/api/accounting-accounts', [
@@ -235,6 +241,17 @@ class ApiSmokeTest extends TestCase
             'name' => 'Test Muhasebe',
         ])->assertCreated()->json();
         $this->postJson("/api/orders/{$order->id}/invoices", ['accounting_account_id' => $account['id'], 'type' => 'earchive'])->assertAccepted();
+        $this->postJson('/api/orders/bulk', [
+            'order_ids' => [$order->id],
+            'action' => 'change_status',
+            'status' => 'ready_to_ship',
+        ])->assertOk()->assertJsonPath('processed', 1);
+        $this->postJson("/api/orders/{$order->id}/resolution-request", ['type' => 'problem', 'reason' => 'Adres teyidi bekleniyor.'])
+            ->assertOk()
+            ->assertJsonPath('status', 'problematic');
+        $this->getJson("/api/orders/{$order->id}")
+            ->assertOk()
+            ->assertJsonStructure(['notes', 'operation_histories', 'shipments', 'invoices', 'payments']);
 
         $plan = SaasPlan::first();
         $this->postJson("/api/companies/{$this->company->id}/start-trial", ['saas_plan_id' => $plan->id])->assertCreated();

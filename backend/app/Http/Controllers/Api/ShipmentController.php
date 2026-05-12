@@ -7,6 +7,7 @@ use App\Jobs\Shipping\ProcessShipmentJob;
 use App\Models\Order;
 use App\Models\Shipment;
 use App\Models\ShippingAccount;
+use App\Services\Orders\OrderOperationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -21,7 +22,7 @@ class ShipmentController extends Controller
             ->paginate(30));
     }
 
-    public function createForOrder(Order $order, Request $request): JsonResponse
+    public function createForOrder(Order $order, Request $request, OrderOperationService $operations): JsonResponse
     {
         $data = $request->validate([
             'shipping_account_id' => ['required', 'exists:shipping_accounts,id'],
@@ -39,6 +40,8 @@ class ShipmentController extends Controller
         ]);
 
         ProcessShipmentJob::dispatch($shipment, 'create', $data['payload'] ?? []);
+        $order->update(['shipping_status' => 'queued']);
+        $operations->recordHistory($order, 'shipment_queued', $order->status, $order->status, ['shipment_id' => $shipment->id], $request->user());
 
         return response()->json(['message' => 'Kargo barkodu olusturma kuyruga alindi.', 'shipment_id' => $shipment->id, 'queued' => true], 202);
     }
@@ -62,9 +65,10 @@ class ShipmentController extends Controller
         return response()->json(['message' => 'Kargo takip sorgusu kuyruga alindi.', 'queued' => true], 202);
     }
 
-    public function label(Shipment $shipment): JsonResponse
+    public function label(Shipment $shipment, OrderOperationService $operations): JsonResponse
     {
         ProcessShipmentJob::dispatch($shipment, 'label');
+        $operations->recordHistory($shipment->order, 'shipment_label_queued', $shipment->order?->status, $shipment->order?->status, ['shipment_id' => $shipment->id]);
 
         return response()->json(['message' => 'Kargo etiketi kuyruga alindi.', 'queued' => true], 202);
     }

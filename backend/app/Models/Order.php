@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Workflow\OrderNote;
+use App\Models\Workflow\OrderOperationHistory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,8 +16,18 @@ class Order extends Model
         'marketplace_order_id',
         'customer_name',
         'customer_email',
+        'customer_phone',
+        'shipping_address',
+        'billing_address',
         'total_amount',
         'status',
+        'payment_status',
+        'shipping_status',
+        'invoice_status',
+        'cancel_reason',
+        'return_reason',
+        'problem_note',
+        'operation_flags',
         'payload',
     ];
 
@@ -23,6 +35,9 @@ class Order extends Model
     {
         return [
             'total_amount' => 'decimal:2',
+            'shipping_address' => 'array',
+            'billing_address' => 'array',
+            'operation_flags' => 'array',
             'payload' => 'array',
         ];
     }
@@ -50,5 +65,15 @@ class Order extends Model
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class)->latest();
+    }
+
+    public function notes(): HasMany
+    {
+        return $this->hasMany(OrderNote::class)->latest();
+    }
+
+    public function operationHistories(): HasMany
+    {
+        return $this->hasMany(OrderOperationHistory::class)->latest();
     }
 }
