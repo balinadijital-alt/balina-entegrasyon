@@ -1286,6 +1286,179 @@ a {
   padding: 12px;
 }
 
+.retry-hero-panel {
+  background:
+    radial-gradient(circle at top right, rgb(245 158 11 / 16%), transparent 34%),
+    linear-gradient(135deg, #0f172a, #1e293b);
+  border: 1px solid rgb(148 163 184 / 18%);
+  border-radius: 20px;
+  box-shadow: 0 24px 56px rgb(15 23 42 / 18%);
+  color: #fff;
+  display: grid;
+  gap: 22px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  margin-bottom: 18px;
+  padding: 24px;
+}
+
+.retry-hero-panel h2,
+.retry-hero-panel p {
+  margin: 0;
+}
+
+.retry-hero-panel .eyebrow {
+  align-items: center;
+  color: #fbbf24;
+  display: inline-flex;
+  gap: 7px;
+}
+
+.retry-hero-panel h2 {
+  font-size: 30px;
+  line-height: 1.12;
+  margin-top: 8px;
+}
+
+.retry-hero-panel p {
+  color: #cbd5e1;
+  line-height: 1.55;
+  margin-top: 10px;
+}
+
+.retry-health-card {
+  background: rgb(255 255 255 / 8%);
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 16px;
+  display: grid;
+  gap: 9px;
+  padding: 16px;
+}
+
+.retry-health-card strong {
+  color: #fff;
+  font-size: 18px;
+}
+
+.retry-health-card small {
+  color: #94a3b8;
+}
+
+.retry-stat-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-bottom: 18px;
+}
+
+.retry-stat-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 6px;
+  min-height: 128px;
+  padding: 16px;
+}
+
+.retry-stat-card svg {
+  color: #2563eb;
+}
+
+.retry-stat-card.danger svg {
+  color: #dc2626;
+}
+
+.retry-stat-card.warning svg {
+  color: #d97706;
+}
+
+.retry-stat-card.success svg {
+  color: #059669;
+}
+
+.retry-stat-card span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.retry-stat-card strong {
+  color: #0f172a;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.retry-stat-card small {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.retry-layout {
+  align-items: start;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.8fr);
+  margin-bottom: 18px;
+}
+
+.retry-detail-panel {
+  position: sticky;
+  top: 86px;
+}
+
+.retry-explanation-card {
+  align-items: flex-start;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 14px;
+  color: #92400e;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px;
+}
+
+.retry-explanation-card div {
+  display: grid;
+  gap: 4px;
+}
+
+.retry-detail-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.retry-detail-grid div {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.retry-detail-grid span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.retry-detail-grid strong {
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.retry-lower-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .publish-wizard-panel {
   grid-template-columns: 220px minmax(0, 1fr);
 }
@@ -4259,6 +4432,11 @@ tbody td:last-child .row-actions:focus-within {
   .log-viewer-layout,
   .log-detail-grid,
   .log-payload-summary,
+  .retry-hero-panel,
+  .retry-stat-grid,
+  .retry-layout,
+  .retry-detail-grid,
+  .retry-lower-grid,
   .publish-wizard-panel,
   .compact-marketplace-grid,
   .publish-readiness-summary,
