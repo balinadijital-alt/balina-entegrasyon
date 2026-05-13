@@ -64,7 +64,7 @@ export const appNavigationGroups = [
       { to: '/catalog/units', label: 'Birimler', icon: Settings },
       { to: '/catalog/defaults', label: 'KDV / Birim / Desi', icon: Settings },
       { to: '/pricing/bulk-operations', label: 'Toplu Urun Islemleri', icon: Workflow },
-      { to: '/products/import', label: 'Toplu Urun Yukleme', icon: UploadCloud },
+      { to: '/imports', label: 'Toplu Urun Yukleme', icon: UploadCloud },
       { to: '/products/publish-queue', label: 'Aktarim Listesi', icon: Send },
     ],
   },
