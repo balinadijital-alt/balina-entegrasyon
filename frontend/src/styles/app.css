@@ -969,6 +969,119 @@ a {
   margin-bottom: 18px;
 }
 
+.import-wizard-panel {
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.import-wizard-body {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  padding: 22px;
+}
+
+.import-steps {
+  align-content: start;
+}
+
+.import-source-cards,
+.import-check-grid,
+.import-history-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.import-check-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.import-history-grid {
+  align-items: start;
+  margin-top: 18px;
+}
+
+.import-source-card {
+  align-items: flex-start;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+  color: #334155;
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  min-height: 150px;
+  padding: 18px;
+  text-align: left;
+}
+
+.import-source-card.active {
+  border-color: #2563eb;
+  box-shadow: 0 18px 38px rgb(37 99 235 / 16%);
+}
+
+.import-source-card svg {
+  color: #2563eb;
+}
+
+.import-source-card strong {
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.import-source-card span {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.import-mapping-summary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.import-mapping-summary div,
+.import-launch-card {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: grid;
+  gap: 5px;
+  padding: 13px;
+}
+
+.import-mapping-summary span,
+.import-launch-card span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.import-mapping-summary strong {
+  color: #0f172a;
+  font-size: 24px;
+}
+
+.import-mapping-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.import-launch-card {
+  justify-items: start;
+  max-width: 560px;
+}
+
+.import-launch-card svg {
+  color: #2563eb;
+}
+
+.import-launch-card strong {
+  color: #0f172a;
+  font-size: 18px;
+}
+
 .publish-wizard-panel {
   grid-template-columns: 220px minmax(0, 1fr);
 }
@@ -3705,6 +3818,12 @@ tbody td:last-child .row-actions:focus-within {
   .catalog-admin-layout,
   .catalog-shell,
   .publish-columns,
+  .import-wizard-panel,
+  .import-source-cards,
+  .import-check-grid,
+  .import-history-grid,
+  .import-mapping-summary,
+  .import-mapping-grid,
   .publish-wizard-panel,
   .compact-marketplace-grid,
   .publish-readiness-summary,
