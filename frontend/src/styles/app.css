@@ -4634,6 +4634,319 @@ tbody td:last-child .row-actions:focus-within {
   margin-top: 14px;
 }
 
+.accounting-page {
+  display: grid;
+  gap: 18px;
+}
+
+.accounting-hero {
+  background:
+    linear-gradient(135deg, rgb(15 23 42 / 94%), rgb(30 41 59 / 92%)),
+    radial-gradient(circle at 78% 18%, rgb(168 85 247 / 28%), transparent 34%);
+  border: 1px solid rgb(148 163 184 / 22%);
+  border-radius: 22px;
+  box-shadow: 0 22px 60px rgb(15 23 42 / 20%);
+  color: #e2e8f0;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.6fr) minmax(250px, 0.7fr);
+  padding: 24px;
+}
+
+.accounting-hero h2 {
+  color: #fff;
+  font-size: 30px;
+  line-height: 1.12;
+  margin: 8px 0;
+}
+
+.accounting-hero p {
+  color: #cbd5e1;
+  margin: 0;
+  max-width: 780px;
+}
+
+.accounting-hero .eyebrow,
+.accounting-detail-panel .eyebrow {
+  color: #c4b5fd;
+}
+
+.accounting-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.accounting-hero-status {
+  align-content: center;
+  background: rgb(255 255 255 / 8%);
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 18px;
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+}
+
+.accounting-hero-status strong {
+  color: #fff;
+  font-size: 30px;
+}
+
+.accounting-hero-status span,
+.accounting-hero-status small {
+  color: #cbd5e1;
+}
+
+.accounting-stat-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.accounting-stat-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 7px;
+  min-height: 128px;
+  padding: 16px;
+}
+
+.accounting-stat-card span {
+  align-items: center;
+  background: #eff6ff;
+  border-radius: 12px;
+  color: #1d4ed8;
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.accounting-stat-card strong {
+  color: #0f172a;
+  font-size: 24px;
+  overflow-wrap: anywhere;
+}
+
+.accounting-stat-card p {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 900;
+  margin: 0;
+}
+
+.accounting-stat-card.green span {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.accounting-stat-card.orange span {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.accounting-stat-card.red span {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.accounting-stat-card.purple span {
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+
+.accounting-filter-panel {
+  align-items: center;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
+}
+
+.accounting-filter-panel h2,
+.accounting-filter-panel p,
+.accounting-table-header h2,
+.accounting-table-header p,
+.accounting-account-panel p {
+  margin: 0;
+}
+
+.accounting-filter-panel p,
+.accounting-table-header p,
+.accounting-account-panel p {
+  color: #64748b;
+}
+
+.accounting-filter-row {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(220px, 1.3fr);
+}
+
+.accounting-filter-row label {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: #64748b;
+  display: flex;
+  gap: 8px;
+  padding: 0 10px;
+}
+
+.accounting-filter-row input,
+.accounting-filter-row select {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding-left: 0;
+}
+
+.accounting-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 370px);
+}
+
+.accounting-table-panel,
+.accounting-detail-panel {
+  min-height: 100%;
+}
+
+.accounting-table-header,
+.accounting-detail-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.accounting-row-actions {
+  flex-wrap: nowrap;
+}
+
+.accounting-row-actions button {
+  min-height: 34px;
+  padding: 0 9px;
+}
+
+.accounting-detail-panel {
+  display: grid;
+  gap: 16px;
+  height: fit-content;
+  position: sticky;
+  top: 18px;
+}
+
+.accounting-detail-panel.empty {
+  align-content: center;
+  color: #64748b;
+  justify-items: center;
+  min-height: 340px;
+  text-align: center;
+}
+
+.accounting-detail-panel.empty h2,
+.accounting-detail-panel.empty p {
+  margin: 0;
+}
+
+.accounting-detail-head h2 {
+  color: #0f172a;
+  font-size: 20px;
+  margin: 4px 0 0;
+}
+
+.accounting-detail-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.accounting-detail-grid div {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+}
+
+.accounting-detail-grid span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.accounting-detail-grid strong {
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.accounting-error-card,
+.accounting-success-card {
+  align-items: flex-start;
+  border-radius: 14px;
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+}
+
+.accounting-error-card {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.accounting-success-card {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.accounting-error-card strong,
+.accounting-success-card strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.accounting-error-card p,
+.accounting-success-card p {
+  margin: 0;
+}
+
+.accounting-detail-actions {
+  display: grid;
+  gap: 9px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.accounting-detail-actions button,
+.accounting-detail-actions .button-link {
+  min-height: 38px;
+}
+
+.accounting-lower-grid,
+.accounting-form-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.accounting-form-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.accounting-account-panel .form-grid {
+  grid-template-columns: 1fr;
+  margin-top: 14px;
+}
+
 .operations-hero {
   background:
     linear-gradient(135deg, rgb(15 23 42 / 94%), rgb(30 41 59 / 92%)),
@@ -5045,6 +5358,15 @@ tbody td:last-child .row-actions:focus-within {
   .payment-detail-actions,
   .payment-lower-grid,
   .payment-account-panel .form-grid,
+  .accounting-hero,
+  .accounting-stat-grid,
+  .accounting-filter-panel,
+  .accounting-filter-row,
+  .accounting-layout,
+  .accounting-detail-grid,
+  .accounting-detail-actions,
+  .accounting-lower-grid,
+  .accounting-form-grid,
   .premium-dashboard-hero,
   .premium-dashboard-kpis,
   .dashboard-main-grid,
