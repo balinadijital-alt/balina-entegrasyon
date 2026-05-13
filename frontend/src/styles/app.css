@@ -4315,6 +4315,325 @@ tbody td:last-child .row-actions:focus-within {
   margin-top: 14px;
 }
 
+.payment-page {
+  display: grid;
+  gap: 18px;
+}
+
+.payment-hero {
+  background:
+    linear-gradient(135deg, rgb(15 23 42 / 94%), rgb(30 41 59 / 92%)),
+    radial-gradient(circle at 78% 18%, rgb(16 185 129 / 30%), transparent 34%);
+  border: 1px solid rgb(148 163 184 / 22%);
+  border-radius: 22px;
+  box-shadow: 0 22px 60px rgb(15 23 42 / 20%);
+  color: #e2e8f0;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.6fr) minmax(250px, 0.7fr);
+  padding: 24px;
+}
+
+.payment-hero h2 {
+  color: #fff;
+  font-size: 30px;
+  line-height: 1.12;
+  margin: 8px 0;
+}
+
+.payment-hero p {
+  color: #cbd5e1;
+  margin: 0;
+  max-width: 780px;
+}
+
+.payment-hero .eyebrow,
+.payment-detail-panel .eyebrow {
+  color: #86efac;
+}
+
+.payment-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.payment-hero-status {
+  align-content: center;
+  background: rgb(255 255 255 / 8%);
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 18px;
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+}
+
+.payment-hero-status strong {
+  color: #fff;
+  font-size: 30px;
+}
+
+.payment-hero-status span,
+.payment-hero-status small {
+  color: #cbd5e1;
+}
+
+.payment-stat-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.payment-stat-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 7px;
+  min-height: 128px;
+  padding: 16px;
+}
+
+.payment-stat-card span {
+  align-items: center;
+  background: #eff6ff;
+  border-radius: 12px;
+  color: #1d4ed8;
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.payment-stat-card strong {
+  color: #0f172a;
+  font-size: 27px;
+}
+
+.payment-stat-card p {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 900;
+  margin: 0;
+}
+
+.payment-stat-card.green span {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.payment-stat-card.orange span {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.payment-stat-card.red span {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.payment-stat-card.purple span {
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+
+.payment-filter-panel {
+  align-items: center;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
+}
+
+.payment-filter-panel h2,
+.payment-filter-panel p,
+.payment-table-header h2,
+.payment-table-header p,
+.payment-account-panel p {
+  margin: 0;
+}
+
+.payment-filter-panel p,
+.payment-table-header p,
+.payment-account-panel p {
+  color: #64748b;
+}
+
+.payment-filter-row {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(220px, 1.3fr);
+}
+
+.payment-filter-row label {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: #64748b;
+  display: flex;
+  gap: 8px;
+  padding: 0 10px;
+}
+
+.payment-filter-row input,
+.payment-filter-row select {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding-left: 0;
+}
+
+.payment-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 370px);
+}
+
+.payment-table-panel,
+.payment-detail-panel {
+  min-height: 100%;
+}
+
+.payment-table-header,
+.payment-detail-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.payment-row-actions {
+  flex-wrap: nowrap;
+}
+
+.payment-row-actions button {
+  min-height: 34px;
+  padding: 0 9px;
+}
+
+.payment-detail-panel {
+  display: grid;
+  gap: 16px;
+  height: fit-content;
+  position: sticky;
+  top: 18px;
+}
+
+.payment-detail-panel.empty {
+  align-content: center;
+  color: #64748b;
+  justify-items: center;
+  min-height: 340px;
+  text-align: center;
+}
+
+.payment-detail-panel.empty h2,
+.payment-detail-panel.empty p {
+  margin: 0;
+}
+
+.payment-detail-head h2 {
+  color: #0f172a;
+  font-size: 20px;
+  margin: 4px 0 0;
+}
+
+.payment-detail-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.payment-detail-grid div {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+}
+
+.payment-detail-grid span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.payment-detail-grid strong {
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.payment-error-card,
+.payment-success-card {
+  align-items: flex-start;
+  border-radius: 14px;
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+}
+
+.payment-error-card {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.payment-success-card {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.payment-error-card strong,
+.payment-success-card strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.payment-error-card p,
+.payment-success-card p {
+  margin: 0;
+}
+
+.payment-link-card {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--accent);
+  display: flex;
+  font-weight: 900;
+  gap: 10px;
+  padding: 12px;
+}
+
+.payment-detail-actions {
+  display: grid;
+  gap: 9px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.payment-detail-actions button,
+.payment-detail-actions .button-link {
+  min-height: 38px;
+}
+
+.payment-lower-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.75fr);
+}
+
+.payment-account-panel .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
 .operations-hero {
   background:
     linear-gradient(135deg, rgb(15 23 42 / 94%), rgb(30 41 59 / 92%)),
@@ -4717,6 +5036,15 @@ tbody td:last-child .row-actions:focus-within {
   .shipping-detail-actions,
   .shipping-lower-grid,
   .shipping-account-panel .form-grid,
+  .payment-hero,
+  .payment-stat-grid,
+  .payment-filter-panel,
+  .payment-filter-row,
+  .payment-layout,
+  .payment-detail-grid,
+  .payment-detail-actions,
+  .payment-lower-grid,
+  .payment-account-panel .form-grid,
   .premium-dashboard-hero,
   .premium-dashboard-kpis,
   .dashboard-main-grid,
