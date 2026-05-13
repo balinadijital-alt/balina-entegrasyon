@@ -8,3 +8,4 @@ composer test
 
 cd "$ROOT_DIR/frontend"
 npm run build
+npm run test:e2e:smoke

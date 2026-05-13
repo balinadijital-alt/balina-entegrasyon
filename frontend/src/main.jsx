@@ -84,6 +84,7 @@ function CustomerRoutes() {
   return (
     <>
       <Route index element={<CustomerDashboardPage />} />
+      <Route path="dashboard" element={<CustomerDashboardPage />} />
       <Route path="reports" element={<CustomerReportsPage />} />
       <Route path="resources" element={<DeveloperCenterPage />} />
       <Route path="companies" element={<CompaniesPage />} />
