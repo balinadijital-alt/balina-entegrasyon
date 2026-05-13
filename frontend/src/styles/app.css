@@ -5312,6 +5312,345 @@ tbody td:last-child .row-actions:focus-within {
   min-height: 38px;
 }
 
+.saas-page {
+  display: grid;
+  gap: 18px;
+}
+
+.saas-hero {
+  background:
+    linear-gradient(135deg, rgb(15 23 42 / 94%), rgb(30 41 59 / 92%)),
+    radial-gradient(circle at 78% 18%, rgb(37 99 235 / 32%), transparent 34%);
+  border: 1px solid rgb(148 163 184 / 22%);
+  border-radius: 22px;
+  box-shadow: 0 22px 60px rgb(15 23 42 / 20%);
+  color: #e2e8f0;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.6fr) minmax(250px, 0.7fr);
+  padding: 24px;
+}
+
+.saas-hero h2 {
+  color: #fff;
+  font-size: 30px;
+  line-height: 1.12;
+  margin: 8px 0;
+}
+
+.saas-hero p {
+  color: #cbd5e1;
+  margin: 0;
+  max-width: 780px;
+}
+
+.saas-hero .eyebrow,
+.saas-detail-panel .eyebrow {
+  color: #93c5fd;
+}
+
+.saas-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.saas-hero-status {
+  align-content: center;
+  background: rgb(255 255 255 / 8%);
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 18px;
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+}
+
+.saas-hero-status strong {
+  color: #fff;
+  font-size: 30px;
+}
+
+.saas-hero-status span,
+.saas-hero-status small {
+  color: #cbd5e1;
+}
+
+.saas-stat-grid,
+.saas-plan-grid,
+.saas-usage-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.saas-stat-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.saas-plan-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.saas-usage-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.saas-stat-card,
+.saas-plan-card,
+.saas-usage-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 9px;
+  padding: 16px;
+}
+
+.saas-stat-card {
+  min-height: 128px;
+}
+
+.saas-stat-card span {
+  align-items: center;
+  background: #eff6ff;
+  border-radius: 12px;
+  color: #1d4ed8;
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.saas-stat-card strong {
+  color: #0f172a;
+  font-size: 27px;
+}
+
+.saas-stat-card p,
+.saas-plan-card p,
+.saas-usage-card small {
+  color: #64748b;
+  margin: 0;
+}
+
+.saas-stat-card p {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.saas-stat-card.green span,
+.saas-plan-card.green {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.saas-stat-card.orange span {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.saas-stat-card.red span,
+.saas-usage-card.warning {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.saas-stat-card.purple span,
+.saas-plan-card.purple {
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+
+.saas-plan-card {
+  background: #fff;
+  min-height: 230px;
+}
+
+.saas-plan-card > div:first-child {
+  display: grid;
+  gap: 6px;
+}
+
+.saas-plan-card > div:first-child span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.saas-plan-card > div:first-child strong {
+  color: #0f172a;
+  font-size: 24px;
+}
+
+.saas-plan-limits {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.saas-plan-limits div,
+.saas-detail-grid div,
+.saas-detail-usage div {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.saas-plan-limits small,
+.saas-detail-grid span,
+.saas-detail-usage span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.saas-plan-limits b,
+.saas-detail-grid strong,
+.saas-detail-usage strong,
+.saas-usage-card strong {
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.saas-control-panel {
+  align-items: center;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(260px, 0.7fr) minmax(0, 1.3fr);
+}
+
+.saas-control-panel h2,
+.saas-control-panel p,
+.saas-action-panel h2,
+.saas-action-panel p {
+  margin: 0;
+}
+
+.saas-control-panel p,
+.saas-action-panel p {
+  color: #64748b;
+}
+
+.saas-control-grid {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.saas-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+}
+
+.saas-detail-panel {
+  display: grid;
+  gap: 16px;
+  height: fit-content;
+  position: sticky;
+  top: 18px;
+}
+
+.saas-detail-panel.empty {
+  align-content: center;
+  color: #64748b;
+  justify-items: center;
+  min-height: 340px;
+  text-align: center;
+}
+
+.saas-detail-panel.empty h2,
+.saas-detail-panel.empty p {
+  margin: 0;
+}
+
+.saas-detail-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.saas-detail-head h2 {
+  color: #0f172a;
+  font-size: 20px;
+  margin: 4px 0 0;
+}
+
+.saas-detail-grid,
+.saas-detail-usage {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.saas-detail-usage {
+  grid-template-columns: 1fr;
+}
+
+.saas-warning-card,
+.saas-success-card {
+  align-items: flex-start;
+  border-radius: 14px;
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+}
+
+.saas-warning-card {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.saas-success-card {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.saas-warning-card strong,
+.saas-success-card strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.saas-warning-card p,
+.saas-success-card p {
+  margin: 0;
+}
+
+.saas-inline-usage {
+  display: grid;
+  gap: 5px;
+  min-width: 120px;
+}
+
+.saas-inline-usage span {
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.saas-lower-grid,
+.saas-form-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.saas-action-panel {
+  display: grid;
+  gap: 12px;
+}
+
 .operations-hero {
   background:
     linear-gradient(135deg, rgb(15 23 42 / 94%), rgb(30 41 59 / 92%)),
@@ -5739,6 +6078,16 @@ tbody td:last-child .row-actions:focus-within {
   .orders-layout,
   .orders-detail-grid,
   .orders-detail-actions,
+  .saas-hero,
+  .saas-stat-grid,
+  .saas-plan-grid,
+  .saas-usage-grid,
+  .saas-control-panel,
+  .saas-control-grid,
+  .saas-layout,
+  .saas-detail-grid,
+  .saas-lower-grid,
+  .saas-form-grid,
   .premium-dashboard-hero,
   .premium-dashboard-kpis,
   .dashboard-main-grid,
