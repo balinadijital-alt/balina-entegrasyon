@@ -81,6 +81,22 @@ button:hover {
   background: #334155;
 }
 
+button.secondary {
+  background: #334155;
+}
+
+button.text-link {
+  background: transparent;
+  color: var(--accent);
+  font-weight: 900;
+  min-height: auto;
+  padding: 0;
+}
+
+button.text-link:hover {
+  box-shadow: none;
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.65;
@@ -3993,6 +4009,312 @@ tbody td:last-child .row-actions:focus-within {
   gap: 18px;
 }
 
+.shipping-page {
+  display: grid;
+  gap: 18px;
+}
+
+.shipping-hero {
+  background:
+    linear-gradient(135deg, rgb(15 23 42 / 94%), rgb(30 41 59 / 92%)),
+    radial-gradient(circle at 78% 18%, rgb(14 165 233 / 34%), transparent 34%);
+  border: 1px solid rgb(148 163 184 / 22%);
+  border-radius: 22px;
+  box-shadow: 0 22px 60px rgb(15 23 42 / 20%);
+  color: #e2e8f0;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.6fr) minmax(250px, 0.7fr);
+  padding: 24px;
+}
+
+.shipping-hero h2 {
+  color: #fff;
+  font-size: 30px;
+  line-height: 1.12;
+  margin: 8px 0;
+}
+
+.shipping-hero p {
+  color: #cbd5e1;
+  margin: 0;
+  max-width: 760px;
+}
+
+.shipping-hero .eyebrow,
+.shipping-detail-panel .eyebrow {
+  color: #93c5fd;
+}
+
+.shipping-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.shipping-hero-status {
+  align-content: center;
+  background: rgb(255 255 255 / 8%);
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 18px;
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+}
+
+.shipping-hero-status strong {
+  color: #fff;
+  font-size: 30px;
+}
+
+.shipping-hero-status span,
+.shipping-hero-status small {
+  color: #cbd5e1;
+}
+
+.shipping-stat-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.shipping-stat-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 7px;
+  min-height: 128px;
+  padding: 16px;
+}
+
+.shipping-stat-card span {
+  align-items: center;
+  background: #eff6ff;
+  border-radius: 12px;
+  color: #1d4ed8;
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.shipping-stat-card strong {
+  color: #0f172a;
+  font-size: 27px;
+}
+
+.shipping-stat-card p {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 900;
+  margin: 0;
+}
+
+.shipping-stat-card.green span {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.shipping-stat-card.orange span {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.shipping-stat-card.red span {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.shipping-stat-card.purple span {
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+
+.shipping-filter-panel {
+  align-items: center;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
+}
+
+.shipping-filter-panel h2,
+.shipping-filter-panel p,
+.shipping-table-header h2,
+.shipping-table-header p,
+.shipping-account-panel p {
+  margin: 0;
+}
+
+.shipping-filter-panel p,
+.shipping-table-header p,
+.shipping-account-panel p {
+  color: #64748b;
+}
+
+.shipping-filter-row {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(220px, 1.3fr);
+}
+
+.shipping-filter-row label {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: #64748b;
+  display: flex;
+  gap: 8px;
+  padding: 0 10px;
+}
+
+.shipping-filter-row input,
+.shipping-filter-row select {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding-left: 0;
+}
+
+.shipping-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+}
+
+.shipping-table-panel,
+.shipping-detail-panel {
+  min-height: 100%;
+}
+
+.shipping-table-header,
+.shipping-detail-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.shipping-row-actions {
+  flex-wrap: nowrap;
+}
+
+.shipping-row-actions button {
+  min-height: 34px;
+  padding: 0 9px;
+}
+
+.shipping-detail-panel {
+  display: grid;
+  gap: 16px;
+  height: fit-content;
+  position: sticky;
+  top: 18px;
+}
+
+.shipping-detail-panel.empty {
+  align-content: center;
+  color: #64748b;
+  justify-items: center;
+  min-height: 340px;
+  text-align: center;
+}
+
+.shipping-detail-panel.empty h2,
+.shipping-detail-panel.empty p {
+  margin: 0;
+}
+
+.shipping-detail-head h2 {
+  color: #0f172a;
+  font-size: 20px;
+  margin: 4px 0 0;
+}
+
+.shipping-detail-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.shipping-detail-grid div {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+}
+
+.shipping-detail-grid span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.shipping-detail-grid strong {
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.shipping-error-card,
+.shipping-success-card {
+  align-items: flex-start;
+  border-radius: 14px;
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+}
+
+.shipping-error-card {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.shipping-success-card {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.shipping-error-card strong,
+.shipping-success-card strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.shipping-error-card p,
+.shipping-success-card p {
+  margin: 0;
+}
+
+.shipping-detail-actions {
+  display: grid;
+  gap: 9px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.shipping-detail-actions button {
+  min-height: 38px;
+}
+
+.shipping-lower-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.75fr);
+}
+
+.shipping-account-panel .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
 .operations-hero {
   background:
     linear-gradient(135deg, rgb(15 23 42 / 94%), rgb(30 41 59 / 92%)),
@@ -4386,6 +4708,15 @@ tbody td:last-child .row-actions:focus-within {
   .developer-lower-grid,
   .marketplace-onboarding-layout,
   .operations-hero,
+  .shipping-hero,
+  .shipping-stat-grid,
+  .shipping-filter-panel,
+  .shipping-filter-row,
+  .shipping-layout,
+  .shipping-detail-grid,
+  .shipping-detail-actions,
+  .shipping-lower-grid,
+  .shipping-account-panel .form-grid,
   .premium-dashboard-hero,
   .premium-dashboard-kpis,
   .dashboard-main-grid,
