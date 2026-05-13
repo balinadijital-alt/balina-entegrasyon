@@ -2319,6 +2319,226 @@ tbody td:last-child .row-actions:focus-within {
   width: 30px;
 }
 
+.premium-dashboard-page {
+  display: grid;
+  gap: 18px;
+}
+
+.premium-dashboard-hero {
+  background:
+    radial-gradient(circle at top right, rgb(37 99 235 / 18%), transparent 34%),
+    linear-gradient(135deg, #0f172a, #172554 58%, #064e3b);
+  border: 1px solid rgb(148 163 184 / 18%);
+  border-radius: 20px;
+  box-shadow: 0 24px 56px rgb(15 23 42 / 22%);
+  color: #fff;
+  display: grid;
+  gap: 22px;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 390px);
+  padding: 26px;
+}
+
+.premium-hero-copy h2,
+.premium-hero-copy p {
+  margin: 0;
+}
+
+.premium-hero-copy .eyebrow {
+  align-items: center;
+  color: #93c5fd;
+  display: inline-flex;
+  gap: 7px;
+}
+
+.premium-hero-copy h2 {
+  font-size: 34px;
+  line-height: 1.1;
+  margin-top: 10px;
+  max-width: 760px;
+}
+
+.premium-hero-copy p {
+  color: #cbd5e1;
+  line-height: 1.55;
+  margin-top: 12px;
+  max-width: 760px;
+}
+
+.premium-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.premium-dashboard-hero .secondary-link {
+  background: rgb(255 255 255 / 9%);
+  border-color: rgb(255 255 255 / 14%);
+  color: #e0f2fe;
+}
+
+.premium-hero-status {
+  background: rgb(15 23 42 / 52%);
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 18px;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.system-health-badge {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.system-health-badge strong {
+  font-size: 16px;
+}
+
+.hero-status-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.hero-status-grid div {
+  background: rgb(255 255 255 / 8%);
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 13px;
+  display: grid;
+  gap: 3px;
+  padding: 12px;
+}
+
+.hero-status-grid span,
+.premium-hero-status small {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.hero-status-grid strong {
+  color: #fff;
+  font-size: 26px;
+}
+
+.premium-dashboard-kpis {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dashboard-mini-trend {
+  align-items: end;
+  display: flex;
+  gap: 5px;
+  height: 38px;
+  margin-top: 4px;
+}
+
+.dashboard-mini-trend span {
+  background: #93c5fd;
+  border-radius: 999px 999px 0 0;
+  flex: 1;
+  min-width: 8px;
+}
+
+.dashboard-main-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.45fr) minmax(340px, 0.9fr);
+}
+
+.dashboard-marketplace-section,
+.onboarding-panel,
+.quick-action-panel-premium {
+  grid-column: span 2;
+}
+
+.dashboard-marketplace-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dashboard-marketplace-card {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.dashboard-card-heading {
+  align-items: start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.dashboard-card-heading div {
+  display: grid;
+  gap: 4px;
+}
+
+.dashboard-card-heading span:first-child {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.dashboard-card-heading strong {
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.marketplace-metric-row,
+.operation-summary-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.operation-summary-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.marketplace-metric-row div,
+.operation-summary-grid div {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+}
+
+.marketplace-metric-row small,
+.operation-summary-grid span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.marketplace-metric-row b,
+.operation-summary-grid strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.setup-progress-line {
+  margin-bottom: 12px;
+}
+
+.quick-action-panel-premium .quick-actions-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .onboarding-step div {
   display: grid;
   gap: 3px;
@@ -3789,6 +4009,12 @@ tbody td:last-child .row-actions:focus-within {
   .developer-lower-grid,
   .marketplace-onboarding-layout,
   .operations-hero,
+  .premium-dashboard-hero,
+  .premium-dashboard-kpis,
+  .dashboard-main-grid,
+  .dashboard-marketplace-grid,
+  .marketplace-metric-row,
+  .quick-action-panel-premium .quick-actions-grid,
   .operations-stat-grid,
   .operations-grid,
   .health-status-grid,
