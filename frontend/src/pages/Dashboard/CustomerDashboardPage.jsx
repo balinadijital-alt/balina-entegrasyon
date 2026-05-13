@@ -45,6 +45,39 @@ function settledValue(result, fallback = null) {
   return result.reason?.response?.data || fallback;
 }
 
+const emptyDashboardReport = {
+  summary: [],
+  breakdowns: {},
+  charts: { sales: [], orders: [] },
+  empty_states: { company_count: 0, order_count: 0 },
+  recent_activity: { orders: [], api_logs: [] },
+};
+
+function normalizeDashboardReport(report) {
+  return {
+    ...emptyDashboardReport,
+    ...(report || {}),
+    summary: Array.isArray(report?.summary) ? report.summary : [],
+    breakdowns: report?.breakdowns || {},
+    charts: {
+      ...emptyDashboardReport.charts,
+      ...(report?.charts || {}),
+      sales: Array.isArray(report?.charts?.sales) ? report.charts.sales : [],
+      orders: Array.isArray(report?.charts?.orders) ? report.charts.orders : [],
+    },
+    empty_states: {
+      ...emptyDashboardReport.empty_states,
+      ...(report?.empty_states || {}),
+    },
+    recent_activity: {
+      ...emptyDashboardReport.recent_activity,
+      ...(report?.recent_activity || {}),
+      orders: Array.isArray(report?.recent_activity?.orders) ? report.recent_activity.orders : [],
+      api_logs: Array.isArray(report?.recent_activity?.api_logs) ? report.recent_activity.api_logs : [],
+    },
+  };
+}
+
 function metric(report, label) {
   return report?.summary?.find((item) => item.label === label)?.value || 0;
 }
@@ -183,7 +216,7 @@ export function CustomerDashboardPage() {
         api.imports.runs(),
       ]);
       setData({
-        report: settledValue(dashboard),
+        report: normalizeDashboardReport(settledValue(dashboard)),
         health: settledValue(health, { status: 'degraded', checks: {}, checked_at: null }),
         queue: settledValue(queue, { stats: {}, recent_runs: [], failed_jobs: [] }),
         logs: settledValue(logs, { data: [] })?.data || [],
