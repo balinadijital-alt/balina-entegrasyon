@@ -330,6 +330,12 @@ Production checklist:
 - Backup/restore proseduru test edildi
 - Failed job retry ve log retention proseduru test edildi
 
+Detayli staging/VPS hazirlik dokumanlari:
+
+- `docs/STAGING_DEPLOYMENT.md`
+- `docs/PRODUCTION_CHECKLIST.md`
+- `scripts/deploy-health-check.sh`
+
 Production cron:
 
 ```cron
