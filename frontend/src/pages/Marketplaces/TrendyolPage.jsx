@@ -3,6 +3,7 @@ import { Activity, Boxes, ClipboardList, FileText, HelpCircle, Layers3, Link2, P
 import { Link } from 'react-router-dom';
 import { api, asArray } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
+import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
@@ -153,10 +154,10 @@ export function TrendyolPage() {
         <section className="panel compact-panel">
           <h2>Operasyon Ozeti</h2>
           <div className="detail-grid">
-            <div className="detail-card"><span>Baglanti</span><strong>{selectedAccount?.connection_status || 'unknown'}</strong></div>
-            <div className="detail-card"><span>Son urun guncelleme</span><strong>{formatDate(selectedAccount?.last_product_sync_at)}</strong></div>
-            <div className="detail-card"><span>Son stok/fiyat guncelleme</span><strong>{formatDate(selectedAccount?.last_price_sync_at)}</strong></div>
-            <div className="detail-card"><span>Son hata</span><strong>{selectedAccount?.last_error ? 'Var' : 'Yok'}</strong></div>
+            <DetailItem className="detail-card" label="Baglanti" value={selectedAccount?.connection_status || 'unknown'} />
+            <DetailItem className="detail-card" label="Son urun guncelleme" value={formatDate(selectedAccount?.last_product_sync_at)} />
+            <DetailItem className="detail-card" label="Son stok/fiyat guncelleme" value={formatDate(selectedAccount?.last_price_sync_at)} />
+            <DetailItem className="detail-card" label="Son hata" value={selectedAccount?.last_error ? 'Var' : 'Yok'} />
           </div>
         </section>
       )}

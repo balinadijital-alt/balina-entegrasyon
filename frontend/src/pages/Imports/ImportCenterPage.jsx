@@ -6,6 +6,8 @@ import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { SoftEmpty } from '../../components/SoftEmpty.jsx';
+import { StatusPill } from '../../components/StatusPill.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
@@ -372,7 +374,7 @@ export function ImportCenterPage() {
                   <Field label="Excel dosyasi">
                     <input type="file" accept=".xlsx,.xls,.csv" onChange={(event) => { setExcelFile(event.target.files[0]); resetPreview(); }} />
                   </Field>
-                  <div className="soft-empty"><strong>{excelFile?.name || 'Dosya secilmedi'}</strong><span>XLSX, XLS veya CSV formatlari desteklenir.</span></div>
+                  <SoftEmpty><strong>{excelFile?.name || 'Dosya secilmedi'}</strong><span>XLSX, XLS veya CSV formatlari desteklenir.</span></SoftEmpty>
                 </div>
               )}
             </>
@@ -386,9 +388,9 @@ export function ImportCenterPage() {
                 <p>Kaynak okunabilir mi, kolonlar veya XML alanlari algilaniyor mu burada kontrol edilir.</p>
               </div>
               <div className="import-check-grid">
-                <div className="soft-empty"><strong>{sourceTypeLabel(sourceType)}</strong><span>{sourceType === 'xml' ? (activeXmlSource?.url || xmlForm.url || '-') : (excelFile?.name || '-')}</span></div>
-                <div className="soft-empty"><strong>{companies.find((company) => String(company.id) === String(activeCompanyId))?.name || 'Firma secilmedi'}</strong><span>Import firmasi</span></div>
-                <div className="soft-empty"><strong>{sourceType === 'xml' ? (activeXmlSource?.supplier_name || xmlForm.supplier_name || '-') : (excelSupplier || '-')}</strong><span>Tedarikci</span></div>
+                <SoftEmpty><strong>{sourceTypeLabel(sourceType)}</strong><span>{sourceType === 'xml' ? (activeXmlSource?.url || xmlForm.url || '-') : (excelFile?.name || '-')}</span></SoftEmpty>
+                <SoftEmpty><strong>{companies.find((company) => String(company.id) === String(activeCompanyId))?.name || 'Firma secilmedi'}</strong><span>Import firmasi</span></SoftEmpty>
+                <SoftEmpty><strong>{sourceType === 'xml' ? (activeXmlSource?.supplier_name || xmlForm.supplier_name || '-') : (excelSupplier || '-')}</strong><span>Tedarikci</span></SoftEmpty>
               </div>
               <button type="button" disabled={loading} onClick={sourceType === 'xml' ? previewXml : previewExcel}><Eye size={16} /> On Kontrol ve Onizleme Baslat</button>
             </>
@@ -401,7 +403,7 @@ export function ImportCenterPage() {
                 <h2>Alan eslestirme</h2>
                 <p>Zorunlu alanlari kaynak kolonlariyla eslestirin. SKU veya barkod olmadan import baslatilmaz.</p>
               </div>
-              {!preview ? <div className="soft-empty">Alan eslestirme icin once on kontrol calistirin.</div> : (
+              {!preview ? <SoftEmpty>Alan eslestirme icin once on kontrol calistirin.</SoftEmpty> : (
                 <>
                   <div className="import-mapping-summary">
                     <div><span>Algilanan kolon</span><strong>{headers.length}</strong></div>
@@ -436,7 +438,7 @@ export function ImportCenterPage() {
                 <h2>Veri onizleme</h2>
                 <p>Import baslamadan once basarili ve hatali satirlari kontrol edin.</p>
               </div>
-              {!preview ? <div className="soft-empty">Onizleme bulunamadi.</div> : (
+              {!preview ? <SoftEmpty>Onizleme bulunamadi.</SoftEmpty> : (
                 <div className="import-preview">
                   <div>
                     <h3>Basarili onizleme</h3>
@@ -531,7 +533,7 @@ export function ImportCenterPage() {
               { key: 'supplier_name', label: 'Tedarikci' },
               { key: 'frequency_minutes', label: 'Siklik', render: (row) => `${row.frequency_minutes || 1440} dk` },
               { key: 'last_import_at', label: 'Son Calisma', render: (row) => row.last_import_at || '-' },
-              { key: 'last_status', label: 'Sonuc', render: (row) => <span className={`status-pill ${statusClass(row.last_status)}`}>{statusLabel(row.last_status)}</span> },
+              { key: 'last_status', label: 'Sonuc', render: (row) => <StatusPill tone={statusClass(row.last_status)} label={statusLabel(row.last_status)} /> },
               { key: 'actions', label: 'Islem', render: (row) => <div className="row-actions"><button type="button" onClick={() => { setSourceType('xml'); selectXmlSource(row.id); setStep(2); }}><Eye size={15} /> Onizle</button><button type="button" onClick={() => importXml(row)}><Play size={15} /> Calistir</button></div> },
             ]}
           />
@@ -547,7 +549,7 @@ export function ImportCenterPage() {
               { key: 'id', label: 'ID' },
               { key: 'source_type', label: 'Kaynak', render: (row) => sourceTypeLabel(row.source_type) },
               { key: 'supplier_name', label: 'Tedarikci' },
-              { key: 'status', label: 'Durum', render: (row) => <span className={`status-pill ${statusClass(row.status)}`}>{statusLabel(row.status)}</span> },
+              { key: 'status', label: 'Durum', render: (row) => <StatusPill tone={statusClass(row.status)} label={statusLabel(row.status)} /> },
               { key: 'progress', label: 'Ilerleme', render: (row) => <div className="progress inline-progress"><span style={{ width: `${row.progress || 0}%` }} /></div> },
               { key: 'success_count', label: 'Basarili' },
               { key: 'error_count', label: 'Hatali' },

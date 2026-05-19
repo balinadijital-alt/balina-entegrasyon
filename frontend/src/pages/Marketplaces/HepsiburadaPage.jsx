@@ -4,10 +4,12 @@ import { Link } from 'react-router-dom';
 import { api, asArray } from '../../api/client.js';
 import { CredentialInput } from '../../components/CredentialInput.jsx';
 import { DataTable } from '../../components/DataTable.jsx';
+import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { SoftEmpty } from '../../components/SoftEmpty.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
@@ -127,7 +129,7 @@ export function HepsiburadaPage() {
   const renderActionResult = () => result ? (
     <section className="panel">
       <h2>Son Islem Sonucu</h2>
-      <div className="soft-empty success-empty">{resultSummary(result)}</div>
+      <SoftEmpty className="success-empty">{resultSummary(result)}</SoftEmpty>
       <pre className="json-preview">{JSON.stringify(result, null, 2)}</pre>
     </section>
   ) : null;
@@ -171,10 +173,10 @@ export function HepsiburadaPage() {
         <section className="panel compact-panel">
           <h2>Entegrasyon Durum Ozeti</h2>
           <div className="detail-grid">
-            <div className="detail-card"><span>Baglanti Durumu</span><strong>{selectedAccount?.connection_status || 'Kontrol edilmedi'}</strong></div>
-            <div className="detail-card"><span>Son Kontrol</span><strong>{formatDate(selectedAccount?.connection_checked_at)}</strong></div>
-            <div className="detail-card"><span>API Anahtari</span><strong>{selectedAccount?.api_key ? 'Maskeli kayitli' : 'Eksik'}</strong></div>
-            <div className="detail-card"><span>Son Hata</span><strong>{selectedAccount?.last_error || 'Yok'}</strong></div>
+            <DetailItem className="detail-card" label="Baglanti Durumu" value={selectedAccount?.connection_status || 'Kontrol edilmedi'} />
+            <DetailItem className="detail-card" label="Son Kontrol" value={formatDate(selectedAccount?.connection_checked_at)} />
+            <DetailItem className="detail-card" label="API Anahtari" value={selectedAccount?.api_key ? 'Maskeli kayitli' : 'Eksik'} />
+            <DetailItem className="detail-card" label="Son Hata" value={selectedAccount?.last_error || 'Yok'} />
           </div>
           <div className="wizard-actions inline-actions">
             <button type="button" disabled={!accountId || loading} onClick={() => accountRequired() && execute('Baglanti testi', () => api.marketplaces.hepsiburadaTest(accountId))}><RefreshCw size={16} /> Baglanti Testi Yap</button>
@@ -223,7 +225,7 @@ export function HepsiburadaPage() {
                 <span key={category.id || category.categoryId || category.name}>{category.name || category.categoryName || category.title}</span>
               ))}
             </div>
-          ) : <div className="soft-empty">Kategori cekildiginde ilk kayitlar burada gorunur.</div>}
+          ) : <SoftEmpty>Kategori cekildiginde ilk kayitlar burada gorunur.</SoftEmpty>}
         </section>
       )}
 
@@ -263,9 +265,9 @@ export function HepsiburadaPage() {
         <section className="panel">
           <h2>Planlanan / Endpoint Bekleyen Alanlar</h2>
           <div className="unsupported-grid">
-            <div className="soft-empty"><AlertTriangle size={16} /> Batch sonuc sorgulama icin Hepsiburada endpointi mevcut degil.</div>
-            <div className="soft-empty"><AlertTriangle size={16} /> Iade, soru-cevap ve fatura linki aksiyonlari Hepsiburada tarafinda henuz bagli degil.</div>
-            <div className="soft-empty"><AlertTriangle size={16} /> Detayli urun durum filtreleri icin backend endpointi eklendiginde bu ekran genisletilebilir.</div>
+            <SoftEmpty><AlertTriangle size={16} /> Batch sonuc sorgulama icin Hepsiburada endpointi mevcut degil.</SoftEmpty>
+            <SoftEmpty><AlertTriangle size={16} /> Iade, soru-cevap ve fatura linki aksiyonlari Hepsiburada tarafinda henuz bagli degil.</SoftEmpty>
+            <SoftEmpty><AlertTriangle size={16} /> Detayli urun durum filtreleri icin backend endpointi eklendiginde bu ekran genisletilebilir.</SoftEmpty>
           </div>
         </section>
       )}

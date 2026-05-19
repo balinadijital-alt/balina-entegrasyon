@@ -3,9 +3,12 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Eye, FileWarning, RefreshCcw, Search, ShieldAlert, Timer } from 'lucide-react';
 import { api, asArray, asObject } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
+import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { SoftEmpty } from '../../components/SoftEmpty.jsx';
+import { StatusPill } from '../../components/StatusPill.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
 const sensitiveKeys = ['password', 'secret', 'api_secret', 'token', 'authorization', 'api_key', 'service_password', 'supplier_id', 'merchant_id'];
@@ -222,7 +225,7 @@ export function ApiLogsPage() {
             columns={[
               { key: 'service', label: 'Servis', render: (row) => <span className="log-service-label">{serviceLabel(serviceType(row))}</span> },
               { key: 'endpoint', label: 'Endpoint', render: (row) => <div className="table-product-title"><strong>{row.method || 'GET'}</strong><span>{row.endpoint || '-'}</span></div> },
-              { key: 'status_code', label: 'Status', render: (row) => <span className={`status-pill ${statusTone(row.status_code)}`}>HTTP {row.status_code || '-'}</span> },
+              { key: 'status_code', label: 'Status', render: (row) => <StatusPill tone={statusTone(row.status_code)} label={`HTTP ${row.status_code || '-'}`} /> },
               { key: 'duration_ms', label: 'Sure', render: (row) => `${row.duration_ms || 0} ms` },
               { key: 'message', label: 'Operasyon Mesaji', render: (row) => dictionaryFor(row).title },
               { key: 'created_at', label: 'Tarih', render: (row) => formatDate(row.created_at) },
@@ -234,10 +237,10 @@ export function ApiLogsPage() {
         <aside className="panel log-detail-panel">
           <div className="section-title-row">
             <h2>Log Detayi</h2>
-            {selectedLog && <span className={`status-pill ${statusTone(selectedLog.status_code)}`}>HTTP {selectedLog.status_code}</span>}
+            {selectedLog && <StatusPill tone={statusTone(selectedLog.status_code)} label={`HTTP ${selectedLog.status_code}`} />}
           </div>
           {!selectedLog ? (
-            <div className="soft-empty">Detay icin bir log kaydi secin.</div>
+            <SoftEmpty>Detay icin bir log kaydi secin.</SoftEmpty>
           ) : (
             <>
               <div className="log-dictionary-card">
@@ -249,13 +252,13 @@ export function ApiLogsPage() {
                 </div>
               </div>
               <div className="log-detail-grid">
-                <div><span>Servis</span><strong>{serviceLabel(serviceType(selectedLog))}</strong></div>
-                <div><span>Method</span><strong>{selectedLog.method || '-'}</strong></div>
-                <div><span>Sure</span><strong>{selectedLog.duration_ms || 0} ms</strong></div>
-                <div><span>Tarih</span><strong>{formatDate(selectedLog.created_at)}</strong></div>
+                <DetailItem label="Servis" value={serviceLabel(serviceType(selectedLog))} />
+                <DetailItem label="Method" value={selectedLog.method || '-'} />
+                <DetailItem label="Sure" value={`${selectedLog.duration_ms || 0} ms`} />
+                <DetailItem label="Tarih" value={formatDate(selectedLog.created_at)} />
               </div>
-              <div className="soft-empty"><strong>Endpoint</strong><span>{selectedLog.endpoint || '-'}</span></div>
-              {selectedLog.error_message && <div className="soft-empty workflow-warning"><strong>Ham hata mesaji</strong><span>{selectedLog.error_message}</span></div>}
+              <SoftEmpty><strong>Endpoint</strong><span>{selectedLog.endpoint || '-'}</span></SoftEmpty>
+              {selectedLog.error_message && <SoftEmpty className="workflow-warning"><strong>Ham hata mesaji</strong><span>{selectedLog.error_message}</span></SoftEmpty>}
               <div className="log-payload-summary">
                 <div><span>Request ozeti</span><strong>{jsonSummary(selectedLog.request_payload)}</strong></div>
                 <div><span>Response ozeti</span><strong>{jsonSummary(selectedLog.response_payload)}</strong></div>

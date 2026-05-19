@@ -15,10 +15,14 @@ import {
 } from 'lucide-react';
 import { api, asArray, asObject } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
+import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
+import { MetricCard } from '../../components/MetricCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { SoftEmpty } from '../../components/SoftEmpty.jsx';
+import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
@@ -265,12 +269,12 @@ export function SaasPage() {
       </section>
 
       <section className="saas-stat-grid">
-        <SaasStat icon={<CheckCircle2 size={18} />} label="Aktif abonelikler" value={metrics.active} tone="green" />
-        <SaasStat icon={<Clock3 size={18} />} label="Trial hesaplar" value={metrics.trial} tone="blue" />
-        <SaasStat icon={<AlertTriangle size={18} />} label="Suresi yaklasan" value={metrics.expiring} tone="orange" />
-        <SaasStat icon={<BarChart3 size={18} />} label="Limit asimi riski" value={metrics.limitRisk} tone="red" />
-        <SaasStat icon={<KeyRound size={18} />} label="Aktif lisanslar" value={metrics.licenses} tone="purple" />
-        <SaasStat icon={<UsersRound size={18} />} label="Partner / bayi" value={metrics.partners} tone="green" />
+        <MetricCard className="saas-stat-card" icon={<CheckCircle2 size={18} />} label="Aktif abonelikler" value={metrics.active} tone="green" />
+        <MetricCard className="saas-stat-card" icon={<Clock3 size={18} />} label="Trial hesaplar" value={metrics.trial} tone="blue" />
+        <MetricCard className="saas-stat-card" icon={<AlertTriangle size={18} />} label="Suresi yaklasan" value={metrics.expiring} tone="orange" />
+        <MetricCard className="saas-stat-card" icon={<BarChart3 size={18} />} label="Limit asimi riski" value={metrics.limitRisk} tone="red" />
+        <MetricCard className="saas-stat-card" icon={<KeyRound size={18} />} label="Aktif lisanslar" value={metrics.licenses} tone="purple" />
+        <MetricCard className="saas-stat-card" icon={<UsersRound size={18} />} label="Partner / bayi" value={metrics.partners} tone="green" />
       </section>
 
       <section className="saas-plan-grid">
@@ -342,7 +346,7 @@ export function SaasPage() {
                 columns={[
                   { key: 'company', label: 'Firma', render: (row) => row.company?.name || '-' },
                   { key: 'plan', label: 'Paket', render: (row) => planLabel(row.plan) },
-                  { key: 'status', label: 'Durum', render: (row) => <span className={`badge ${row.status}`}>{statusLabel(row.status)}</span> },
+                  { key: 'status', label: 'Durum', render: (row) => <StatusBadge tone={row.status} label={statusLabel(row.status)} /> },
                   { key: 'starts_at', label: 'Baslangic', render: (row) => formatDate(row.starts_at) },
                   { key: 'ends_at', label: 'Bitis', render: (row) => formatDate(row.ends_at || row.trial_ends_at) },
                   { key: 'trial', label: 'Trial', render: (row) => row.status === 'trial' ? 'Aktif' : '-' },
@@ -375,7 +379,7 @@ export function SaasPage() {
                   { key: 'key', label: 'Anahtar' },
                   { key: 'plan', label: 'Paket', render: (row) => row.plan?.name || '-' },
                   { key: 'company', label: 'Firma', render: (row) => row.company?.name || '-' },
-                  { key: 'status', label: 'Durum', render: (row) => <span className={`badge ${row.status}`}>{statusLabel(row.status)}</span> },
+                  { key: 'status', label: 'Durum', render: (row) => <StatusBadge tone={row.status} label={statusLabel(row.status)} /> },
                   { key: 'expires_at', label: 'Bitis', render: (row) => formatDate(row.expires_at) },
                 ]}
               />
@@ -423,16 +427,6 @@ export function SaasPage() {
   );
 }
 
-function SaasStat({ icon, label, value, tone }) {
-  return (
-    <div className={`saas-stat-card ${tone}`}>
-      <span>{icon}</span>
-      <strong>{value}</strong>
-      <p>{label}</p>
-    </div>
-  );
-}
-
 function SubscriptionDetailPanel({ subscription, usage, licenses, partners }) {
   if (!subscription) {
     return (
@@ -454,7 +448,7 @@ function SubscriptionDetailPanel({ subscription, usage, licenses, partners }) {
           <span className="eyebrow">Abonelik detayi</span>
           <h2>{subscription.company?.name || 'Firma'}</h2>
         </div>
-        <span className={`badge ${subscription.status}`}>{statusLabel(subscription.status)}</span>
+        <StatusBadge tone={subscription.status} label={statusLabel(subscription.status)} />
       </div>
 
       <div className="saas-detail-grid">
@@ -481,17 +475,8 @@ function SubscriptionDetailPanel({ subscription, usage, licenses, partners }) {
             <strong>{item.used}/{Number(item.limit) === 0 ? 'Limitsiz' : item.limit}</strong>
             <div className="progress"><span style={{ width: `${Number(item.limit) === 0 ? 100 : usagePercent(item)}%` }} /></div>
           </div>
-        )) : <div className="soft-empty">Kullanim detayi henuz yuklenmedi.</div>}
+        )) : <SoftEmpty>Kullanim detayi henuz yuklenmedi.</SoftEmpty>}
       </div>
     </aside>
-  );
-}
-
-function DetailItem({ label, value }) {
-  return (
-    <div>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
   );
 }

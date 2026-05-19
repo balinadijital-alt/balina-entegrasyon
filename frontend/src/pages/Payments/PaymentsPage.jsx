@@ -20,10 +20,13 @@ import {
 import { Link as RouterLink } from 'react-router-dom';
 import { api, asArray } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
+import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
+import { MetricCard } from '../../components/MetricCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
@@ -340,12 +343,12 @@ export function PaymentsPage() {
       </section>
 
       <section className="payment-stat-grid">
-        <PaymentStat icon={<CheckCircle2 size={18} />} label="Basarili odemeler" value={metrics.paid} tone="green" />
-        <PaymentStat icon={<RefreshCcw size={18} />} label="Bekleyen odemeler" value={metrics.pending} tone="orange" />
-        <PaymentStat icon={<AlertTriangle size={18} />} label="Basarisiz odemeler" value={metrics.failed} tone="red" />
-        <PaymentStat icon={<Undo2 size={18} />} label="Iade edilenler" value={metrics.refunded} tone="purple" />
-        <PaymentStat icon={<LockKeyhole size={18} />} label="3D Secure bekleyen" value={metrics.threeD} tone="blue" />
-        <PaymentStat icon={<Webhook size={18} />} label="Callback hatalari" value={metrics.callback} tone="red" />
+        <MetricCard className="payment-stat-card" icon={<CheckCircle2 size={18} />} label="Basarili odemeler" value={metrics.paid} tone="green" />
+        <MetricCard className="payment-stat-card" icon={<RefreshCcw size={18} />} label="Bekleyen odemeler" value={metrics.pending} tone="orange" />
+        <MetricCard className="payment-stat-card" icon={<AlertTriangle size={18} />} label="Basarisiz odemeler" value={metrics.failed} tone="red" />
+        <MetricCard className="payment-stat-card" icon={<Undo2 size={18} />} label="Iade edilenler" value={metrics.refunded} tone="purple" />
+        <MetricCard className="payment-stat-card" icon={<LockKeyhole size={18} />} label="3D Secure bekleyen" value={metrics.threeD} tone="blue" />
+        <MetricCard className="payment-stat-card" icon={<Webhook size={18} />} label="Callback hatalari" value={metrics.callback} tone="red" />
       </section>
 
       {error && <ErrorState message={error} onRetry={load} />}
@@ -387,9 +390,7 @@ export function PaymentsPage() {
                   <h2>Odeme listesi</h2>
                   <p>{filteredPayments.length} odeme kaydi goruntuleniyor.</p>
                 </div>
-                <span className={metrics.failed || metrics.callback ? 'badge failed' : 'badge active'}>
-                  {metrics.failed || metrics.callback ? 'Kontrol gerekli' : 'Saglikli'}
-                </span>
+                <StatusBadge tone={metrics.failed || metrics.callback ? 'failed' : 'active'} label={metrics.failed || metrics.callback ? 'Kontrol gerekli' : 'Saglikli'} />
               </div>
               <DataTable
                 rows={filteredPayments}
@@ -408,7 +409,7 @@ export function PaymentsPage() {
                   { key: 'customer', label: 'Musteri', render: (row) => row.order?.customer_name || '-' },
                   { key: 'provider', label: 'Saglayici', render: providerText },
                   { key: 'amount', label: 'Tutar', render: (row) => formatMoney(row.amount, row.currency) },
-                  { key: 'status', label: 'Durum', render: (row) => <span className={`badge ${statusClass(row, logs)}`}>{statusLabel(row)}</span> },
+                  { key: 'status', label: 'Durum', render: (row) => <StatusBadge tone={statusClass(row, logs)} label={statusLabel(row)} /> },
                   { key: 'created_at', label: 'Tarih', render: (row) => formatDate(row.created_at) },
                   { key: 'transaction_id', label: 'Islem No', render: (row) => row.transaction_id || row.conversation_id || '-' },
                   {
@@ -495,16 +496,6 @@ export function PaymentsPage() {
   );
 }
 
-function PaymentStat({ icon, label, value, tone }) {
-  return (
-    <div className={`payment-stat-card ${tone}`}>
-      <span>{icon}</span>
-      <strong>{value}</strong>
-      <p>{label}</p>
-    </div>
-  );
-}
-
 function PaymentDetailPanel({ payment, logs, onQuery, onRefund, onPartialRefund }) {
   if (!payment) {
     return (
@@ -527,7 +518,7 @@ function PaymentDetailPanel({ payment, logs, onQuery, onRefund, onPartialRefund 
           <span className="eyebrow">Odeme detayi</span>
           <h2>{payment.order?.marketplace_order_id || `Odeme #${payment.id}`}</h2>
         </div>
-        <span className={`badge ${statusClass(payment, logs)}`}>{statusLabel(payment)}</span>
+        <StatusBadge tone={statusClass(payment, logs)} label={statusLabel(payment)} />
       </div>
 
       <div className="payment-detail-grid">
@@ -573,14 +564,5 @@ function PaymentDetailPanel({ payment, logs, onQuery, onRefund, onPartialRefund 
         <pre>{JSON.stringify(relatedLogs.slice(0, 5), null, 2)}</pre>
       </details>
     </aside>
-  );
-}
-
-function DetailItem({ label, value }) {
-  return (
-    <div>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
   );
 }

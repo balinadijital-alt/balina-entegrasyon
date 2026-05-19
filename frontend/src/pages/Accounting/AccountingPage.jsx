@@ -19,10 +19,13 @@ import {
 import { Link as RouterLink } from 'react-router-dom';
 import { api, asArray } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
+import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
+import { MetricCard } from '../../components/MetricCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
@@ -369,12 +372,12 @@ export function AccountingPage() {
       </section>
 
       <section className="accounting-stat-grid">
-        <AccountingStat icon={<ReceiptText size={18} />} label="Kesilecek faturalar" value={metrics.draft} tone="orange" />
-        <AccountingStat icon={<CheckCircle2 size={18} />} label="Basarili e-faturalar" value={metrics.issued} tone="green" />
-        <AccountingStat icon={<AlertTriangle size={18} />} label="Basarisiz faturalar" value={metrics.failed} tone="red" />
-        <AccountingStat icon={<FileText size={18} />} label="PDF hazir olanlar" value={metrics.pdf} tone="blue" />
-        <AccountingStat icon={<Undo2 size={18} />} label="Iade faturalari" value={metrics.returns} tone="purple" />
-        <AccountingStat icon={<WalletCards size={18} />} label="Cari bakiye ozeti" value={formatMoney(metrics.balance)} tone="green" />
+        <MetricCard className="accounting-stat-card" icon={<ReceiptText size={18} />} label="Kesilecek faturalar" value={metrics.draft} tone="orange" />
+        <MetricCard className="accounting-stat-card" icon={<CheckCircle2 size={18} />} label="Basarili e-faturalar" value={metrics.issued} tone="green" />
+        <MetricCard className="accounting-stat-card" icon={<AlertTriangle size={18} />} label="Basarisiz faturalar" value={metrics.failed} tone="red" />
+        <MetricCard className="accounting-stat-card" icon={<FileText size={18} />} label="PDF hazir olanlar" value={metrics.pdf} tone="blue" />
+        <MetricCard className="accounting-stat-card" icon={<Undo2 size={18} />} label="Iade faturalari" value={metrics.returns} tone="purple" />
+        <MetricCard className="accounting-stat-card" icon={<WalletCards size={18} />} label="Cari bakiye ozeti" value={formatMoney(metrics.balance)} tone="green" />
       </section>
 
       {error && <ErrorState message={error} onRetry={load} />}
@@ -416,7 +419,7 @@ export function AccountingPage() {
                   <h2>Fatura listesi</h2>
                   <p>{filteredInvoices.length} fatura kaydi goruntuleniyor.</p>
                 </div>
-                <span className={metrics.failed ? 'badge failed' : 'badge active'}>{metrics.failed ? 'Kontrol gerekli' : 'Saglikli'}</span>
+                <StatusBadge tone={metrics.failed ? 'failed' : 'active'} label={metrics.failed ? 'Kontrol gerekli' : 'Saglikli'} />
               </div>
               <DataTable
                 rows={filteredInvoices}
@@ -435,7 +438,7 @@ export function AccountingPage() {
                   { key: 'current', label: 'Musteri/Cari', render: currentAccountName },
                   { key: 'type', label: 'Fatura Tipi', render: (row) => invoiceTypeLabels[row.type] || row.type || '-' },
                   { key: 'grand_total', label: 'Tutar', render: (row) => formatMoney(row.grand_total, row.currency) },
-                  { key: 'status', label: 'Durum', render: (row) => <span className={`badge ${statusClass(row, logs)}`}>{statusLabel(row)}</span> },
+                  { key: 'status', label: 'Durum', render: (row) => <StatusBadge tone={statusClass(row, logs)} label={statusLabel(row)} /> },
                   { key: 'provider', label: 'ERP Saglayici', render: providerText },
                   { key: 'created_at', label: 'Tarih', render: (row) => formatDate(row.issued_at || row.created_at) },
                   {
@@ -562,16 +565,6 @@ export function AccountingPage() {
   );
 }
 
-function AccountingStat({ icon, label, value, tone }) {
-  return (
-    <div className={`accounting-stat-card ${tone}`}>
-      <span>{icon}</span>
-      <strong>{value}</strong>
-      <p>{label}</p>
-    </div>
-  );
-}
-
 function InvoiceDetailPanel({ invoice, logs, onQuery, onPdf, onDownload, onReturn }) {
   if (!invoice) {
     return (
@@ -593,7 +586,7 @@ function InvoiceDetailPanel({ invoice, logs, onQuery, onPdf, onDownload, onRetur
           <span className="eyebrow">Fatura detayi</span>
           <h2>{invoice.invoice_number || invoice.order?.marketplace_order_id || `Fatura #${invoice.id}`}</h2>
         </div>
-        <span className={`badge ${statusClass(invoice, logs)}`}>{statusLabel(invoice)}</span>
+        <StatusBadge tone={statusClass(invoice, logs)} label={statusLabel(invoice)} />
       </div>
 
       <div className="accounting-detail-grid">
@@ -634,14 +627,5 @@ function InvoiceDetailPanel({ invoice, logs, onQuery, onPdf, onDownload, onRetur
         <pre>{JSON.stringify(relatedLogs.slice(0, 5), null, 2)}</pre>
       </details>
     </aside>
-  );
-}
-
-function DetailItem({ label, value }) {
-  return (
-    <div>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
   );
 }

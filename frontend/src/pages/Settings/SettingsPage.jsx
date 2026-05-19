@@ -20,9 +20,12 @@ import {
 } from 'lucide-react';
 import { api, asArray, asObject } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
+import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
+import { MetricCard } from '../../components/MetricCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
 const tabs = [
@@ -302,10 +305,10 @@ export function SettingsPage({ audience = 'admin' }) {
       </section>
 
       <section className="settings-center-stat-grid">
-        <SettingsStat icon={<Building2 size={18} />} label="Firma" value={metrics.companies} tone="blue" />
-        <SettingsStat icon={<Link2 size={18} />} label="Entegrasyon" value={metrics.integrations} tone="purple" />
-        <SettingsStat icon={<AlertTriangle size={18} />} label="Kritik uyari" value={metrics.warnings} tone="red" />
-        <SettingsStat icon={<KeyRound size={18} />} label="Aktif lisans" value={metrics.licenses} tone="green" />
+        <MetricCard className="settings-center-stat" icon={<Building2 size={18} />} label="Firma" value={metrics.companies} tone="blue" />
+        <MetricCard className="settings-center-stat" icon={<Link2 size={18} />} label="Entegrasyon" value={metrics.integrations} tone="purple" />
+        <MetricCard className="settings-center-stat" icon={<AlertTriangle size={18} />} label="Kritik uyari" value={metrics.warnings} tone="red" />
+        <MetricCard className="settings-center-stat" icon={<KeyRound size={18} />} label="Aktif lisans" value={metrics.licenses} tone="green" />
       </section>
 
       <section className="settings-center-layout">
@@ -333,7 +336,7 @@ export function SettingsPage({ audience = 'admin' }) {
                     { key: 'plan', label: 'Paket', render: (row) => companyPlan(row, data.subscriptions) },
                     { key: 'marketplaces', label: 'Aktif Marketplace', render: (row) => companyMarketplaceCount(row, data.marketplaces) },
                     { key: 'orders', label: 'Siparis Hacmi', render: (row) => companyOrderCount(row, data.orders) },
-                    { key: 'status', label: 'Durum', render: (row) => <span className={`badge ${row.is_active === false ? 'passive' : 'active'}`}>{row.is_active === false ? 'Pasif' : 'Aktif'}</span> },
+                    { key: 'status', label: 'Durum', render: (row) => <StatusBadge tone={row.is_active === false ? 'passive' : 'active'} label={row.is_active === false ? 'Pasif' : 'Aktif'} /> },
                     { key: 'activity', label: 'Son Aktivite', render: (row) => formatDate(latestDate([row, ...data.orders.filter((order) => Number(order.company_id) === Number(row.id))])) },
                   ]}
                 />
@@ -354,7 +357,7 @@ export function SettingsPage({ audience = 'admin' }) {
                   { key: 'provider', label: 'Saglayici' },
                   { key: 'name', label: 'Hesap' },
                   { key: 'company', label: 'Firma' },
-                  { key: 'status', label: 'Durum', render: (row) => <span className={`badge ${row.status}`}>{statusLabel(row.status)}</span> },
+                  { key: 'status', label: 'Durum', render: (row) => <StatusBadge tone={row.status} label={statusLabel(row.status)} /> },
                   { key: 'lastTest', label: 'Son Test', render: (row) => row.lastTest ? formatDate(row.lastTest) : 'Endpoint yok' },
                   { key: 'lastSync', label: 'Son Senkron', render: (row) => formatDate(row.lastSync) },
                   { key: 'error', label: 'Hata', render: (row) => row.error || '-' },
@@ -408,7 +411,7 @@ export function SettingsPage({ audience = 'admin' }) {
                   columns={[
                     { key: 'provider', label: 'Saglayici' },
                     { key: 'company', label: 'Firma' },
-                    { key: 'status', label: 'Durum', render: (row) => <span className={`badge ${row.status}`}>{statusLabel(row.status)}</span> },
+                    { key: 'status', label: 'Durum', render: (row) => <StatusBadge tone={row.status} label={statusLabel(row.status)} /> },
                     { key: 'lastTest', label: 'Son Test', render: (row) => row.lastTest ? formatDate(row.lastTest) : 'Yok' },
                   ]}
                 />
@@ -417,16 +420,6 @@ export function SettingsPage({ audience = 'admin' }) {
           )}
         </main>
       </section>
-    </div>
-  );
-}
-
-function SettingsStat({ icon, label, value, tone }) {
-  return (
-    <div className={`settings-center-stat ${tone}`}>
-      <span>{icon}</span>
-      <strong>{value}</strong>
-      <p>{label}</p>
     </div>
   );
 }
@@ -454,7 +447,7 @@ function CompanyDetailPanel({ company, data, integrations, basePath }) {
           <span className="eyebrow">Firma detayi</span>
           <h2>{company.name}</h2>
         </div>
-        <span className={`badge ${company.is_active === false ? 'passive' : 'active'}`}>{company.is_active === false ? 'Pasif' : 'Aktif'}</span>
+        <StatusBadge tone={company.is_active === false ? 'passive' : 'active'} label={company.is_active === false ? 'Pasif' : 'Aktif'} />
       </div>
       <div className="settings-detail-grid">
         <DetailItem label="Vergi No" value={company.tax_number || '-'} />
@@ -510,15 +503,6 @@ function SecurityItem({ title, text, ok = false }) {
         <strong>{title}</strong>
         <small>{text}</small>
       </span>
-    </div>
-  );
-}
-
-function DetailItem({ label, value }) {
-  return (
-    <div>
-      <span>{label}</span>
-      <strong>{value}</strong>
     </div>
   );
 }

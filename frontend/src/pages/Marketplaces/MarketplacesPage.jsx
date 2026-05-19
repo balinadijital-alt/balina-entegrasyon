@@ -6,6 +6,8 @@ import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { PageToolbar } from '../../components/PageToolbar.jsx';
+import { SoftEmpty } from '../../components/SoftEmpty.jsx';
+import { StatusPill } from '../../components/StatusPill.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { firstError, validateMarketplace } from '../../utils/validation.js';
@@ -161,7 +163,7 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
                     <strong>{marketplaceNames[account.code] || account.code}</strong>
                     <small>{account.name} · {account.company?.name || 'Firma yok'}</small>
                   </div>
-                  <span className={hasError ? 'status-pill blocked' : 'status-pill ready'}>{statusLabel(account.connection_status)}</span>
+                  <StatusPill tone={hasError ? 'blocked' : 'ready'} label={statusLabel(account.connection_status)} />
                 </div>
                 <div className="marketplace-card-stats">
                   <div><span>Son urun</span><strong>{formatDate(account.last_product_sync_at)}</strong></div>
@@ -169,7 +171,7 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
                   <div><span>Son siparis</span><strong>{formatDate(account.last_order_sync_at)}</strong></div>
                   <div><span>Hata</span><strong>{hasError ? 'Var' : 'Yok'}</strong></div>
                 </div>
-                {account.last_error && <div className="soft-empty error-state"><AlertTriangle size={16} /> {account.last_error}</div>}
+                {account.last_error && <SoftEmpty className="error-state"><AlertTriangle size={16} /> {account.last_error}</SoftEmpty>}
                 <div className="row-actions marketplace-card-actions">
                   <button type="button" disabled={loading || syncing} onClick={() => sync(account.id, isHepsiburada ? 'hbTest' : 'test')}><CheckCircle2 size={15} /> {syncLabel(account.id, isHepsiburada ? 'hbTest' : 'test', 'Baglantiyi Kontrol Et')}</button>
                   <button type="button" className="secondary-button" disabled={loading || syncing} onClick={() => sync(account.id, isHepsiburada ? 'hbProducts' : 'products')}><RefreshCw size={15} /> Urunleri Gonder</button>
@@ -187,7 +189,7 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
                   <strong>Ciceksepeti</strong>
                   <small>Bu pazaryeri yakinda aktif olacak.</small>
                 </div>
-                <span className="status-pill blocked">Yakinda</span>
+                <StatusPill tone="blocked" label="Yakinda" />
               </div>
               <div className="marketplace-card-stats">
                 <div><span>Baglanti</span><strong>Pasif</strong></div>

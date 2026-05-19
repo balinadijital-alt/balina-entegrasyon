@@ -19,9 +19,13 @@ import {
 } from 'lucide-react';
 import { api, asArray, asObject } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
+import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
+import { MetricCard } from '../../components/MetricCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { SoftEmpty } from '../../components/SoftEmpty.jsx';
+import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
@@ -83,7 +87,7 @@ const statusLabels = {
 };
 
 function badge(value) {
-  return value ? <span className={`badge ${value}`}>{statusLabels[value] || value}</span> : '-';
+  return value ? <StatusBadge tone={value} label={statusLabels[value] || value} /> : '-';
 }
 
 function normalize(value) {
@@ -362,14 +366,14 @@ export function OrdersPage({ initialStatus = '' }) {
       </section>
 
       <section className="orders-stat-grid">
-        <OrderStat icon={<ShoppingBag size={18} />} label="Yeni siparisler" value={metrics.newOrders} tone="blue" />
-        <OrderStat icon={<ClipboardList size={18} />} label="Hazirlaniyor" value={metrics.preparing} tone="orange" />
-        <OrderStat icon={<PackageCheck size={18} />} label="Kargoya hazir" value={metrics.readyToShip} tone="purple" />
-        <OrderStat icon={<Truck size={18} />} label="Kargoda" value={metrics.shipped} tone="blue" />
-        <OrderStat icon={<CheckCircle2 size={18} />} label="Teslim edildi" value={metrics.delivered} tone="green" />
-        <OrderStat icon={<Undo2 size={18} />} label="Iptal/iade" value={metrics.cancelReturn} tone="red" />
-        <OrderStat icon={<Banknote size={18} />} label="Odeme hatali" value={metrics.paymentFailed} tone="red" />
-        <OrderStat icon={<FileText size={18} />} label="Fatura bekleyen" value={metrics.invoicePending} tone="orange" />
+        <MetricCard className="orders-stat-card" icon={<ShoppingBag size={18} />} label="Yeni siparisler" value={metrics.newOrders} tone="blue" />
+        <MetricCard className="orders-stat-card" icon={<ClipboardList size={18} />} label="Hazirlaniyor" value={metrics.preparing} tone="orange" />
+        <MetricCard className="orders-stat-card" icon={<PackageCheck size={18} />} label="Kargoya hazir" value={metrics.readyToShip} tone="purple" />
+        <MetricCard className="orders-stat-card" icon={<Truck size={18} />} label="Kargoda" value={metrics.shipped} tone="blue" />
+        <MetricCard className="orders-stat-card" icon={<CheckCircle2 size={18} />} label="Teslim edildi" value={metrics.delivered} tone="green" />
+        <MetricCard className="orders-stat-card" icon={<Undo2 size={18} />} label="Iptal/iade" value={metrics.cancelReturn} tone="red" />
+        <MetricCard className="orders-stat-card" icon={<Banknote size={18} />} label="Odeme hatali" value={metrics.paymentFailed} tone="red" />
+        <MetricCard className="orders-stat-card" icon={<FileText size={18} />} label="Fatura bekleyen" value={metrics.invoicePending} tone="orange" />
       </section>
 
       <section className="panel orders-filter-panel">
@@ -502,16 +506,6 @@ export function OrdersPage({ initialStatus = '' }) {
   );
 }
 
-function OrderStat({ icon, label, value, tone }) {
-  return (
-    <div className={`orders-stat-card ${tone}`}>
-      <span>{icon}</span>
-      <strong>{value}</strong>
-      <p>{label}</p>
-    </div>
-  );
-}
-
 function OrderDetailPanel({ order, loading, onCreateShipment, onCreateInvoice, onCancel, onReturn }) {
   if (!order) {
     return (
@@ -540,7 +534,7 @@ function OrderDetailPanel({ order, loading, onCreateShipment, onCreateInvoice, o
         {badge(order.status)}
       </div>
 
-      {loading && <div className="soft-empty">Detay yukleniyor...</div>}
+      {loading && <SoftEmpty>Detay yukleniyor...</SoftEmpty>}
 
       <div className="orders-detail-grid">
         <DetailItem label="Marketplace" value={marketplaceLabel(order)} />
@@ -614,14 +608,5 @@ function OrderDetailPanel({ order, loading, onCreateShipment, onCreateInvoice, o
         </div>
       )}
     </aside>
-  );
-}
-
-function DetailItem({ label, value }) {
-  return (
-    <div>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
   );
 }

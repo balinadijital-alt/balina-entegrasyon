@@ -16,10 +16,13 @@ import {
 } from 'lucide-react';
 import { api, asArray } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
+import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
+import { MetricCard } from '../../components/MetricCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
@@ -341,12 +344,12 @@ export function ShippingPage() {
       </section>
 
       <section className="shipping-stat-grid">
-        <ShippingStat icon={<Barcode size={18} />} label="Barkod bekleyen" value={metrics.barcodePending} tone="orange" />
-        <ShippingStat icon={<FileText size={18} />} label="Etiket olusturulan" value={metrics.labelCreated} tone="blue" />
-        <ShippingStat icon={<Truck size={18} />} label="Kargoda" value={metrics.inTransit} tone="purple" />
-        <ShippingStat icon={<PackageCheck size={18} />} label="Teslim edildi" value={metrics.delivered} tone="green" />
-        <ShippingStat icon={<Undo2 size={18} />} label="Iade bekleyen" value={metrics.returnPending} tone="orange" />
-        <ShippingStat icon={<AlertTriangle size={18} />} label="Hatali islem" value={metrics.failed} tone="red" />
+        <MetricCard className="shipping-stat-card" icon={<Barcode size={18} />} label="Barkod bekleyen" value={metrics.barcodePending} tone="orange" />
+        <MetricCard className="shipping-stat-card" icon={<FileText size={18} />} label="Etiket olusturulan" value={metrics.labelCreated} tone="blue" />
+        <MetricCard className="shipping-stat-card" icon={<Truck size={18} />} label="Kargoda" value={metrics.inTransit} tone="purple" />
+        <MetricCard className="shipping-stat-card" icon={<PackageCheck size={18} />} label="Teslim edildi" value={metrics.delivered} tone="green" />
+        <MetricCard className="shipping-stat-card" icon={<Undo2 size={18} />} label="Iade bekleyen" value={metrics.returnPending} tone="orange" />
+        <MetricCard className="shipping-stat-card" icon={<AlertTriangle size={18} />} label="Hatali islem" value={metrics.failed} tone="red" />
       </section>
 
       {error && <ErrorState message={error} onRetry={load} />}
@@ -430,7 +433,7 @@ export function ShippingPage() {
                   {
                     key: 'status',
                     label: 'Durum',
-                    render: (row) => <span className={`badge ${statusClass(row)}`}>{statusLabel(row)}</span>,
+                    render: (row) => <StatusBadge tone={statusClass(row)} label={statusLabel(row)} />,
                   },
                   {
                     key: 'actions',
@@ -483,7 +486,7 @@ export function ShippingPage() {
                   { key: 'company', label: 'Firma', render: (row) => row.company?.name || '-' },
                   { key: 'carrier', label: 'Kargo', render: (row) => row.carrier?.name || '-' },
                   { key: 'customer_code', label: 'Musteri Kodu', render: (row) => row.customer_code || '-' },
-                  { key: 'last_status', label: 'Durum', render: (row) => <span className={`badge ${row.last_status || 'unknown'}`}>{row.last_status || 'Bilinmiyor'}</span> },
+                  { key: 'last_status', label: 'Durum', render: (row) => <StatusBadge tone={row.last_status || 'unknown'} label={row.last_status || 'Bilinmiyor'} /> },
                 ]}
               />
             </div>
@@ -521,16 +524,6 @@ export function ShippingPage() {
   );
 }
 
-function ShippingStat({ icon, label, value, tone }) {
-  return (
-    <div className={`shipping-stat-card ${tone}`}>
-      <span>{icon}</span>
-      <strong>{value}</strong>
-      <p>{label}</p>
-    </div>
-  );
-}
-
 function ShipmentDetailPanel({ shipment, onTrack, onLabel, onReturn, onRetry, onDownload }) {
   if (!shipment) {
     return (
@@ -549,7 +542,7 @@ function ShipmentDetailPanel({ shipment, onTrack, onLabel, onReturn, onRetry, on
           <span className="eyebrow">Kargo detayi</span>
           <h2>{shipment.order?.marketplace_order_id || `Kargo #${shipment.id}`}</h2>
         </div>
-        <span className={`badge ${statusClass(shipment)}`}>{statusLabel(shipment)}</span>
+        <StatusBadge tone={statusClass(shipment)} label={statusLabel(shipment)} />
       </div>
 
       <div className="shipping-detail-grid">
@@ -587,14 +580,5 @@ function ShipmentDetailPanel({ shipment, onTrack, onLabel, onReturn, onRetry, on
         <button type="button" className="secondary" onClick={() => onDownload(shipment.id)} disabled={!hasLabel(shipment)}><Download size={15} /> Etiketi Indir</button>
       </div>
     </aside>
-  );
-}
-
-function DetailItem({ label, value }) {
-  return (
-    <div>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
   );
 }

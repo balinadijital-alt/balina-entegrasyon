@@ -3,9 +3,13 @@ import { AlertTriangle, CheckCircle2, Clock3, Eye, PlayCircle, RadioTower, Refre
 import { Link } from 'react-router-dom';
 import { api, asArray, asObject } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
+import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { SoftEmpty } from '../../components/SoftEmpty.jsx';
+import { StatusBadge } from '../../components/StatusBadge.jsx';
+import { StatusPill } from '../../components/StatusPill.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
@@ -153,7 +157,7 @@ export function QueuePage() {
             <section className="panel">
               <div className="section-title-row">
                 <h2>Failed Job Listesi</h2>
-                <span className={failedJobs.length ? 'badge failed' : 'badge active'}>{failedJobs.length || 'Temiz'}</span>
+                <StatusBadge tone={failedJobs.length ? 'failed' : 'active'} label={failedJobs.length || 'Temiz'} />
               </div>
               <DataTable
                 rows={failedJobs}
@@ -181,10 +185,10 @@ export function QueuePage() {
             <aside className="panel retry-detail-panel">
               <div className="section-title-row">
                 <h2>Job Detayi</h2>
-                {selectedJob && <span className="status-pill blocked">Failed</span>}
+                {selectedJob && <StatusPill tone="blocked" label="Failed" />}
               </div>
               {!selectedJob ? (
-                <div className="soft-empty">Detay icin failed job secin.</div>
+                <SoftEmpty>Detay icin failed job secin.</SoftEmpty>
               ) : (
                 <>
                   <div className="retry-explanation-card">
@@ -195,10 +199,10 @@ export function QueuePage() {
                     </div>
                   </div>
                   <div className="retry-detail-grid">
-                    <div><span>Job adi</span><strong>{jobName(selectedJob)}</strong></div>
-                    <div><span>Queue</span><strong>{selectedJob.queue || '-'}</strong></div>
-                    <div><span>Modul</span><strong>{selectedModule}</strong></div>
-                    <div><span>Tarih</span><strong>{formatDate(selectedJob.failed_at)}</strong></div>
+                    <DetailItem label="Job adi" value={jobName(selectedJob)} />
+                    <DetailItem label="Queue" value={selectedJob.queue || '-'} />
+                    <DetailItem label="Modul" value={selectedModule} />
+                    <DetailItem label="Tarih" value={formatDate(selectedJob.failed_at)} />
                   </div>
                   <details className="json-collapse" open>
                     <summary>Exception ozeti</summary>
@@ -226,7 +230,7 @@ export function QueuePage() {
                 emptyText="Senkronizasyon veya aktarim joblari calistikca burada gorunur."
                 columns={[
                   { key: 'type', label: 'Islem' },
-                  { key: 'status', label: 'Durum', render: (row) => <span className={`status-pill ${row.status === 'completed' ? 'ready' : row.status === 'failed' ? 'blocked' : 'warning'}`}>{statusLabel(row.status)}</span> },
+                  { key: 'status', label: 'Durum', render: (row) => <StatusPill tone={row.status === 'completed' ? 'ready' : row.status === 'failed' ? 'blocked' : 'warning'} label={statusLabel(row.status)} /> },
                   { key: 'marketplace', label: 'Firma', render: (row) => row.marketplace?.company?.name || '-' },
                   { key: 'processed_count', label: 'Adet' },
                   { key: 'duration_ms', label: 'Sure', render: (row) => row.duration_ms ? `${row.duration_ms} ms` : '-' },
