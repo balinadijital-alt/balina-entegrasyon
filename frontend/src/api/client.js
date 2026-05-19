@@ -35,6 +35,38 @@ export function apiErrorMessage(error) {
   return validationMessage || data?.message || error.message || 'Beklenmeyen bir hata olustu.';
 }
 
+export function safeData(response, fallback = null) {
+  if (response === null || response === undefined) return fallback;
+  if (response?.data !== undefined) return response.data;
+  return response;
+}
+
+export function asArray(response, keys = ['data']) {
+  if (Array.isArray(response)) return response;
+
+  const data = safeData(response);
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.data)) return data.data;
+
+  const candidates = [...keys, 'items', 'results', 'records'];
+  for (const key of candidates) {
+    if (Array.isArray(data?.[key])) return data[key];
+    if (Array.isArray(response?.[key])) return response[key];
+  }
+
+  return [];
+}
+
+export function asObject(response, fallback = {}) {
+  const data = safeData(response, fallback);
+  if (data && typeof data === 'object' && !Array.isArray(data)) return data;
+  return fallback;
+}
+
+export function asPaginatedArray(response) {
+  return asArray(response, ['data', 'items', 'results', 'records']);
+}
+
 export const api = {
   dashboard: {
     report: () => http.get('/dashboard').then((response) => response.data),

@@ -21,7 +21,7 @@ import {
   UploadCloud,
   Workflow,
 } from 'lucide-react';
-import { api, http } from '../../api/client.js';
+import { api, asArray, asObject, http } from '../../api/client.js';
 import { ActivityTimeline } from '../../components/ActivityTimeline.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
@@ -163,7 +163,7 @@ function buildAlerts({ products, queue, logs, imports, marketplaces, health }) {
   const alerts = [];
   const failedJobs = Number(queue?.stats?.failed_jobs || 0);
   const trendyolMissingCategory = products.filter((product) => {
-    const missing = product.marketplace_readiness?.trendyol?.missing_fields || [];
+    const missing = asArray(product.marketplace_readiness?.trendyol?.missing_fields);
     return missing.includes('category_mapping') || missing.includes('marketplace_category');
   }).length;
   const criticalLog = logs.find((log) => Number(log.status_code || 0) >= 500) || logs.find((log) => Number(log.status_code || 0) >= 400);
@@ -217,12 +217,12 @@ export function CustomerDashboardPage() {
       ]);
       setData({
         report: normalizeDashboardReport(settledValue(dashboard)),
-        health: settledValue(health, { status: 'degraded', checks: {}, checked_at: null }),
-        queue: settledValue(queue, { stats: {}, recent_runs: [], failed_jobs: [] }),
-        logs: settledValue(logs, { data: [] })?.data || [],
-        marketplaces: settledValue(marketplaceResponse, { data: [] })?.data || [],
-        products: settledValue(productResponse, { data: [] })?.data || [],
-        imports: settledValue(imports, { data: [] })?.data || [],
+        health: asObject(settledValue(health), { status: 'degraded', checks: {}, checked_at: null }),
+        queue: asObject(settledValue(queue), { stats: {}, recent_runs: [], failed_jobs: [] }),
+        logs: asArray(settledValue(logs, { data: [] })),
+        marketplaces: asArray(settledValue(marketplaceResponse, { data: [] })),
+        products: asArray(settledValue(productResponse, { data: [] })),
+        imports: asArray(settledValue(imports, { data: [] })),
       });
     });
   };
@@ -232,7 +232,7 @@ export function CustomerDashboardPage() {
   }, []);
 
   const { report, health, queue, logs, marketplaces, products, imports } = data;
-  const queueStats = queue?.stats || {};
+  const queueStats = asObject(queue?.stats);
   const failedLogs = logs.filter((log) => Number(log.status_code || 0) >= 400);
   const activeProducts = products.filter((product) => product.status === 'active').length;
   const readyProducts = products.filter((product) => product.marketplace_ready).length;

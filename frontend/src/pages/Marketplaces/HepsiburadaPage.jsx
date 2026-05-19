@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Boxes, ClipboardList, ExternalLink, FileText, Link2, PackageCheck, RefreshCw, Send, ShoppingBag, Tags } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { api } from '../../api/client.js';
+import { api, asArray } from '../../api/client.js';
 import { CredentialInput } from '../../components/CredentialInput.jsx';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -38,7 +38,8 @@ function userMessage(error) {
 function resultSummary(result) {
   if (!result) return null;
   if (result.message) return result.message;
-  if (Array.isArray(result.categories)) return `${result.categories.length} kategori alindi.`;
+  const categories = asArray(result.categories);
+  if (categories.length) return `${categories.length} kategori alindi.`;
   if (result.queued) return 'Islem kuyruga alindi.';
   return 'Islem tamamlandi.';
 }
@@ -61,10 +62,10 @@ export function HepsiburadaPage() {
   const load = async () => {
     await run(async () => {
       const [accountResponse, companyResponse, logResponse] = await Promise.all([api.marketplaces.list(), api.companies.list(), api.logs.list()]);
-      const hepsiburadaAccounts = (accountResponse.data || []).filter((account) => account.code === 'hepsiburada');
+      const hepsiburadaAccounts = asArray(accountResponse).filter((account) => account.code === 'hepsiburada');
       setAccounts(hepsiburadaAccounts);
-      setCompanies(companyResponse.data || []);
-      setLogs((logResponse.data || []).filter((log) => log.marketplace_code === 'hepsiburada').slice(0, 20));
+      setCompanies(asArray(companyResponse));
+      setLogs(asArray(logResponse).filter((log) => log.marketplace_code === 'hepsiburada').slice(0, 20));
       setAccountId((current) => current || hepsiburadaAccounts[0]?.id || '');
     });
   };
@@ -91,7 +92,8 @@ export function HepsiburadaPage() {
     await run(async () => {
       const response = await callback();
       setResult(response);
-      if (response.categories) setCategories(response.categories);
+      const nextCategories = asArray(response?.categories);
+      if (response && Object.prototype.hasOwnProperty.call(response, 'categories')) setCategories(nextCategories);
       notify('success', resultSummary(response) || `${label} tamamlandi.`);
       await load();
     }, { onError: (message) => notify('error', userMessage(message)) });

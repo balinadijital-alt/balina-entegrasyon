@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Eye, FileWarning, RefreshCcw, Search, ShieldAlert, Timer } from 'lucide-react';
-import { api } from '../../api/client.js';
+import { api, asArray, asObject } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
@@ -91,7 +91,7 @@ function maskValue(value, key = '') {
   if (sensitiveKeys.some((item) => String(key).toLowerCase().includes(item))) return '••••••';
   if (Array.isArray(value)) return value.map((item) => maskValue(item));
   if (value && typeof value === 'object') {
-    return Object.entries(value).reduce((carry, [childKey, childValue]) => ({ ...carry, [childKey]: maskValue(childValue, childKey) }), {});
+    return Object.entries(asObject(value)).reduce((carry, [childKey, childValue]) => ({ ...carry, [childKey]: maskValue(childValue, childKey) }), {});
   }
   return value;
 }
@@ -125,7 +125,7 @@ export function ApiLogsPage() {
   const load = async () => {
     await run(async () => {
       const response = await api.logs.list();
-      const rows = response.data || [];
+      const rows = asArray(response);
       setLogs(rows);
       setSelectedLog((current) => current || rows.find((log) => Number(log.status_code || 0) >= 400) || rows[0] || null);
     });

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Database, Eye, FileSpreadsheet, Link2, Play, RotateCcw, Save } from 'lucide-react';
-import { api } from '../../api/client.js';
+import { api, asArray, asObject } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
@@ -100,13 +100,15 @@ export function ImportCenterPage() {
   const [options, setOptions] = useState(defaultOptions);
   const [lastQueuedRunId, setLastQueuedRunId] = useState(null);
 
-  const headers = useMemo(() => preview?.headers || [], [preview]);
-  const validRows = preview?.valid_rows || [];
-  const invalidRows = preview?.invalid_rows || [];
-  const mappedFieldCount = Object.values(mapping).filter(Boolean).length;
-  const missingRequiredMappings = requiredFields.filter((field) => !mapping[field]);
-  const hasIdentifierMapping = Boolean(mapping.sku || mapping.barcode);
-  const blockingMappingMissing = !hasIdentifierMapping || (!options.update_stock_price_only && !mapping.name);
+  const headers = useMemo(() => asArray(preview?.headers), [preview]);
+  const validRows = asArray(preview?.valid_rows);
+  const invalidRows = asArray(preview?.invalid_rows);
+  const safeMapping = asObject(mapping);
+  const safeOptions = asObject(options, defaultOptions);
+  const mappedFieldCount = Object.values(safeMapping).filter(Boolean).length;
+  const missingRequiredMappings = requiredFields.filter((field) => !safeMapping[field]);
+  const hasIdentifierMapping = Boolean(safeMapping.sku || safeMapping.barcode);
+  const blockingMappingMissing = !hasIdentifierMapping || (!safeOptions.update_stock_price_only && !safeMapping.name);
   const activeCompanyId = sourceType === 'xml' ? xmlForm.company_id : excelCompanyId;
   const importReady = sourceType === 'xml'
     ? Boolean(activeXmlSource && hasIdentifierMapping)
@@ -119,9 +121,9 @@ export function ImportCenterPage() {
         api.xmlSources.list(),
         api.imports.runs(),
       ]);
-      setCompanies(companyResponse.data || []);
-      setXmlSources(sourceResponse.data || []);
-      setRuns(runResponse.data || []);
+      setCompanies(asArray(companyResponse));
+      setXmlSources(asArray(sourceResponse));
+      setRuns(asArray(runResponse));
     });
   };
 
@@ -155,8 +157,8 @@ export function ImportCenterPage() {
       frequency_minutes: source.frequency_minutes || 1440,
       is_active: source.is_active !== false,
     } : xmlInitial);
-    setMapping(source?.field_mapping || {});
-    setOptions({ ...defaultOptions, ...(source?.options || {}) });
+    setMapping(asObject(source?.field_mapping));
+    setOptions({ ...defaultOptions, ...asObject(source?.options) });
     resetPreview(false);
   };
 
@@ -168,7 +170,7 @@ export function ImportCenterPage() {
     }
 
     await run(async () => {
-      const payload = { ...xmlForm, frequency_minutes: Number(xmlForm.frequency_minutes), field_mapping: mapping, options };
+      const payload = { ...xmlForm, frequency_minutes: Number(xmlForm.frequency_minutes), field_mapping: safeMapping, options: safeOptions };
       const saved = activeXmlSource ? await api.xmlSources.update(activeXmlSource.id, payload) : await api.xmlSources.create(payload);
       setActiveXmlSource(saved);
       setXmlForm({ ...xmlForm, company_id: saved.company_id || xmlForm.company_id });
@@ -187,11 +189,11 @@ export function ImportCenterPage() {
     const body = new FormData();
     body.append('company_id', excelCompanyId);
     body.append('file', excelFile);
-    Object.entries(mapping).forEach(([key, value]) => body.append(`field_mapping[${key}]`, value || ''));
+    Object.entries(safeMapping).forEach(([key, value]) => body.append(`field_mapping[${key}]`, value || ''));
     await run(async () => {
       const response = await api.imports.previewExcel(body);
       setPreview(response);
-      setMapping(response.suggested_mapping || {});
+      setMapping(asObject(response.suggested_mapping));
       setActiveXmlSource(null);
       notify('success', 'Excel onizleme hazirlandi.');
       setStep(3);
@@ -205,9 +207,9 @@ export function ImportCenterPage() {
     }
 
     await run(async () => {
-      const response = await api.xmlSources.preview(activeXmlSource.id, { field_mapping: mapping });
+      const response = await api.xmlSources.preview(activeXmlSource.id, { field_mapping: safeMapping });
       setPreview(response);
-      setMapping(response.suggested_mapping || {});
+      setMapping(asObject(response.suggested_mapping));
       setExcelCompanyId(String(activeXmlSource.company_id));
       setExcelSupplier(activeXmlSource.supplier_name || '');
       notify('success', 'XML onizleme hazirlandi.');
@@ -225,8 +227,8 @@ export function ImportCenterPage() {
     body.append('company_id', excelCompanyId);
     body.append('file', excelFile);
     body.append('supplier_name', excelSupplier);
-    Object.entries(mapping).forEach(([key, value]) => body.append(`field_mapping[${key}]`, value || ''));
-    Object.entries(options).forEach(([key, value]) => body.append(`options[${key}]`, value));
+    Object.entries(safeMapping).forEach(([key, value]) => body.append(`field_mapping[${key}]`, value || ''));
+    Object.entries(safeOptions).forEach(([key, value]) => body.append(`options[${key}]`, value));
 
     await run(async () => {
       const response = await api.imports.queueExcel(body);
@@ -238,7 +240,7 @@ export function ImportCenterPage() {
   };
 
   const importXml = async (source = activeXmlSource) => {
-    const effectiveMapping = Object.keys(mapping || {}).length > 0 ? mapping : (source?.field_mapping || {});
+    const effectiveMapping = Object.keys(safeMapping).length > 0 ? safeMapping : asObject(source?.field_mapping);
     const hasXmlIdentifier = Boolean(effectiveMapping.sku || effectiveMapping.barcode);
     if (!source || !hasXmlIdentifier) {
       setError('XML import icin kaynak ve SKU veya barkod eslestirmesi zorunludur.');
@@ -246,7 +248,7 @@ export function ImportCenterPage() {
     }
 
     await run(async () => {
-      const response = await api.xmlSources.import(source.id, { field_mapping: effectiveMapping, options, supplier_name: source.supplier_name });
+      const response = await api.xmlSources.import(source.id, { field_mapping: effectiveMapping, options: safeOptions, supplier_name: source.supplier_name });
       setLastQueuedRunId(response.import_run_id);
       notify('success', response.message);
       await load();
@@ -257,7 +259,7 @@ export function ImportCenterPage() {
   const saveXmlMapping = async () => {
     if (!activeXmlSource) return;
     await run(async () => {
-      await api.xmlSources.update(activeXmlSource.id, { field_mapping: mapping, options });
+      await api.xmlSources.update(activeXmlSource.id, { field_mapping: safeMapping, options: safeOptions });
       notify('success', 'XML alan eslestirmesi kaydedildi.');
       await load();
     }, { onError: (message) => notify('error', message) });
@@ -273,7 +275,7 @@ export function ImportCenterPage() {
 
   const showRun = async (runId) => {
     await run(async () => {
-      setSelectedRun(await api.imports.showRun(runId));
+      setSelectedRun(asObject(await api.imports.showRun(runId), null));
     }, { onError: (message) => notify('error', message) });
   };
 
@@ -567,7 +569,7 @@ export function ImportCenterPage() {
             <div><span>Guncel</span><strong>{selectedRun.updated_count}</strong></div>
           </div>
           <DataTable
-            rows={selectedRun.errors || []}
+            rows={asArray(selectedRun.errors)}
             emptyTitle="Hata yok"
             emptyText="Bu import kaydinda satir bazli hata bulunmuyor."
             columns={[

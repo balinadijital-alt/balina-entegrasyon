@@ -18,7 +18,7 @@ import {
   Webhook,
 } from 'lucide-react';
 import { Link as RouterLink } from 'react-router-dom';
-import { api } from '../../api/client.js';
+import { api, asArray } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
@@ -225,13 +225,14 @@ export function PaymentsPage() {
         api.payments.list(),
         api.payments.logs(),
       ]);
-      const nextPayments = paymentResponse.data || [];
+      const nextProviders = asArray(providerResponse);
+      const nextPayments = asArray(paymentResponse);
 
-      setCompanies(companyResponse.data || []);
-      setProviders(providerResponse || []);
-      setAccounts(accountResponse.data || []);
+      setCompanies(asArray(companyResponse));
+      setProviders(nextProviders);
+      setAccounts(asArray(accountResponse));
       setPayments(nextPayments);
-      setLogs(logResponse.data || []);
+      setLogs(asArray(logResponse));
       setSelectedPayment((current) => {
         if (!nextPayments.length) {
           return null;
@@ -241,7 +242,7 @@ export function PaymentsPage() {
       });
       setForm((current) => ({
         ...current,
-        payment_provider_id: current.payment_provider_id || providerResponse?.[0]?.id || '',
+        payment_provider_id: current.payment_provider_id || nextProviders[0]?.id || '',
       }));
     });
   };

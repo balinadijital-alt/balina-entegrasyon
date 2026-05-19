@@ -14,7 +14,7 @@ import {
   Truck,
   Undo2,
 } from 'lucide-react';
-import { api } from '../../api/client.js';
+import { api, asArray } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
@@ -194,11 +194,12 @@ export function ShippingPage() {
         api.shipping.accounts(),
         api.shipping.shipments(),
       ]);
-      const nextShipments = shipmentResponse.data || [];
+      const nextCarriers = asArray(carrierResponse);
+      const nextShipments = asArray(shipmentResponse);
 
-      setCompanies(companyResponse.data || []);
-      setCarriers(carrierResponse || []);
-      setAccounts(accountResponse.data || []);
+      setCompanies(asArray(companyResponse));
+      setCarriers(nextCarriers);
+      setAccounts(asArray(accountResponse));
       setShipments(nextShipments);
       setSelectedShipment((current) => {
         if (!nextShipments.length) {
@@ -209,7 +210,7 @@ export function ShippingPage() {
       });
       setForm((current) => ({
         ...current,
-        shipping_carrier_id: current.shipping_carrier_id || carrierResponse?.[0]?.id || '',
+        shipping_carrier_id: current.shipping_carrier_id || nextCarriers[0]?.id || '',
       }));
     });
   };

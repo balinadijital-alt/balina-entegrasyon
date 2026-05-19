@@ -17,7 +17,7 @@ import {
   Undo2,
   UserRound,
 } from 'lucide-react';
-import { api } from '../../api/client.js';
+import { api, asArray, asObject } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
@@ -111,7 +111,7 @@ function formatDate(value) {
 }
 
 function payloadItems(order) {
-  return order?.payload?.lines || order?.payload?.items || order?.payload?.orderLines || [];
+  return asArray(order?.payload?.lines || order?.payload?.items || order?.payload?.orderLines);
 }
 
 function itemCount(order) {
@@ -214,13 +214,16 @@ export function OrdersPage({ initialStatus = '' }) {
         api.shipping.accounts(),
         api.accounting.accounts(),
       ]);
-      const nextOrders = orderResponse.data || [];
+      const nextOrders = asArray(orderResponse);
       setOrders(nextOrders);
-      setCompanies(companyResponse.data || []);
-      setShippingAccounts(shippingResponse.data || []);
-      setAccountingAccounts(accountingResponse.data || []);
-      setSelectedAccountId((current) => current || (shippingResponse.data || [])[0]?.id || '');
-      setSelectedAccountingAccountId((current) => current || (accountingResponse.data || [])[0]?.id || '');
+      const nextCompanies = asArray(companyResponse);
+      const nextShippingAccounts = asArray(shippingResponse);
+      const nextAccountingAccounts = asArray(accountingResponse);
+      setCompanies(nextCompanies);
+      setShippingAccounts(nextShippingAccounts);
+      setAccountingAccounts(nextAccountingAccounts);
+      setSelectedAccountId((current) => current || nextShippingAccounts[0]?.id || '');
+      setSelectedAccountingAccountId((current) => current || nextAccountingAccounts[0]?.id || '');
       setSelectedOrder((current) => {
         if (!nextOrders.length) return null;
         return nextOrders.find((order) => order.id === current?.id) || nextOrders[0];
@@ -272,7 +275,7 @@ export function OrdersPage({ initialStatus = '' }) {
     setDetailLoading(true);
     try {
       const detail = await api.orders.show(order.id);
-      setSelectedOrder(detail);
+      setSelectedOrder(asObject(detail, order));
     } catch (err) {
       notify('error', err.response?.data?.message || err.message || 'Siparis detayi alinamadi.');
     } finally {
@@ -524,8 +527,8 @@ function OrderDetailPanel({ order, loading, onCreateShipment, onCreateInvoice, o
   const shipment = latestShipment(order);
   const payment = latestPayment(order);
   const invoice = latestInvoice(order);
-  const histories = order.operation_histories || order.operationHistories || [];
-  const notes = order.notes || [];
+  const histories = asArray(order.operation_histories || order.operationHistories);
+  const notes = asArray(order.notes);
 
   return (
     <aside className="panel orders-detail-panel">

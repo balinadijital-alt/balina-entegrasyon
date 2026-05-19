@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Clock3, Eye, PlayCircle, RadioTower, RefreshCcw, RotateCcw, ServerCog, Timer, Workflow } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { api } from '../../api/client.js';
+import { api, asArray, asObject } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
@@ -84,8 +84,9 @@ export function QueuePage() {
   const load = async () => {
     await run(async () => {
       const response = await api.queue.status();
-      setStatus(response);
-      setSelectedJob((current) => current || response.failed_jobs?.[0] || null);
+      const nextStatus = asObject(response, { stats: {}, redis: { connected: false }, failed_jobs: [], recent_runs: [], notifications: [] });
+      setStatus(nextStatus);
+      setSelectedJob((current) => current || asArray(nextStatus.failed_jobs)[0] || null);
     }, { onError: (message) => notify('error', message) });
   };
 
@@ -104,12 +105,13 @@ export function QueuePage() {
     }, { onError: (message) => notify('error', message) });
   };
 
-  const stats = status?.stats || {};
-  const failedJobs = (status?.failed_jobs || []).map((job) => ({ ...job, id: job.uuid }));
+  const stats = asObject(status?.stats);
+  const redis = asObject(status?.redis, { connected: false });
+  const failedJobs = asArray(status?.failed_jobs).map((job) => ({ ...job, id: job.uuid }));
   const lastFailedJob = failedJobs[0] || null;
   const progressTotal = Math.max(1, Number(stats.queued || 0) + Number(stats.running || 0) + Number(stats.completed || 0) + Number(stats.failed || 0));
   const completedProgress = Math.round((Number(stats.completed || 0) / progressTotal) * 100);
-  const queueHealthy = Boolean(status?.redis?.connected) && Number(stats.failed_jobs || 0) === 0;
+  const queueHealthy = Boolean(redis.connected) && Number(stats.failed_jobs || 0) === 0;
   const jobPayload = useMemo(() => parsePayload(selectedJob?.payload), [selectedJob]);
   const selectedModule = selectedJob ? jobModule(selectedJob) : null;
 
@@ -132,9 +134,9 @@ export function QueuePage() {
               <p>Redis baglantisi, bekleyen isler, calisan joblar ve failed job kayitlari 15 saniyede bir yenilenir.</p>
             </div>
             <div className="retry-health-card">
-              <span className={status.redis.connected ? 'health-dot online' : 'health-dot warning'} />
-              <strong>{status.redis.connected ? 'Redis bagli' : 'Redis baglantisi yok'}</strong>
-              <small>{status.redis.message || '-'}</small>
+              <span className={redis.connected ? 'health-dot online' : 'health-dot warning'} />
+              <strong>{redis.connected ? 'Redis bagli' : 'Redis baglantisi yok'}</strong>
+              <small>{redis.message || '-'}</small>
               <div className="progress"><span style={{ width: `${completedProgress}%` }} /></div>
             </div>
           </section>
@@ -219,7 +221,7 @@ export function QueuePage() {
             <section className="panel">
               <h2>Queue Son Islemler</h2>
               <DataTable
-                rows={status.recent_runs || []}
+                rows={asArray(status.recent_runs)}
                 emptyTitle="Queue islemi yok"
                 emptyText="Senkronizasyon veya aktarim joblari calistikca burada gorunur."
                 columns={[
@@ -236,7 +238,7 @@ export function QueuePage() {
             <section className="panel">
               <h2>Queue Bildirimleri</h2>
               <DataTable
-                rows={status.notifications || []}
+                rows={asArray(status.notifications)}
                 emptyTitle="Bildirim yok"
                 emptyText="Retry, queue veya failed job bildirimi olustugunda burada gorunur."
                 columns={[

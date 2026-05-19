@@ -17,7 +17,7 @@ import {
   WalletCards,
 } from 'lucide-react';
 import { Link as RouterLink } from 'react-router-dom';
-import { api } from '../../api/client.js';
+import { api, asArray } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
@@ -225,15 +225,16 @@ export function AccountingPage() {
         api.accounting.invoices(),
         api.accounting.logs(),
       ]);
-      const nextInvoices = invoiceResponse.data || [];
+      const nextIntegrations = asArray(integrationResponse);
+      const nextInvoices = asArray(invoiceResponse);
 
-      setCompanies(companyResponse.data || []);
-      setIntegrations(integrationResponse || []);
-      setAccounts(accountResponse.data || []);
-      setCurrentAccounts(currentResponse.data || []);
-      setTransactions(transactionResponse.data || []);
+      setCompanies(asArray(companyResponse));
+      setIntegrations(nextIntegrations);
+      setAccounts(asArray(accountResponse));
+      setCurrentAccounts(asArray(currentResponse));
+      setTransactions(asArray(transactionResponse));
       setInvoices(nextInvoices);
-      setLogs(logResponse.data || []);
+      setLogs(asArray(logResponse));
       setSelectedInvoice((current) => {
         if (!nextInvoices.length) {
           return null;
@@ -243,7 +244,7 @@ export function AccountingPage() {
       });
       setAccountForm((current) => ({
         ...current,
-        accounting_integration_id: current.accounting_integration_id || integrationResponse?.[0]?.id || '',
+        accounting_integration_id: current.accounting_integration_id || nextIntegrations[0]?.id || '',
       }));
     });
   };

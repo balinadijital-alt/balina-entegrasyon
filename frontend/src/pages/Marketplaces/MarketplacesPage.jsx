@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, RefreshCw, ShoppingBag, Store } from 'lucide-react';
-import { api } from '../../api/client.js';
+import { api, asArray } from '../../api/client.js';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
@@ -51,8 +51,8 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
   const load = async () => {
     await run(async () => {
       const [accountResponse, companyResponse] = await Promise.all([api.marketplaces.list(), api.companies.list()]);
-      setAccounts((accountResponse.data || []).filter((account) => !provider || account.code === provider));
-      setCompanies(companyResponse.data || []);
+      setAccounts(asArray(accountResponse).filter((account) => !provider || account.code === provider));
+      setCompanies(asArray(companyResponse));
       setForm((current) => ({ ...current, code: provider || current.code }));
     });
   };
@@ -96,12 +96,14 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
         hbOrders: () => api.marketplaces.hepsiburadaPullOrders(id),
       };
       const response = await actions[type]();
-      const categoryCount = response.categories?.length;
-      if (response.categories) {
-        setCategories(response.categories);
+      const nextCategories = asArray(response?.categories);
+      const hasCategoryPayload = response && Object.prototype.hasOwnProperty.call(response, 'categories');
+      const categoryCount = nextCategories.length;
+      if (hasCategoryPayload) {
+        setCategories(nextCategories);
       }
       const marketplaceName = type.startsWith('hb') || provider === 'hepsiburada' ? 'Hepsiburada' : 'Trendyol';
-      const message = categoryCount !== undefined ? `${categoryCount} ${marketplaceName} kategorisi cekildi.` : response.message;
+      const message = hasCategoryPayload ? `${categoryCount} ${marketplaceName} kategorisi cekildi.` : response.message;
       if (message) notify('success', message);
       await load();
     }, { onError: (message) => notify('error', message) });

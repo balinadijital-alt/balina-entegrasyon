@@ -18,7 +18,7 @@ import {
   Store,
   Webhook,
 } from 'lucide-react';
-import { api } from '../../api/client.js';
+import { api, asArray, asObject } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
@@ -37,7 +37,7 @@ function valueFrom(result, fallback) {
 }
 
 function rowsFrom(response) {
-  return response?.data || [];
+  return asArray(response);
 }
 
 function formatDate(value) {
@@ -488,7 +488,7 @@ function CompanyDetailPanel({ company, data, integrations, basePath }) {
 }
 
 function CredentialSummary({ row, revealed, onToggle }) {
-  const entries = Object.entries(row.credentials || {}).filter(([, value]) => value);
+  const entries = Object.entries(asObject(row.credentials)).filter(([, value]) => value);
 
   if (!entries.length) {
     return <span className="muted-text">Credential yok</span>;

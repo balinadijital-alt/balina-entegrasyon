@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, Boxes, ClipboardList, FileText, HelpCircle, Layers3, Link2, PackageCheck, RefreshCw, RotateCcw, Send, Tags } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { api } from '../../api/client.js';
+import { api, asArray } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
@@ -58,10 +58,10 @@ export function TrendyolPage() {
   const load = async () => {
     await run(async () => {
       const [accountResponse, companyResponse, logResponse] = await Promise.all([api.marketplaces.list(), api.companies.list(), api.logs.list()]);
-      const trendyolAccounts = (accountResponse.data || []).filter((account) => account.code === 'trendyol');
+      const trendyolAccounts = asArray(accountResponse).filter((account) => account.code === 'trendyol');
       setAccounts(trendyolAccounts);
-      setCompanies(companyResponse.data || []);
-      setLogs((logResponse.data || []).filter((log) => log.marketplace_code === 'trendyol').slice(0, 20));
+      setCompanies(asArray(companyResponse));
+      setLogs(asArray(logResponse).filter((log) => log.marketplace_code === 'trendyol').slice(0, 20));
       setAccountId((current) => current || trendyolAccounts[0]?.id || '');
     });
   };

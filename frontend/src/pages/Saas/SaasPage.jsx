@@ -13,7 +13,7 @@ import {
   TrendingUp,
   UsersRound,
 } from 'lucide-react';
-import { api } from '../../api/client.js';
+import { api, asArray, asObject } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
@@ -81,11 +81,12 @@ function usagePercent(item) {
 
 function subscriptionUsagePercent(subscription, usageMap) {
   const companyUsage = usageMap[subscription.company_id];
-  if (!companyUsage?.usage) {
+  const usage = asObject(companyUsage?.usage, null);
+  if (!usage) {
     return 0;
   }
 
-  const values = Object.values(companyUsage.usage);
+  const values = Object.values(usage);
   if (!values.length) {
     return 0;
   }
@@ -134,15 +135,15 @@ export function SaasPage() {
         api.saas.licenses(),
         api.saas.partners(),
       ]);
-      const nextCompanies = companyResponse.data || [];
-      const nextPlans = planResponse || [];
-      const nextSubscriptions = subResponse.data || [];
+      const nextCompanies = asArray(companyResponse);
+      const nextPlans = asArray(planResponse);
+      const nextSubscriptions = asArray(subResponse);
 
       setCompanies(nextCompanies);
       setPlans(nextPlans);
       setSubscriptions(nextSubscriptions);
-      setLicenses(licenseResponse.data || []);
-      setPartners(partnerResponse.data || []);
+      setLicenses(asArray(licenseResponse));
+      setPartners(asArray(partnerResponse));
       setSelectedCompanyId((current) => current || nextCompanies[0]?.id || '');
       setSelectedPlanId((current) => current || nextPlans[0]?.id || '');
       setSelectedSubscription((current) => {
@@ -160,7 +161,7 @@ export function SaasPage() {
       usageResults.forEach((result) => {
         if (result.status === 'fulfilled') {
           const [companyId, usage] = result.value;
-          nextUsageMap[companyId] = usage;
+          nextUsageMap[companyId] = asObject(usage);
         }
       });
       setUsageMap(nextUsageMap);
@@ -175,7 +176,7 @@ export function SaasPage() {
     if (!companyId) return;
     await run(async () => {
       const response = await api.saas.usage(companyId);
-      setUsageMap((current) => ({ ...current, [companyId]: response }));
+      setUsageMap((current) => ({ ...current, [companyId]: asObject(response) }));
     }, { onError: (message) => notify('error', message) });
   };
 
@@ -278,10 +279,10 @@ export function SaasPage() {
             <div>
               <span>{planLabel(plan)}</span>
               <strong>{formatMoney(plan.monthly_price)} / ay</strong>
-              <p>{(plan.features || []).slice(0, 3).join(' / ') || 'Entegrasyon ve operasyon limitleri'}</p>
+              <p>{asArray(plan.features).slice(0, 3).join(' / ') || 'Entegrasyon ve operasyon limitleri'}</p>
             </div>
             <div className="saas-plan-limits">
-              {Object.entries(plan.limits || {}).slice(0, 5).map(([metric, limit]) => (
+              {Object.entries(asObject(plan.limits)).slice(0, 5).map(([metric, limit]) => (
                 <div key={metric}>
                   <small>{metricLabels[metric] || metric}</small>
                   <b>{Number(limit) === 0 ? 'Limitsiz' : limit}</b>
@@ -317,7 +318,7 @@ export function SaasPage() {
 
       {selectedUsage && (
         <section className="saas-usage-grid">
-          {Object.entries(selectedUsage.usage || {}).map(([metric, item]) => (
+          {Object.entries(asObject(selectedUsage.usage)).map(([metric, item]) => (
             <div className={usagePercent(item) >= 90 ? 'saas-usage-card warning' : 'saas-usage-card'} key={metric}>
               <span>{metricLabels[metric] || metric}</span>
               <strong>{item.used}/{Number(item.limit) === 0 ? 'Limitsiz' : item.limit}</strong>
@@ -444,7 +445,7 @@ function SubscriptionDetailPanel({ subscription, usage, licenses, partners }) {
   }
 
   const relatedLicense = licenses.find((license) => Number(license.company_id) === Number(subscription.company_id));
-  const usageEntries = Object.entries(usage?.usage || {});
+  const usageEntries = Object.entries(asObject(usage?.usage));
 
   return (
     <aside className="panel saas-detail-panel">

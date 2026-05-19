@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, Boxes, Clock3, Database, FileWarning, Gauge, PackageCheck, RadioTower, RefreshCcw, ServerCog, ShoppingBag, Truck, UploadCloud, Workflow } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { api, http } from '../../api/client.js';
+import { api, asArray, asObject, http } from '../../api/client.js';
 import { ActivityTimeline } from '../../components/ActivityTimeline.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { HealthStatusCard } from '../../components/HealthStatusCard.jsx';
@@ -90,13 +90,13 @@ export function OperationsCenterPage() {
       ]);
 
       setData({
-        dashboard: settledValue(dashboard),
-        health: settledValue(health, { status: 'degraded', checks: {}, checked_at: null }),
-        queue: settledValue(queue, { stats: {}, redis: { connected: false }, recent_runs: [], failed_jobs: [], notifications: [] }),
-        logs: settledValue(logs, { data: [] })?.data || [],
-        marketplaces: settledValue(marketplaces, { data: [] })?.data || [],
-        imports: settledValue(imports, { data: [] })?.data || [],
-        xmlSources: settledValue(xmlSources, { data: [] })?.data || [],
+        dashboard: asObject(settledValue(dashboard), { summary: [], breakdowns: {}, recent_activity: {} }),
+        health: asObject(settledValue(health), { status: 'degraded', checks: {}, checked_at: null }),
+        queue: asObject(settledValue(queue), { stats: {}, redis: { connected: false }, recent_runs: [], failed_jobs: [], notifications: [] }),
+        logs: asArray(settledValue(logs, { data: [] })),
+        marketplaces: asArray(settledValue(marketplaces, { data: [] })),
+        imports: asArray(settledValue(imports, { data: [] })),
+        xmlSources: asArray(settledValue(xmlSources, { data: [] })),
       });
     });
   };
@@ -109,10 +109,10 @@ export function OperationsCenterPage() {
 
   const failedLogs = data.logs.filter((log) => Number(log.status_code || 0) >= 400);
   const successLogs = data.logs.filter((log) => Number(log.status_code || 0) < 400);
-  const queueStats = data.queue?.stats || {};
-  const orderBreakdown = data.dashboard?.breakdowns?.orders || [];
-  const paymentBreakdown = data.dashboard?.breakdowns?.payments || [];
-  const shippingBreakdown = data.dashboard?.breakdowns?.shipping || [];
+  const queueStats = asObject(data.queue?.stats);
+  const orderBreakdown = asArray(data.dashboard?.breakdowns?.orders);
+  const paymentBreakdown = asArray(data.dashboard?.breakdowns?.payments);
+  const shippingBreakdown = asArray(data.dashboard?.breakdowns?.shipping);
   const lastImport = latest(data.imports);
   const lastXml = latest(data.xmlSources, 'updated_at') || latest(data.xmlSources);
   const alerts = useMemo(() => buildAlerts({
@@ -128,7 +128,7 @@ export function OperationsCenterPage() {
   }, [failedLogs]);
 
   const recentTimeline = [
-    ...(data.dashboard?.recent_activity?.orders || []).map((order) => ({
+    ...asArray(data.dashboard?.recent_activity?.orders).map((order) => ({
       id: `order-${order.id}`,
       title: `Siparis ${order.marketplace_order_id}`,
       description: `${order.customer_name || 'Musteri'} · ${order.status}`,
@@ -180,7 +180,7 @@ export function OperationsCenterPage() {
             <span className={data.health?.status === 'healthy' ? 'badge active' : 'badge failed'}>{data.health?.status || 'unknown'}</span>
           </div>
           <div className="health-status-grid">
-            {Object.entries(data.health?.checks || {}).map(([name, status]) => <HealthStatusCard name={name} status={status} key={name} />)}
+            {Object.entries(asObject(data.health?.checks)).map(([name, status]) => <HealthStatusCard name={name} status={status} key={name} />)}
             <HealthStatusCard name="redis" status={data.queue?.redis?.connected} detail={data.queue?.redis?.message} />
           </div>
         </section>
@@ -193,8 +193,8 @@ export function OperationsCenterPage() {
             <Link to="/marketplaces" className="button-link secondary-link">Hesaplari Ac</Link>
           </div>
           <div className="marketplace-health-grid">
-            <MarketplaceHealthCard name="trendyol" account={data.marketplaces.find((item) => item.code === 'trendyol')} logs={data.logs} runs={data.queue?.recent_runs || []} />
-            <MarketplaceHealthCard name="hepsiburada" account={data.marketplaces.find((item) => item.code === 'hepsiburada')} logs={data.logs} runs={data.queue?.recent_runs || []} />
+            <MarketplaceHealthCard name="trendyol" account={data.marketplaces.find((item) => item.code === 'trendyol')} logs={data.logs} runs={asArray(data.queue?.recent_runs)} />
+            <MarketplaceHealthCard name="hepsiburada" account={data.marketplaces.find((item) => item.code === 'hepsiburada')} logs={data.logs} runs={asArray(data.queue?.recent_runs)} />
           </div>
         </section>
 
