@@ -180,6 +180,7 @@ export const appNavigationGroups = [
     label: 'Genel',
     items: [
       { to: '/reports', label: 'Raporlar', icon: BarChart3 },
+      { to: '/help-center', label: 'Yardim Merkezi', icon: HelpCircle },
       { to: '/resources', label: 'Kaynaklar', icon: BookOpen },
       { to: '/settings', label: 'Ayarlar', icon: Settings },
     ],

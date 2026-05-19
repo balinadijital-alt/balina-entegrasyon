@@ -3810,6 +3810,168 @@ tbody td:last-child .row-actions:focus-within {
   grid-column: 1 / -1;
 }
 
+.help-center-layout {
+  align-items: start;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 260px minmax(320px, 0.9fr) minmax(360px, 1.1fr);
+}
+
+.help-category-panel,
+.help-detail-panel {
+  position: sticky;
+  top: 18px;
+}
+
+.help-category-list,
+.help-article-list,
+.help-featured-grid,
+.help-article-column {
+  display: grid;
+  gap: 10px;
+}
+
+.help-category-list button,
+.help-article-row,
+.help-feature-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.help-category-list button {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.help-category-list button span {
+  color: #334155;
+  font-weight: 800;
+}
+
+.help-category-list button strong {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.help-category-list button.active,
+.help-article-row.active,
+.help-feature-card.active {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.help-featured-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.help-feature-card {
+  align-content: start;
+  display: grid;
+  gap: 8px;
+  min-height: 132px;
+  padding: 14px;
+}
+
+.help-feature-card svg {
+  color: var(--primary);
+}
+
+.help-feature-card strong,
+.help-article-row strong {
+  color: #0f172a;
+}
+
+.help-feature-card span,
+.help-article-row small,
+.help-detail-heading p,
+.help-content-block p {
+  color: #64748b;
+  line-height: 1.55;
+}
+
+.help-article-row {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 118px minmax(0, 1fr) auto;
+  padding: 12px;
+}
+
+.help-article-row div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.help-detail-heading {
+  align-items: start;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.help-detail-heading h2 {
+  font-size: 24px;
+  line-height: 1.2;
+  margin: 10px 0 8px;
+}
+
+.help-content-block {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.help-content-block p {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin: 0;
+  padding: 13px 14px;
+}
+
+.help-tag-list,
+.help-route-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.help-tag-list span,
+.help-route-list code {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 7px 10px;
+}
+
+.help-related-section {
+  margin-top: 16px;
+}
+
+.help-related-section h3 {
+  color: #0f172a;
+  font-size: 14px;
+  margin: 0 0 10px;
+}
+
+.help-feedback-box {
+  align-items: start;
+  margin-top: 18px;
+}
+
 .marketplace-onboarding-layout {
   align-items: start;
   display: grid;
@@ -6355,6 +6517,9 @@ tbody td:last-child .row-actions:focus-within {
   .developer-hero,
   .developer-hero-stats,
   .developer-lower-grid,
+  .help-center-layout,
+  .help-featured-grid,
+  .help-article-row,
   .marketplace-onboarding-layout,
   .operations-hero,
   .shipping-hero,
@@ -6518,6 +6683,11 @@ tbody td:last-child .row-actions:focus-within {
   }
 
   .onboarding-side-panel {
+    position: static;
+  }
+
+  .help-category-panel,
+  .help-detail-panel {
     position: static;
   }
 

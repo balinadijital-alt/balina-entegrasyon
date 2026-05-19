@@ -63,6 +63,7 @@ const QueuePage = lazyPage(() => import('./pages/Queue/QueuePage.jsx'), 'QueuePa
 const ReportsPage = lazyPage(() => import('./pages/Reports/ReportsPage.jsx'), 'ReportsPage');
 const CustomerReportsPage = lazyPage(() => import('./pages/Reports/ReportsPage.jsx'), 'CustomerReportsPage');
 const DeveloperCenterPage = lazyPage(() => import('./pages/Resources/DeveloperCenterPage.jsx'), 'DeveloperCenterPage');
+const HelpCenterPage = lazyPage(() => import('./pages/Resources/HelpCenterPage.jsx'), 'HelpCenterPage');
 const RolesPage = lazyPage(() => import('./pages/Roles/RolesPage.jsx'), 'RolesPage');
 const ShippingPage = lazyPage(() => import('./pages/Shipping/ShippingPage.jsx'), 'ShippingPage');
 const SaasPage = lazyPage(() => import('./pages/Saas/SaasPage.jsx'), 'SaasPage');
@@ -86,6 +87,7 @@ function CustomerRoutes() {
       <Route index element={<CustomerDashboardPage />} />
       <Route path="dashboard" element={<CustomerDashboardPage />} />
       <Route path="reports" element={<CustomerReportsPage />} />
+      <Route path="help-center" element={<HelpCenterPage />} />
       <Route path="resources" element={<DeveloperCenterPage />} />
       <Route path="companies" element={<CompaniesPage />} />
       <Route path="accounting" element={<AccountingPage />} />
