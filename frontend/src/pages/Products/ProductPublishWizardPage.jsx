@@ -18,7 +18,7 @@ import {
   readinessScore,
 } from './productWorkflow.js';
 
-const steps = ['Pazaryeri Sec', 'Urunleri Sec', 'Hazirlik Kontrolu', 'Eksikleri Duzelt', 'Gonderim Ozeti', 'Gonderim Sonucu'];
+const steps = ['Pazaryeri Sec', 'Urunleri Sec', 'Hazirlik Kontrolu', 'Eksikleri Duzelt', 'Hazirlama Ozeti', 'Hazirlama Sonucu'];
 
 const commonRequirements = ['name', 'brand', 'category', 'barcode', 'sku', 'price', 'stock', 'attributes', 'vat_rate', 'description', 'seo', 'image', 'cargo'];
 const marketplaceRequirements = ['marketplace_category', 'category_mapping', 'required_attributes'];
@@ -26,7 +26,7 @@ const marketplaceRequirements = ['marketplace_category', 'category_mapping', 're
 function draftStatusLabel(status) {
   if (status === 'ready') return 'Hazir';
   if (status === 'blocked') return 'Eksik';
-  if (status === 'queued') return 'Gonderildi';
+  if (status === 'queued') return 'Hazirlandi';
   return status || '-';
 }
 
@@ -161,7 +161,7 @@ export function ProductPublishWizardPage() {
       });
       setDraft(response);
       setStep(4);
-      notify(response.status === 'blocked' ? 'error' : 'success', response.status === 'blocked' ? 'Eksik alanlar bulundu.' : 'Gonderim onizlemesi hazir.');
+      notify(response.status === 'blocked' ? 'error' : 'success', response.status === 'blocked' ? 'Eksik alanlar bulundu.' : 'Aktarim hazirlik onizlemesi hazir.');
     }, { onError: (message) => notify('error', message) });
   };
 
@@ -171,7 +171,7 @@ export function ProductPublishWizardPage() {
       const response = await api.productPublish.send(draft.id);
       setDraft(response);
       setStep(5);
-      notify(response.status === 'blocked' ? 'error' : 'success', response.error_message || 'Gonderim kuyruga alindi.');
+      notify(response.status === 'blocked' ? 'error' : 'success', response.error_message || 'Urunler provider gonderimine hazirlandi.');
     }, { onError: (message) => notify('error', message) });
   };
 
@@ -179,7 +179,7 @@ export function ProductPublishWizardPage() {
 
   return (
     <>
-      <PageHeader title="Pazaryerine Urun Gonderme Sihirbazi" />
+      <PageHeader title="Pazaryeri Aktarim Hazirlama Sihirbazi" />
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && products.length === 0 ? <LoadingState /> : null}
 
@@ -219,7 +219,7 @@ export function ProductPublishWizardPage() {
               <div className="wizard-step-header">
                 <span>Adim 2 / {steps.length}</span>
                 <h2>Urunleri sec</h2>
-                <p>{marketplaceName(marketplaceCode)} icin gonderilecek urunleri secin; hazirlik puani ve eksik alanlar pazaryerine gore hesaplanir.</p>
+                <p>{marketplaceName(marketplaceCode)} icin aktarima hazirlanacak urunleri secin; hazirlik puani ve eksik alanlar pazaryerine gore hesaplanir.</p>
               </div>
               <section className="panel compact-filter-panel nested-panel">
                 <div className="product-filter-row">
@@ -238,7 +238,7 @@ export function ProductPublishWizardPage() {
               </section>
               <DataTable
                 rows={filteredProducts}
-                emptyTitle="Gonderilecek urun yok"
+                emptyTitle="Aktarima hazirlanacak urun yok"
                 emptyText="Once urun ekleme sihirbazi ile urun olusturun veya filtreleri temizleyin."
                 columns={[
                   { key: 'select', label: '', render: (row) => <input type="checkbox" checked={selectedProducts.includes(row.id)} onChange={() => toggleProduct(row.id)} /> },
@@ -265,7 +265,7 @@ export function ProductPublishWizardPage() {
                   <span>Ortalama hazirlik</span>
                   <div className="progress"><span style={{ width: `${selectedAverageScore}%` }} /></div>
                 </div>
-                <div className="soft-empty"><strong>{selectedReadyCount}/{selectedRows.length}</strong><span>urun gonderime hazir</span></div>
+                <div className="soft-empty"><strong>{selectedReadyCount}/{selectedRows.length}</strong><span>urun aktarima hazir</span></div>
                 <div className="soft-empty"><strong>{selectedMissingFields.length || 0}</strong><span>farkli eksik alan</span></div>
               </section>
               <div className="publish-requirement-grid">
@@ -331,8 +331,8 @@ export function ProductPublishWizardPage() {
             <>
               <div className="wizard-step-header">
                 <span>Adim 5 / {steps.length}</span>
-                <h2>Gonderim ozeti</h2>
-                <p>Validate islemi pazaryeri uygunlugunu tekrar calistirir ve hazir olmayan urunleri gonderime kapatir.</p>
+                <h2>Hazirlama ozeti</h2>
+                <p>Validate islemi pazaryeri uygunlugunu tekrar calistirir ve hazir olmayan urunleri aktarim hazirligina kapatir.</p>
               </div>
               <div className="publish-summary-grid">
                 <div className="soft-empty"><strong>{marketplaceName(marketplaceCode)}</strong><span>Pazaryeri</span></div>
@@ -364,17 +364,19 @@ export function ProductPublishWizardPage() {
             <>
               <div className="wizard-step-header">
                 <span>Adim 6 / {steps.length}</span>
-                <h2>Gonderim sonucu</h2>
-                <p>Gonderim kuyruga alindiktan sonra batch sonucu ve pazaryeri hatalari aktarim listesi ile Hata Merkezi ekranindan izlenir.</p>
+                <h2>Hazirlama sonucu</h2>
+                <p>Urunler provider gonderimine hazirlandiktan sonra gercek provider gonderimi Trendyol/Hepsiburada yonetim ekranlarindan baslatilir.</p>
               </div>
               <div className="preview-grid">
-                <div className="soft-empty"><strong>{draftStatusLabel(draft?.status)}</strong><span>Gonderim durumu</span></div>
+                <div className="soft-empty"><strong>{draftStatusLabel(draft?.status)}</strong><span>Hazirlama durumu</span></div>
                 <div className="soft-empty"><strong>{draft?.result_summary?.queued_product_count || draft?.product_ids?.length || 0}</strong><span>Kuyruga alinan urun</span></div>
                 <div className="soft-empty"><strong>{draft?.result_summary?.batch_request_id || draft?.id || '-'}</strong><span>Takip no</span></div>
                 <div className="soft-empty"><strong>{draft?.result_summary?.message || draft?.error_message || 'Sonuc bekleniyor.'}</strong><span>Sonuc mesaji</span></div>
               </div>
               <div className="quick-fix-strip">
                 <Link className="button-link secondary-link" to="/products/publish-queue">Aktarim listesine git</Link>
+                <Link className="button-link secondary-link" to="/marketplaces/trendyol">Trendyol Yonetim Merkezi</Link>
+                <Link className="button-link secondary-link" to="/marketplaces/hepsiburada">Hepsiburada Yonetim Merkezi</Link>
                 <Link className="button-link secondary-link" to="/api-logs">Hata Merkezi</Link>
               </div>
             </>
@@ -386,7 +388,7 @@ export function ProductPublishWizardPage() {
           {step < 3 && <button type="button" disabled={(step === 0 && !marketplaceId) || (step === 1 && selectedProducts.length === 0)} onClick={() => setStep((current) => current + 1)}>Ileri <ChevronRight size={16} /></button>}
           {step === 3 && <button type="button" onClick={() => setStep(4)}>Ozete Gec <ChevronRight size={16} /></button>}
           {step === 4 && !draft && <button type="button" disabled={loading || selectedProducts.length === 0} onClick={validateDraft}><CheckCircle2 size={16} /> Kontrol Et ve Onizle</button>}
-          {step === 4 && draft && <button type="button" disabled={loading || draft?.status === 'blocked'} onClick={sendDraft}><Send size={16} /> Pazaryerine Gonder</button>}
+          {step === 4 && draft && <button type="button" disabled={loading || draft?.status === 'blocked'} onClick={sendDraft}><Send size={16} /> Aktarim Listesine Hazirla</button>}
         </div>
       </section>
     </>

@@ -48,7 +48,7 @@ class MarketplacePublishService
     public function send(MarketplacePublishDraft $draft): MarketplacePublishDraft
     {
         if ($draft->status === 'blocked') {
-            $draft->update(['error_message' => 'Hazir olmayan urunler pazaryerine gonderilemez.']);
+            $draft->update(['error_message' => 'Hazir olmayan urunler provider gonderimine hazirlanamaz.']);
 
             return $draft->refresh();
         }
@@ -59,7 +59,7 @@ class MarketplacePublishService
                 'sent_at' => now(),
                 'result_summary' => [
                     'queued_product_count' => count($draft->product_ids ?? []),
-                    'message' => 'Urunler pazaryeri gonderim kuyruguna hazirlandi.',
+                    'message' => 'Urunler provider gonderimine hazirlandi.',
                 ],
             ]);
 

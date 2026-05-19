@@ -35,7 +35,7 @@ function draftStatusLabel(draft) {
     if (missing.includes('price') || missing.includes('stock')) return 'Fiyat/stok hatasi';
     return 'Hata aldi';
   }
-  if (draft.status === 'queued') return 'Gonderildi';
+  if (draft.status === 'queued') return 'Hazirlandi';
   return draft.status;
 }
 
@@ -109,7 +109,7 @@ export function PublishQueuePage() {
     await run(async () => {
       const response = await api.productPublish.send(draftId);
       setPreviewDraft(response);
-      notify(response.status === 'blocked' ? 'error' : 'success', response.error_message || 'Gonderim kuyruga alindi.');
+      notify(response.status === 'blocked' ? 'error' : 'success', response.error_message || 'Provider gonderimine hazirlandi.');
       await load();
     }, { onError: (message) => notify('error', message) });
   };
@@ -131,7 +131,7 @@ export function PublishQueuePage() {
           <>
             <Link className="button-link secondary-link" to="/products/category-mapping"><Layers3 size={16} /> Kategori Esle</Link>
             <Link className="button-link secondary-link" to="/catalog/attributes"><Tags size={16} /> Katalog Kaynaklari</Link>
-            <Link className="button-link" to="/products/publish"><Send size={16} /> Gonderim Sihirbazi</Link>
+            <Link className="button-link" to="/products/publish"><Send size={16} /> Aktarim Hazirlama Sihirbazi</Link>
           </>
         )}
       />
@@ -169,18 +169,18 @@ export function PublishQueuePage() {
         </section>
 
         <section className="panel compact-panel">
-          <h2>Gonderim Onizleme</h2>
+          <h2>Aktarim Hazirlik Onizleme</h2>
           {previewDraft ? (
             <>
               <div className="soft-empty"><strong>Aktarim #{previewDraft.id}</strong><span>{draftStatusLabel(previewDraft)}</span></div>
               <div className="result-summary-grid">
                 <div><span>Pazaryeri</span><strong>{previewDraft.marketplace_code || selectedMarketplace?.code || '-'}</strong></div>
                 <div><span>Urun sayisi</span><strong>{previewDraft.product_ids?.length || selectedProducts.length || 0}</strong></div>
-                <div><span>Sonuc</span><strong>{previewDraft.result_summary?.message || previewDraft.error_message || draftMissingText(previewDraft) || 'Gonderime hazir'}</strong></div>
+                <div><span>Sonuc</span><strong>{previewDraft.result_summary?.message || previewDraft.error_message || draftMissingText(previewDraft) || 'Provider gonderimine hazir'}</strong></div>
               </div>
             </>
           ) : (
-            <div className="soft-empty">Urunleri secip listeye eklediginde gonderim onizlemesi burada gorunur.</div>
+            <div className="soft-empty">Urunleri secip listeye eklediginde aktarim hazirlik onizlemesi burada gorunur.</div>
           )}
         </section>
       </section>
@@ -188,7 +188,7 @@ export function PublishQueuePage() {
       {selectedDrafts.length > 0 && (
         <section className="state-box bulk-action-bar">
           <span>{selectedDrafts.length} aktarim kaydi secildi.</span>
-          <button type="button" disabled={loading || activeQueueTab !== 'ready'} onClick={sendSelectedDrafts}><Send size={16} /> Secilenleri Gonder</button>
+          <button type="button" disabled={loading || activeQueueTab !== 'ready'} onClick={sendSelectedDrafts}><Send size={16} /> Secilenleri Hazirla</button>
         </section>
       )}
 
@@ -208,7 +208,7 @@ export function PublishQueuePage() {
 
       <div className="tabs">
         <button type="button" className={activeQueueTab === 'ready' ? 'tab active' : 'tab'} onClick={() => { setActiveQueueTab('ready'); setSelectedDrafts([]); }}>
-          Gonderime Hazir ({readyDrafts.length})
+          Hazirlanmaya Uygun ({readyDrafts.length})
         </button>
         <button type="button" className={activeQueueTab === 'blocked' ? 'tab active' : 'tab'} onClick={() => { setActiveQueueTab('blocked'); setSelectedDrafts([]); }}>
           Duzeltilmesi Gerekenler ({blockedDrafts.length})
@@ -229,7 +229,7 @@ export function PublishQueuePage() {
             { key: 'status', label: 'Durum', render: (row) => <span className={row.status === 'ready' || row.status === 'queued' ? 'status-pill ready' : 'status-pill blocked'}>{draftStatusLabel(row)}</span> },
             { key: 'products', label: 'Urun', render: (row) => row.product_ids?.length || 0 },
             { key: 'missing', label: 'Eksik Sebebi', render: (row) => draftMissingText(row) || 'Eksik yok' },
-            { key: 'batch', label: 'Sonuc', render: (row) => row.result_summary?.message || row.error_message || (row.status === 'queued' ? 'Gonderildi' : '-') },
+            { key: 'batch', label: 'Sonuc', render: (row) => row.result_summary?.message || row.error_message || (row.status === 'queued' ? 'Provider gonderimine hazirlandi' : '-') },
             {
               key: 'fix',
               label: 'Duzelt',
@@ -249,7 +249,7 @@ export function PublishQueuePage() {
               render: (row) => (
                 <div className="row-actions">
                   <button type="button" className="secondary-button" onClick={() => setPreviewDraft(row)}>Onizle</button>
-                  <button type="button" disabled={loading || row.status === 'blocked'} onClick={() => sendDraft(row.id)}><Send size={15} /> Gonder</button>
+                  <button type="button" disabled={loading || row.status === 'blocked'} onClick={() => sendDraft(row.id)}><Send size={15} /> Hazirla</button>
                 </div>
               ),
             },

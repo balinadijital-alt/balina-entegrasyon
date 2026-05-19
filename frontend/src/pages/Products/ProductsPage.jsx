@@ -17,7 +17,7 @@ const statusLabels = {
   ready: 'Hazir',
   not_ready: 'Eksik',
   missing: 'Eksik',
-  queued: 'Gonderildi',
+  queued: 'Hazirlandi',
   failed: 'Hatali',
   blocked: 'Eksik',
 };
@@ -170,7 +170,7 @@ export function ProductsPage() {
 
   const sendProducts = async (ids) => {
     if (!marketplaceId) {
-      notify('error', 'Gonderim icin pazaryeri hesabi seciniz.');
+      notify('error', 'Aktarim hazirligi icin pazaryeri hesabi seciniz.');
       return;
     }
 
@@ -182,11 +182,11 @@ export function ProductsPage() {
         price_controls: { source: 'product-list-direct-send' },
       });
       if (draft.status === 'blocked') {
-        notify('error', 'Eksik kategori/ozellik olan urunler gonderilemez. Aktarim listesinden eksikleri tamamlayin.');
+        notify('error', 'Eksik kategori/ozellik olan urunler provider gonderimine hazirlanamaz. Aktarim listesinden eksikleri tamamlayin.');
         return;
       }
       await api.productPublish.send(draft.id);
-      notify('success', 'Urunler pazaryeri gonderim kuyruguna alindi.');
+      notify('success', 'Urunler provider gonderimine hazirlandi.');
       await load();
     }, { onError: (message) => notify('error', message) });
   };
@@ -282,14 +282,14 @@ export function ProductsPage() {
             <option value="">Trendyol</option>
             <option value="ready">Hazir</option>
             <option value="not_ready">Eksik</option>
-            <option value="queued">Gonderildi</option>
+            <option value="queued">Hazirlandi</option>
             <option value="failed">Hatali</option>
           </select>
           <select value={hepsiburadaFilter} onChange={(event) => setHepsiburadaFilter(event.target.value)}>
             <option value="">Hepsiburada</option>
             <option value="ready">Hazir</option>
             <option value="not_ready">Eksik</option>
-            <option value="queued">Gonderildi</option>
+            <option value="queued">Hazirlandi</option>
             <option value="failed">Hatali</option>
           </select>
         </div>
@@ -320,7 +320,7 @@ export function ProductsPage() {
           <button type="button" className="secondary-button" disabled={loading} onClick={applyBulkEdit}>Toplu guncelle</button>
           <Link className="button-link secondary-link" to="/products/category-mapping"><Layers3 size={16} /> Kategori esle</Link>
           <button type="button" className="secondary-button" disabled={loading} onClick={() => addToPublishQueue(selected)}>Aktarim listesine ekle</button>
-          <button type="button" disabled={loading} onClick={() => sendProducts(selected)}><Send size={16} /> Toplu gonder</button>
+          <button type="button" disabled={loading} onClick={() => sendProducts(selected)}><Send size={16} /> Toplu Hazirla</button>
         </section>
       )}
       {error && <ErrorState message={error} onRetry={load} />}
@@ -358,7 +358,7 @@ export function ProductsPage() {
                     <Link to={`/products/category-mapping?category=${encodeURIComponent(row.category || '')}`}><Layers3 size={15} /> Kategori esle</Link>
                     <button type="button" onClick={() => startQuickEdit(row)}>Stok/fiyat duzenle</button>
                     <button type="button" disabled={loading} onClick={() => addToPublishQueue([row.id])}>Aktarima ekle</button>
-                    <button type="button" disabled={loading} onClick={() => sendProducts([row.id])}><Send size={15} /> Gonder</button>
+                    <button type="button" disabled={loading} onClick={() => sendProducts([row.id])}><Send size={15} /> Hazirla</button>
                   </div>
                 </details>
               ),
