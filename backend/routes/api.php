@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\ProductImportController;
 use App\Http\Controllers\Api\ProductImportRunController;
 use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\ProductMarketplaceController;
+use App\Http\Controllers\Api\Public\TrendyolWebhookController;
 use App\Http\Controllers\Api\QueueDashboardController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SaasController;
@@ -45,6 +46,7 @@ use Illuminate\Support\Facades\Route;
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
 Route::match(['get', 'post'], '/payment-callbacks/{payment}', [PaymentController::class, 'callback']);
+Route::post('/webhooks/trendyol/packages', [TrendyolWebhookController::class, 'packages'])->middleware('throttle:30,1');
 Route::get('/health', HealthController::class);
 
 Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(function () {
