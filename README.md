@@ -334,7 +334,10 @@ Detayli staging/VPS hazirlik dokumanlari:
 
 - `docs/STAGING_DEPLOYMENT.md`
 - `docs/PRODUCTION_CHECKLIST.md`
+- `docs/STAGING_RUNTIME_VERIFICATION.md`
 - `scripts/deploy-health-check.sh`
+- `scripts/staging-runtime-check.sh`
+- `scripts/check-frontend-env.sh`
 
 Production cron:
 
