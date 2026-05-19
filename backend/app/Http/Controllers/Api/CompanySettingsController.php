@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\CompanySetting;
+use App\Services\Notifications\NotificationRuntimeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Throwable;
 
 class CompanySettingsController extends Controller
 {
@@ -39,6 +41,21 @@ class CompanySettingsController extends Controller
         $record->save();
 
         return response()->json($this->responseSettings($record->settings));
+    }
+
+    public function testWebhook(Request $request, NotificationRuntimeService $runtime): JsonResponse
+    {
+        $request->validate([
+            'company_id' => ['nullable', 'exists:companies,id'],
+        ]);
+
+        try {
+            return response()->json($runtime->sendTest($this->companyId($request)));
+        } catch (Throwable $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
     }
 
     private function companyId(Request $request): ?int

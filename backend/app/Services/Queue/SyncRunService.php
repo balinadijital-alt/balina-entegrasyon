@@ -5,11 +5,16 @@ namespace App\Services\Queue;
 use App\Models\MarketplaceAccount;
 use App\Models\QueueNotification;
 use App\Models\SyncRun;
+use App\Services\Notifications\NotificationRuntimeService;
 use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 
 class SyncRunService
 {
+    public function __construct(private NotificationRuntimeService $notifications)
+    {
+    }
+
     public function create(MarketplaceAccount $account, string $type): SyncRun
     {
         $lockKey = $this->lockKey($account, $type);
@@ -67,13 +72,30 @@ class SyncRunService
 
     public function notify(SyncRun $syncRun, string $level, string $title, ?string $message = null, array $payload = []): QueueNotification
     {
-        return QueueNotification::create([
+        $companyId = $syncRun->marketplace?->company_id;
+        $event = $level === 'success' ? 'sync.completed' : 'sync.failed';
+        $notification = QueueNotification::create([
             'sync_run_id' => $syncRun->id,
             'level' => $level,
             'title' => $title,
             'message' => $message,
             'payload' => $payload,
         ]);
+
+        if ($companyId) {
+            $this->notifications->dispatchWebhook($companyId, $event, $level, [
+                'sync_run_id' => $syncRun->id,
+                'marketplace_account_id' => $syncRun->marketplace_account_id,
+                'type' => $syncRun->type,
+                'status' => $syncRun->status,
+                'panel_enabled' => $this->notifications->panelEnabled($companyId),
+                'title' => $title,
+                'message' => $message,
+                'payload' => $payload,
+            ]);
+        }
+
+        return $notification;
     }
 
     private function release(SyncRun $syncRun): void

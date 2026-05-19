@@ -131,8 +131,11 @@ export function SettingsPage({ audience = 'admin' }) {
   const [revealed, setRevealed] = useState({});
   const [settingsRevealed, setSettingsRevealed] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [webhookTesting, setWebhookTesting] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState('');
   const [settingsError, setSettingsError] = useState('');
+  const [webhookTestMessage, setWebhookTestMessage] = useState('');
+  const [webhookTestError, setWebhookTestError] = useState('');
   const [settings, setSettings] = useState(defaultSettings);
   const [data, setData] = useState({
     companies: [],
@@ -206,6 +209,8 @@ export function SettingsPage({ audience = 'admin' }) {
     }));
     setSettingsMessage('');
     setSettingsError('');
+    setWebhookTestMessage('');
+    setWebhookTestError('');
   };
 
   const saveSettings = async (event) => {
@@ -222,6 +227,32 @@ export function SettingsPage({ audience = 'admin' }) {
       setSettingsError(apiErrorMessage(requestError));
     } finally {
       setSettingsSaving(false);
+    }
+  };
+
+  const testWebhook = async () => {
+    setWebhookTestMessage('');
+    setWebhookTestError('');
+
+    if (!settings.webhooks.enabled) {
+      setWebhookTestError('Webhook aktif degil.');
+      return;
+    }
+
+    if (!settings.webhooks.endpoint_url) {
+      setWebhookTestError('Webhook hedef URL bos.');
+      return;
+    }
+
+    setWebhookTesting(true);
+
+    try {
+      const response = await api.settings.testWebhook();
+      setWebhookTestMessage(response.message || 'Webhook test istegi basarili.');
+    } catch (requestError) {
+      setWebhookTestError(apiErrorMessage(requestError));
+    } finally {
+      setWebhookTesting(false);
     }
   };
 
@@ -481,6 +512,8 @@ export function SettingsPage({ audience = 'admin' }) {
                   <input type={settingsRevealed ? 'text' : 'password'} value={settings.webhooks.secret || ''} onChange={(event) => updateSetting('webhooks', 'secret', event.target.value)} />
                 </label>
                 <button type="button" className="text-link" onClick={() => setSettingsRevealed((current) => !current)}>{settingsRevealed ? <EyeOff size={14} /> : <Eye size={14} />} {settingsRevealed ? 'Gizle' : 'Goster'}</button>
+                {(webhookTestMessage || webhookTestError) && <small>{webhookTestMessage || webhookTestError}</small>}
+                <button type="button" className="secondary" onClick={testWebhook} disabled={settingsSaving || webhookTesting}>{webhookTesting ? 'Test ediliyor...' : 'Webhook test et'}</button>
                 <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>
               </article>
 
