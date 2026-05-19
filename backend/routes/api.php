@@ -52,6 +52,7 @@ Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(fun
     Route::get('/settings', [CompanySettingsController::class, 'show']);
     Route::put('/settings', [CompanySettingsController::class, 'update']);
     Route::post('/settings/webhook-test', [CompanySettingsController::class, 'testWebhook']);
+    Route::get('/settings/webhook-deliveries', [CompanySettingsController::class, 'webhookDeliveries']);
 
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);

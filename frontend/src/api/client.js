@@ -75,6 +75,7 @@ export const api = {
     show: () => http.get('/settings').then((response) => asObject(response.data)),
     update: (payload) => http.put('/settings', payload).then((response) => asObject(response.data)),
     testWebhook: () => http.post('/settings/webhook-test').then((response) => response.data),
+    webhookDeliveries: (params) => http.get('/settings/webhook-deliveries', { params }).then((response) => response.data),
   },
   modules: {
     list: (module, params) => http.get(`/modules/${module}`, { params }).then((response) => response.data),

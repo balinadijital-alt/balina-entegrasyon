@@ -26,7 +26,9 @@ import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { MetricCard } from '../../components/MetricCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { SoftEmpty } from '../../components/SoftEmpty.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
+import { StatusPill } from '../../components/StatusPill.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
 const tabs = [
@@ -124,6 +126,17 @@ function statusLabel(status) {
   }[status] || status || '-';
 }
 
+function deliveryTone(status, success) {
+  if (success || status === 'delivered') return 'success';
+  if (status === 'failed') return 'failed';
+  return 'warning';
+}
+
+function jsonPreview(value) {
+  if (!value) return '{}';
+  return JSON.stringify(value, null, 2);
+}
+
 export function SettingsPage({ audience = 'admin' }) {
   const { loading, error, run } = useAsync();
   const [activeTab, setActiveTab] = useState('companies');
@@ -137,6 +150,8 @@ export function SettingsPage({ audience = 'admin' }) {
   const [webhookTestMessage, setWebhookTestMessage] = useState('');
   const [webhookTestError, setWebhookTestError] = useState('');
   const [settings, setSettings] = useState(defaultSettings);
+  const [webhookDeliveries, setWebhookDeliveries] = useState([]);
+  const [selectedDelivery, setSelectedDelivery] = useState(null);
   const [data, setData] = useState({
     companies: [],
     marketplaces: [],
@@ -164,6 +179,7 @@ export function SettingsPage({ audience = 'admin' }) {
         licenses,
         orders,
         persistedSettings,
+        deliveries,
       ] = await Promise.allSettled([
         api.companies.list(),
         api.marketplaces.list(),
@@ -175,6 +191,7 @@ export function SettingsPage({ audience = 'admin' }) {
         api.saas.licenses(),
         api.orders.list({}),
         api.settings.show(),
+        api.settings.webhookDeliveries({ limit: 30 }),
       ]);
 
       const nextData = {
@@ -191,6 +208,9 @@ export function SettingsPage({ audience = 'admin' }) {
 
       setData(nextData);
       setSettings(normalizeSettings(valueFrom(persistedSettings, {})));
+      const nextDeliveries = asArray(valueFrom(deliveries, {}));
+      setWebhookDeliveries(nextDeliveries);
+      setSelectedDelivery((current) => current || nextDeliveries[0] || null);
       setSelectedCompany((current) => current || nextData.companies[0] || null);
     });
   };
@@ -249,6 +269,10 @@ export function SettingsPage({ audience = 'admin' }) {
     try {
       const response = await api.settings.testWebhook();
       setWebhookTestMessage(response.message || 'Webhook test istegi basarili.');
+      const deliveries = await api.settings.webhookDeliveries({ limit: 30 });
+      const nextDeliveries = asArray(deliveries);
+      setWebhookDeliveries(nextDeliveries);
+      setSelectedDelivery(nextDeliveries[0] || null);
     } catch (requestError) {
       setWebhookTestError(apiErrorMessage(requestError));
     } finally {
@@ -456,6 +480,7 @@ export function SettingsPage({ audience = 'admin' }) {
           )}
 
           {activeTab === 'general' && (
+            <>
             <form className="settings-card-grid" onSubmit={saveSettings}>
               <article className="settings-option-card">
                 <Bell size={22} />
@@ -619,6 +644,62 @@ export function SettingsPage({ audience = 'admin' }) {
                 </article>
               )}
             </form>
+
+            <section className="settings-security-grid">
+              <div className="panel">
+                <div className="section-title-row">
+                  <h2>Webhook Delivery Gecmisi</h2>
+                  <button type="button" className="secondary" onClick={load} disabled={loading}><RefreshCcw size={15} /> Yenile</button>
+                </div>
+                <DataTable
+                  rows={webhookDeliveries}
+                  emptyTitle="Delivery kaydi yok"
+                  emptyText="Webhook testleri veya runtime eventleri gonderildiginde delivery kayitlari burada gorunur."
+                  columns={[
+                    { key: 'event', label: 'Event' },
+                    { key: 'endpoint', label: 'Endpoint', render: (row) => <span className="muted-text">{row.endpoint}</span> },
+                    { key: 'status', label: 'Status', render: (row) => <StatusPill tone={deliveryTone(row.status, row.success)} label={row.status || 'queued'} /> },
+                    { key: 'attempts', label: 'Retry', render: (row) => row.attempts || 0 },
+                    { key: 'response_code', label: 'HTTP', render: (row) => row.response_code || '-' },
+                    { key: 'last_error', label: 'Son hata', render: (row) => row.last_error || '-' },
+                    { key: 'created_at', label: 'Tarih', render: (row) => formatDate(row.created_at) },
+                    { key: 'actions', label: 'Detay', render: (row) => <button type="button" className="secondary-button" onClick={() => setSelectedDelivery(row)}><Eye size={15} /> Detay</button> },
+                  ]}
+                />
+              </div>
+
+              <aside className="panel log-detail-panel">
+                <div className="section-title-row">
+                  <h2>Delivery Detayi</h2>
+                  {selectedDelivery && <StatusPill tone={deliveryTone(selectedDelivery.status, selectedDelivery.success)} label={selectedDelivery.status} />}
+                </div>
+                {!selectedDelivery ? (
+                  <SoftEmpty>Detay icin bir delivery kaydi secin.</SoftEmpty>
+                ) : (
+                  <>
+                    <div className="settings-detail-grid">
+                      <DetailItem label="Delivery ID" value={selectedDelivery.delivery_id || '-'} />
+                      <DetailItem label="Event" value={selectedDelivery.event || '-'} />
+                      <DetailItem label="Attempts" value={selectedDelivery.attempts || 0} />
+                      <DetailItem label="HTTP" value={selectedDelivery.response_code || '-'} />
+                      <DetailItem label="Delivered" value={formatDate(selectedDelivery.delivered_at)} />
+                      <DetailItem label="Failed" value={formatDate(selectedDelivery.failed_at)} />
+                    </div>
+                    {selectedDelivery.last_error && <SoftEmpty className="workflow-warning"><strong>Son hata</strong><span>{selectedDelivery.last_error}</span></SoftEmpty>}
+                    <SoftEmpty><strong>Endpoint</strong><span>{selectedDelivery.endpoint || '-'}</span></SoftEmpty>
+                    <details className="json-collapse">
+                      <summary>Maskelenmis payload JSON</summary>
+                      <pre>{jsonPreview(selectedDelivery.payload)}</pre>
+                    </details>
+                    <details className="json-collapse">
+                      <summary>Response body</summary>
+                      <pre>{jsonPreview(selectedDelivery.response_body)}</pre>
+                    </details>
+                  </>
+                )}
+              </aside>
+            </section>
+            </>
           )}
 
           {activeTab === 'security' && (

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\CompanySetting;
+use App\Models\WebhookDeliveryLog;
 use App\Services\Notifications\NotificationRuntimeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -56,6 +57,23 @@ class CompanySettingsController extends Controller
                 'message' => $exception->getMessage(),
             ], 422);
         }
+    }
+
+    public function webhookDeliveries(Request $request): JsonResponse
+    {
+        $request->validate([
+            'company_id' => ['nullable', 'exists:companies,id'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $companyId = $this->companyId($request);
+
+        return response()->json(WebhookDeliveryLog::query()
+            ->with('company:id,name')
+            ->when($companyId !== null, fn ($query) => $query->where('company_id', $companyId))
+            ->latest()
+            ->limit($request->integer('limit', 30))
+            ->get());
     }
 
     private function companyId(Request $request): ?int

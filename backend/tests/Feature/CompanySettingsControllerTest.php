@@ -7,6 +7,7 @@ use App\Models\CompanySetting;
 use App\Models\MarketplaceAccount;
 use App\Models\SyncRun;
 use App\Models\User;
+use App\Models\WebhookDeliveryLog;
 use App\Jobs\Notifications\DispatchWebhookNotificationJob;
 use App\Services\Queue\SyncRunService;
 use Database\Seeders\DatabaseSeeder;
@@ -112,6 +113,7 @@ class CompanySettingsControllerTest extends TestCase
         app(SyncRunService::class)->notify($syncRun->fresh('marketplace'), 'success', 'Senkronizasyon tamamlandi', 'Tamamlandi.');
 
         Queue::assertNotPushed(DispatchWebhookNotificationJob::class);
+        $this->assertDatabaseCount('webhook_delivery_logs', 0);
     }
 
     public function test_webhook_enabled_dispatches_sync_completed_or_failed_events(): void
@@ -134,6 +136,13 @@ class CompanySettingsControllerTest extends TestCase
         Queue::assertPushed(DispatchWebhookNotificationJob::class, fn (DispatchWebhookNotificationJob $job) => $job->event === 'sync.completed'
             && $job->endpoint === 'https://example.test/webhook'
             && $job->payload['data']['sync_run_id'] === $syncRun->id);
+        $this->assertDatabaseHas('webhook_delivery_logs', [
+            'company_id' => $company->id,
+            'event' => 'sync.completed',
+            'endpoint' => 'https://example.test/webhook',
+            'status' => 'queued',
+            'success' => false,
+        ]);
 
         Queue::fake();
         CompanySetting::where('company_id', $company->id)->update([
@@ -177,6 +186,15 @@ class CompanySettingsControllerTest extends TestCase
         $this->postJson('/api/settings/webhook-test')
             ->assertOk()
             ->assertJsonPath('message', 'Webhook test istegi basarili.');
+
+        $this->assertDatabaseHas('webhook_delivery_logs', [
+            'company_id' => $company->id,
+            'event' => 'webhook.test',
+            'endpoint' => 'https://example.test/webhook',
+            'status' => 'delivered',
+            'success' => true,
+            'response_code' => 200,
+        ]);
     }
 
     public function test_webhook_test_endpoint_keeps_tenant_isolation(): void
@@ -188,5 +206,82 @@ class CompanySettingsControllerTest extends TestCase
         Sanctum::actingAs($user);
 
         $this->postJson('/api/settings/webhook-test', ['company_id' => $otherCompany->id])->assertForbidden();
+    }
+
+    public function test_webhook_delivery_job_records_success_and_failed_attempts(): void
+    {
+        $company = Company::create(['name' => 'Tenant A', 'email' => 'a@example.test', 'is_active' => true]);
+        $delivery = WebhookDeliveryLog::create([
+            'company_id' => $company->id,
+            'delivery_id' => '11111111-1111-4111-8111-111111111111',
+            'event' => 'sync.completed',
+            'endpoint' => 'https://example.test/webhook',
+            'payload' => ['api_key' => '******'],
+        ]);
+
+        Http::fake(['https://example.test/webhook' => Http::response(['accepted' => true], 202)]);
+
+        (new DispatchWebhookNotificationJob($company->id, 'sync.completed', ['event' => 'sync.completed'], 'https://example.test/webhook', 'secret', $delivery->id))
+            ->handle(app(\App\Services\Notifications\NotificationRuntimeService::class));
+
+        $this->assertDatabaseHas('webhook_delivery_logs', [
+            'id' => $delivery->id,
+            'status' => 'delivered',
+            'success' => true,
+            'response_code' => 202,
+        ]);
+
+        $failed = WebhookDeliveryLog::create([
+            'company_id' => $company->id,
+            'delivery_id' => '22222222-2222-4222-8222-222222222222',
+            'event' => 'sync.failed',
+            'endpoint' => 'https://example.test/fail',
+            'payload' => ['token' => '******'],
+        ]);
+
+        Http::fake(['https://example.test/fail' => Http::response(['error' => 'down'], 500)]);
+        $job = new DispatchWebhookNotificationJob($company->id, 'sync.failed', ['event' => 'sync.failed'], 'https://example.test/fail', 'secret', $failed->id);
+
+        try {
+            $job->handle(app(\App\Services\Notifications\NotificationRuntimeService::class));
+            $this->fail('Webhook job failure was not thrown.');
+        } catch (\Throwable $exception) {
+            $job->failed($exception);
+        }
+
+        $this->assertDatabaseHas('webhook_delivery_logs', [
+            'id' => $failed->id,
+            'status' => 'failed',
+            'success' => false,
+            'response_code' => 500,
+            'last_error' => 'Webhook dispatch failed with HTTP 500',
+        ]);
+    }
+
+    public function test_tenant_user_can_only_list_own_webhook_delivery_logs(): void
+    {
+        $ownCompany = Company::create(['name' => 'Tenant A', 'email' => 'a@example.test', 'is_active' => true]);
+        $otherCompany = Company::create(['name' => 'Tenant B', 'email' => 'b@example.test', 'is_active' => true]);
+        $user = User::factory()->create(['company_id' => $ownCompany->id]);
+        $user->assignRole('company_admin');
+        Sanctum::actingAs($user);
+
+        WebhookDeliveryLog::create([
+            'company_id' => $ownCompany->id,
+            'delivery_id' => '33333333-3333-4333-8333-333333333333',
+            'event' => 'sync.completed',
+            'endpoint' => 'https://example.test/own',
+        ]);
+        WebhookDeliveryLog::create([
+            'company_id' => $otherCompany->id,
+            'delivery_id' => '44444444-4444-4444-8444-444444444444',
+            'event' => 'sync.completed',
+            'endpoint' => 'https://example.test/other',
+        ]);
+
+        $this->getJson('/api/settings/webhook-deliveries')
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.endpoint', 'https://example.test/own');
     }
 }
