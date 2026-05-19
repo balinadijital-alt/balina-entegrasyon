@@ -186,6 +186,28 @@ export const helpCenterArticles = [
     updatedAt: '2026-05-20',
   },
   {
+    id: 'xml-category-brand-mapping',
+    slug: 'xml-kategori-marka-mapping',
+    title: 'XML kategori ve marka mapping',
+    category: 'XML / Excel Import',
+    type: 'Yardım makalesi',
+    tags: ['xml', 'kategori', 'marka', 'canonical mapping'],
+    shortDescription: 'Tedarikçi XML değerlerini import sırasında iç katalog kategori ve marka adlarına dönüştürün.',
+    content: [
+      'Kategori / Marka Mapping bölümünde preview’dan gelen ham XML değerleri iç katalogdaki canonical kategori ve marka adlarıyla eşleştirilir.',
+      'Eşleşme exact normalized match ile uygulanır; fuzzy veya tahmini eşleştirme yapılmaz.',
+      'Mapping boş bırakılırsa XML’den gelen ham kategori ve marka değerleri korunur.',
+    ],
+    relatedLinks: [
+      { label: 'Import Merkezi', href: '/imports' },
+      { label: 'Kategoriler', href: '/products/categories' },
+      { label: 'Markalar', href: '/products/brands' },
+    ],
+    relatedScreens: ['/imports', '/products/categories', '/products/brands'],
+    difficulty: 'Orta',
+    updatedAt: '2026-05-20',
+  },
+  {
     id: 'orders-status-workflow',
     slug: 'siparis-durum-akisi',
     title: 'Sipariş durum akışı',
@@ -441,6 +463,7 @@ export const helpCenterArticles = [
 export const featuredHelpArticleIds = [
   'xml-preview-field-mapping',
   'xml-advanced-filtering',
+  'xml-category-brand-mapping',
   'publish-queue-readiness-flow',
   'trendyol-connection-test',
   'queue-failed-job-retry',

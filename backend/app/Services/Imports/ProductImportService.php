@@ -151,7 +151,18 @@ class ProductImportService
             $rows = collect($parsed['rows']);
             $total = $rows->count();
             $seen = collect();
-            $stats = ['created' => 0, 'updated' => 0, 'skipped' => 0, 'filtered' => 0, 'errors' => 0, 'success' => 0];
+            $stats = [
+                'created' => 0,
+                'updated' => 0,
+                'skipped' => 0,
+                'filtered' => 0,
+                'errors' => 0,
+                'success' => 0,
+                'mapped_category' => 0,
+                'mapped_brand' => 0,
+                'unmapped_category' => 0,
+                'unmapped_brand' => 0,
+            ];
 
             $run->update([
                 'job_uuid' => $jobUuid,
@@ -165,6 +176,11 @@ class ProductImportService
                 $rowNumber = $index + 2;
                 $payload = $this->mapRow($raw, $run->field_mapping ?? []);
                 $payload = $this->applyTransforms($payload, $run->options ?? []);
+                [$payload, $mappingStats] = $this->applySourceMappings($payload, $run->options ?? []);
+                $stats['mapped_category'] += $mappingStats['mapped_category'];
+                $stats['mapped_brand'] += $mappingStats['mapped_brand'];
+                $stats['unmapped_category'] += $mappingStats['unmapped_category'];
+                $stats['unmapped_brand'] += $mappingStats['unmapped_brand'];
 
                 if ($this->shouldSkipRow($payload, $run->options ?? [])) {
                     if (! empty($payload['sku'])) {
@@ -211,6 +227,10 @@ class ProductImportService
                 'filtered_count' => $stats['filtered'],
                 'zero_stocked_count' => $missingResult['zero_stocked'],
                 'deactivated_count' => $missingResult['deactivated'],
+                'mapped_category_count' => $stats['mapped_category'],
+                'mapped_brand_count' => $stats['mapped_brand'],
+                'unmapped_category_count' => $stats['unmapped_category'],
+                'unmapped_brand_count' => $stats['unmapped_brand'],
             ];
 
             $run->update([
@@ -566,6 +586,14 @@ class ProductImportService
                 'download_images' => filter_var(data_get($options, 'image_strategy.download_images', $options['download_images'] ?? false), FILTER_VALIDATE_BOOLEAN),
                 'max_image_count' => max(1, min(8, (int) data_get($options, 'image_strategy.max_image_count', 8))),
             ],
+            'mappings' => [
+                'categories' => $this->mappingOption(data_get($options, 'mappings.categories', [])),
+                'brands' => $this->mappingOption(data_get($options, 'mappings.brands', [])),
+            ],
+            'mapping_behavior' => [
+                'apply_category_mapping' => filter_var(data_get($options, 'mapping_behavior.apply_category_mapping', true), FILTER_VALIDATE_BOOLEAN),
+                'apply_brand_mapping' => filter_var(data_get($options, 'mapping_behavior.apply_brand_mapping', true), FILTER_VALIDATE_BOOLEAN),
+            ],
         ];
     }
 
@@ -638,6 +666,58 @@ class ProductImportService
         return $payload;
     }
 
+    private function applySourceMappings(array $payload, array $options): array
+    {
+        $stats = [
+            'mapped_category' => 0,
+            'mapped_brand' => 0,
+            'unmapped_category' => 0,
+            'unmapped_brand' => 0,
+        ];
+
+        if (filter_var(data_get($options, 'mapping_behavior.apply_category_mapping', true), FILTER_VALIDATE_BOOLEAN)) {
+            $result = $this->resolveMappedValue('categories', $payload['category'] ?? null, $options);
+            $payload['category'] = $result['value'];
+            $stats['mapped_category'] = $result['mapped'] ? 1 : 0;
+            $stats['unmapped_category'] = $result['unmapped'] ? 1 : 0;
+        }
+
+        if (filter_var(data_get($options, 'mapping_behavior.apply_brand_mapping', true), FILTER_VALIDATE_BOOLEAN)) {
+            $result = $this->resolveMappedValue('brands', $payload['brand'] ?? null, $options);
+            $payload['brand'] = $result['value'];
+            $stats['mapped_brand'] = $result['mapped'] ? 1 : 0;
+            $stats['unmapped_brand'] = $result['unmapped'] ? 1 : 0;
+        }
+
+        return [$payload, $stats];
+    }
+
+    private function resolveMappedValue(string $type, mixed $value, array $options): array
+    {
+        $raw = trim((string) $value);
+        $mappings = data_get($options, "mappings.{$type}", []);
+
+        if ($raw === '' || ! is_array($mappings) || $mappings === []) {
+            return ['value' => $value, 'mapped' => false, 'unmapped' => false];
+        }
+
+        $normalizedRaw = $this->normalizeRuleValue($raw);
+
+        foreach ($mappings as $source => $canonical) {
+            $canonical = trim((string) $canonical);
+
+            if ($canonical === '') {
+                continue;
+            }
+
+            if ($this->normalizeRuleValue($source) === $normalizedRaw) {
+                return ['value' => $canonical, 'mapped' => true, 'unmapped' => false];
+            }
+        }
+
+        return ['value' => $value, 'mapped' => false, 'unmapped' => true];
+    }
+
     private function applyMissingStrategy(ProductImportRun $run, Collection $seen): array
     {
         $action = $this->resolveMissingStrategy($run->options ?? []);
@@ -697,6 +777,18 @@ class ProductImportService
             ->map(fn ($item) => trim($item))
             ->filter()
             ->values()
+            ->all();
+    }
+
+    private function mappingOption(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        return collect($value)
+            ->mapWithKeys(fn ($canonical, $source) => [trim((string) $source) => trim((string) $canonical)])
+            ->filter(fn ($canonical, $source) => $source !== '' && $canonical !== '')
             ->all();
     }
 

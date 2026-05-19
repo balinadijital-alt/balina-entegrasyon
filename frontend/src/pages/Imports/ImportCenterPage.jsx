@@ -69,6 +69,14 @@ const defaultOptions = {
     download_images: false,
     max_image_count: 8,
   },
+  mappings: {
+    categories: {},
+    brands: {},
+  },
+  mapping_behavior: {
+    apply_category_mapping: true,
+    apply_brand_mapping: true,
+  },
 };
 
 const xmlInitial = {
@@ -126,6 +134,11 @@ function mergeOptions(options) {
       ...asObject(current.image_strategy),
       download_images: current.download_images ?? asObject(current.image_strategy).download_images ?? defaultOptions.image_strategy.download_images,
     },
+    mappings: {
+      categories: { ...defaultOptions.mappings.categories, ...asObject(asObject(current.mappings).categories) },
+      brands: { ...defaultOptions.mappings.brands, ...asObject(asObject(current.mappings).brands) },
+    },
+    mapping_behavior: { ...defaultOptions.mapping_behavior, ...asObject(current.mapping_behavior) },
     download_images: current.download_images ?? asObject(current.image_strategy).download_images ?? defaultOptions.download_images,
   };
 }
@@ -143,12 +156,22 @@ function optionListText(value) {
   return Array.isArray(value) ? value.join('\n') : value ?? '';
 }
 
+function uniqueMappedValues(rows, field) {
+  return [...new Set(rows
+    .map((row) => asObject(row?.mapped)[field])
+    .filter(Boolean)
+    .map((value) => String(value).trim())
+    .filter(Boolean))];
+}
+
 export function ImportCenterPage() {
   const { notify } = useApp();
   const { loading, error, setError, run } = useAsync();
   const [companies, setCompanies] = useState([]);
   const [xmlSources, setXmlSources] = useState([]);
   const [runs, setRuns] = useState([]);
+  const [catalogCategories, setCatalogCategories] = useState([]);
+  const [catalogBrands, setCatalogBrands] = useState([]);
   const [selectedRun, setSelectedRun] = useState(null);
   const [sourceType, setSourceType] = useState('xml');
   const [step, setStep] = useState(0);
@@ -165,6 +188,9 @@ export function ImportCenterPage() {
   const headers = useMemo(() => asArray(preview?.headers), [preview]);
   const validRows = asArray(preview?.valid_rows);
   const invalidRows = asArray(preview?.invalid_rows);
+  const previewRows = [...validRows, ...invalidRows];
+  const previewCategories = useMemo(() => uniqueMappedValues(previewRows, 'category'), [validRows, invalidRows]);
+  const previewBrands = useMemo(() => uniqueMappedValues(previewRows, 'brand'), [validRows, invalidRows]);
   const safeMapping = asObject(mapping);
   const safeOptions = mergeOptions(options);
   const mappedFieldCount = Object.values(safeMapping).filter(Boolean).length;
@@ -178,14 +204,18 @@ export function ImportCenterPage() {
 
   const load = async () => {
     await run(async () => {
-      const [companyResponse, sourceResponse, runResponse] = await Promise.all([
+      const [companyResponse, sourceResponse, runResponse, categoryResponse, brandResponse] = await Promise.all([
         api.companies.list(),
         api.xmlSources.list(),
         api.imports.runs(),
+        api.catalogResources.list({ type: 'categories', active: 1 }),
+        api.catalogResources.list({ type: 'brands', active: 1 }),
       ]);
       setCompanies(asArray(companyResponse));
       setXmlSources(asArray(sourceResponse));
       setRuns(asArray(runResponse));
+      setCatalogCategories(asArray(categoryResponse));
+      setCatalogBrands(asArray(brandResponse));
     });
   };
 
@@ -349,6 +379,28 @@ export function ImportCenterPage() {
       [key]: value,
     },
     ...(group === 'image_strategy' && key === 'download_images' ? { download_images: value } : {}),
+  }));
+  const setSourceMapping = (type, source, value) => setOptions((current) => {
+    const mappings = asObject(current.mappings);
+    const nextTypeMappings = { ...asObject(mappings[type]) };
+
+    if (value) nextTypeMappings[source] = value;
+    else delete nextTypeMappings[source];
+
+    return {
+      ...current,
+      mappings: {
+        ...mappings,
+        [type]: nextTypeMappings,
+      },
+    };
+  });
+  const setMappingBehavior = (key, value) => setOptions((current) => ({
+    ...current,
+    mapping_behavior: {
+      ...asObject(current.mapping_behavior),
+      [key]: value,
+    },
   }));
   const setMissingAction = (value) => setOptions((current) => ({
     ...current,
@@ -604,6 +656,39 @@ export function ImportCenterPage() {
                   </select>
                 </Field>
               </div>
+              <div className="wizard-step-header compact-header">
+                <span>Canonical katalog</span>
+                <h3>Kategori / Marka Mapping</h3>
+                <p>Preview'dan gelen ham XML kategori ve marka adlarini ic katalog degerlerine esleyin.</p>
+              </div>
+              <div className="option-grid">
+                <label><input type="checkbox" checked={safeOptions.mapping_behavior.apply_category_mapping} onChange={(event) => setMappingBehavior('apply_category_mapping', event.target.checked)} /> Kategori mapping uygula</label>
+                <label><input type="checkbox" checked={safeOptions.mapping_behavior.apply_brand_mapping} onChange={(event) => setMappingBehavior('apply_brand_mapping', event.target.checked)} /> Marka mapping uygula</label>
+              </div>
+              <div className="import-preview">
+                <div>
+                  <h3>XML kategori mapping</h3>
+                  {previewCategories.length === 0 ? <p className="muted-text">Preview'da kategori degeri bulunamadi.</p> : previewCategories.map((category) => (
+                    <Field key={category} label={category}>
+                      <select value={safeOptions.mappings.categories[category] || ''} onChange={(event) => setSourceMapping('categories', category, event.target.value)}>
+                        <option value="">Ham degeri koru</option>
+                        {catalogCategories.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
+                      </select>
+                    </Field>
+                  ))}
+                </div>
+                <div>
+                  <h3>XML marka mapping</h3>
+                  {previewBrands.length === 0 ? <p className="muted-text">Preview'da marka degeri bulunamadi.</p> : previewBrands.map((brand) => (
+                    <Field key={brand} label={brand}>
+                      <select value={safeOptions.mappings.brands[brand] || ''} onChange={(event) => setSourceMapping('brands', brand, event.target.value)}>
+                        <option value="">Ham degeri koru</option>
+                        {catalogBrands.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
+                      </select>
+                    </Field>
+                  ))}
+                </div>
+              </div>
               <div className={blockingMappingMissing ? 'state-box workflow-warning' : 'state-box success-empty'}>
                 <CheckCircle2 size={18} />
                 <span>{blockingMappingMissing ? 'SKU veya barkod eslesmesi ve urun adi kontrol edilmeli.' : 'Import baslatmak icin gerekli ana eslesmeler tamam.'}</span>
@@ -641,6 +726,8 @@ export function ImportCenterPage() {
                 <div><span>Basarili</span><strong>{latestRun?.success_count || 0}</strong></div>
                 <div><span>Hatali</span><strong>{latestRun?.error_count || 0}</strong></div>
                 <div><span>Filtrelenen</span><strong>{latestReport.filtered_count || latestReport.filtered || 0}</strong></div>
+                <div><span>Kategori map</span><strong>{latestReport.mapped_category_count || 0}</strong></div>
+                <div><span>Marka map</span><strong>{latestReport.mapped_brand_count || 0}</strong></div>
                 <div><span>Stok sifirlanan</span><strong>{latestReport.zero_stocked_count || latestReport.zero_stocked || 0}</strong></div>
                 <div><span>Pasife alinan</span><strong>{latestReport.deactivated_count || latestReport.deactivated || 0}</strong></div>
                 <div><span>Ilerleme</span><strong>{latestRun?.progress || 0}%</strong></div>
@@ -705,6 +792,10 @@ export function ImportCenterPage() {
             <div><span>Yeni</span><strong>{selectedRun.created_count}</strong></div>
             <div><span>Guncel</span><strong>{selectedRun.updated_count}</strong></div>
             <div><span>Filtrelenen</span><strong>{selectedReport.filtered_count || selectedReport.filtered || 0}</strong></div>
+            <div><span>Kategori map</span><strong>{selectedReport.mapped_category_count || 0}</strong></div>
+            <div><span>Marka map</span><strong>{selectedReport.mapped_brand_count || 0}</strong></div>
+            <div><span>Kategori eslesmeyen</span><strong>{selectedReport.unmapped_category_count || 0}</strong></div>
+            <div><span>Marka eslesmeyen</span><strong>{selectedReport.unmapped_brand_count || 0}</strong></div>
             <div><span>Stok sifirlanan</span><strong>{selectedReport.zero_stocked_count || selectedReport.zero_stocked || 0}</strong></div>
             <div><span>Pasife alinan</span><strong>{selectedReport.deactivated_count || selectedReport.deactivated || 0}</strong></div>
           </div>
