@@ -233,6 +233,7 @@ export const api = {
   },
   logs: {
     list: () => http.get('/api-logs').then((response) => response.data),
+    inboundWebhooks: (params) => http.get('/inbound-webhook-deliveries', { params }).then((response) => response.data),
   },
   queue: {
     status: () => http.get('/queue/status').then((response) => response.data),

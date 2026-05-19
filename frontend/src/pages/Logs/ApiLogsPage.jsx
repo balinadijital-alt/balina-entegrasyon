@@ -90,6 +90,20 @@ function statusTone(status) {
   return 'success';
 }
 
+function inboundTone(status, signatureValid) {
+  if (status === 'processed') return 'success';
+  if (status === 'duplicate') return 'warning';
+  if (status === 'invalid_signature' || status === 'failed') return 'critical';
+  if (status === 'unknown_account' || signatureValid === false) return 'failed';
+  return 'warning';
+}
+
+function shortValue(value, size = 12) {
+  if (!value) return '-';
+  const text = String(value);
+  return text.length > size ? `${text.slice(0, size)}...` : text;
+}
+
 function maskValue(value, key = '') {
   if (sensitiveKeys.some((item) => String(key).toLowerCase().includes(item))) return '••••••';
   if (Array.isArray(value)) return value.map((item) => maskValue(item));
@@ -113,8 +127,11 @@ function formatDate(value) {
 
 export function ApiLogsPage() {
   const { loading, error, run } = useAsync();
+  const [activeTab, setActiveTab] = useState('api');
   const [logs, setLogs] = useState([]);
+  const [inboundWebhooks, setInboundWebhooks] = useState([]);
   const [selectedLog, setSelectedLog] = useState(null);
+  const [selectedInbound, setSelectedInbound] = useState(null);
   const [filters, setFilters] = useState({
     search: '',
     service: '',
@@ -124,13 +141,27 @@ export function ApiLogsPage() {
     from: '',
     to: '',
   });
+  const [inboundFilters, setInboundFilters] = useState({
+    search: '',
+    marketplace: '',
+    status: '',
+    signature: '',
+    from: '',
+    to: '',
+  });
 
   const load = async () => {
     await run(async () => {
-      const response = await api.logs.list();
+      const [response, inboundResponse] = await Promise.all([
+        api.logs.list(),
+        api.logs.inboundWebhooks({ per_page: 100 }),
+      ]);
       const rows = asArray(response);
+      const inboundRows = asArray(inboundResponse);
       setLogs(rows);
+      setInboundWebhooks(inboundRows);
       setSelectedLog((current) => current || rows.find((log) => Number(log.status_code || 0) >= 400) || rows[0] || null);
+      setSelectedInbound((current) => current || inboundRows.find((delivery) => delivery.status !== 'processed') || inboundRows[0] || null);
     });
   };
 
@@ -152,13 +183,39 @@ export function ApiLogsPage() {
     return matchesSearch && matchesService && matchesMarketplace && matchesStatus && matchesResult && matchesFrom && matchesTo;
   }), [logs, filters]);
 
+  const filteredInbound = useMemo(() => inboundWebhooks.filter((delivery) => {
+    const query = inboundFilters.search.trim().toLowerCase();
+    const date = delivery.created_at ? new Date(delivery.created_at) : null;
+    const matchesSearch = !query || [
+      delivery.delivery_id,
+      delivery.idempotency_key,
+      delivery.event,
+      delivery.last_error,
+      delivery.marketplace_code,
+      delivery.company?.name,
+      delivery.marketplace_account?.name,
+    ].some((value) => String(value || '').toLowerCase().includes(query));
+    const matchesMarketplace = !inboundFilters.marketplace || String(delivery.marketplace_code || '').toLowerCase() === inboundFilters.marketplace;
+    const matchesStatus = !inboundFilters.status || delivery.status === inboundFilters.status;
+    const matchesSignature = !inboundFilters.signature
+      || (inboundFilters.signature === 'valid' ? delivery.signature_valid === true : delivery.signature_valid === false);
+    const matchesFrom = !inboundFilters.from || (date && date >= new Date(`${inboundFilters.from}T00:00:00`));
+    const matchesTo = !inboundFilters.to || (date && date <= new Date(`${inboundFilters.to}T23:59:59`));
+    return matchesSearch && matchesMarketplace && matchesStatus && matchesSignature && matchesFrom && matchesTo;
+  }), [inboundWebhooks, inboundFilters]);
+
   const failedCount = logs.filter((log) => Number(log.status_code || 0) >= 400).length;
   const successCount = Math.max(0, logs.length - failedCount);
   const criticalLog = logs.find((log) => Number(log.status_code || 0) >= 500) || logs.find((log) => Number(log.status_code || 0) >= 400);
   const selectedDictionary = selectedLog ? dictionaryFor(selectedLog) : null;
   const successRate = logs.length === 0 ? 100 : Math.round((successCount / logs.length) * 100);
+  const inboundProcessed = inboundWebhooks.filter((delivery) => delivery.status === 'processed').length;
+  const inboundInvalid = inboundWebhooks.filter((delivery) => delivery.status === 'invalid_signature' || delivery.signature_valid === false).length;
+  const inboundDuplicate = inboundWebhooks.filter((delivery) => delivery.status === 'duplicate').length;
+  const inboundFailed = inboundWebhooks.filter((delivery) => delivery.status === 'failed').length;
 
   const setFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }));
+  const setInboundFilter = (key, value) => setInboundFilters((current) => ({ ...current, [key]: value }));
 
   return (
     <>
@@ -170,6 +227,13 @@ export function ApiLogsPage() {
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && logs.length === 0 ? <LoadingState /> : null}
 
+      <div className="tabs">
+        <button type="button" className={activeTab === 'api' ? 'tab active' : 'tab'} onClick={() => setActiveTab('api')}>API Loglari</button>
+        <button type="button" className={activeTab === 'inbound' ? 'tab active' : 'tab'} onClick={() => setActiveTab('inbound')}>Inbound Webhooklar</button>
+      </div>
+
+      {activeTab === 'api' && (
+      <>
       <section className="log-kpi-grid">
         <div className="log-kpi-card success"><CheckCircle2 size={19} /><span>Basarili</span><strong>{successCount}</strong><small>{successRate}% basari orani</small></div>
         <div className="log-kpi-card failed"><FileWarning size={19} /><span>Hatali</span><strong>{failedCount}</strong><small>HTTP 400 ve uzeri</small></div>
@@ -276,6 +340,105 @@ export function ApiLogsPage() {
           )}
         </aside>
       </section>
+      </>
+      )}
+
+      {activeTab === 'inbound' && (
+      <>
+        <section className="log-kpi-grid">
+          <div className="log-kpi-card success"><CheckCircle2 size={19} /><span>Toplam inbound</span><strong>{inboundWebhooks.length}</strong><small>Kayitli webhook</small></div>
+          <div className="log-kpi-card success"><ShieldAlert size={19} /><span>Processed</span><strong>{inboundProcessed}</strong><small>Basariyla islendi</small></div>
+          <div className="log-kpi-card failed"><FileWarning size={19} /><span>Invalid signature</span><strong>{inboundInvalid}</strong><small>Imza veya secret hatasi</small></div>
+          <div className="log-kpi-card warning"><Timer size={19} /><span>Duplicate/replay</span><strong>{inboundDuplicate}</strong><small>Tekrar islenmedi</small></div>
+          <div className="log-kpi-card critical"><AlertTriangle size={19} /><span>Failed</span><strong>{inboundFailed}</strong><small>Isleme hatasi</small></div>
+        </section>
+
+        <section className="panel log-filter-panel">
+          <div className="compact-filter-heading">
+            <strong>Inbound webhook filtreleri</strong>
+            <span>Marketplace, status, imza durumu, tarih ve metin aramasi ile gelen webhooklari daraltin.</span>
+          </div>
+          <div className="log-filter-grid">
+            <label className="search-field"><Search size={15} /><input value={inboundFilters.search} onChange={(event) => setInboundFilter('search', event.target.value)} placeholder="Delivery, idempotency, event veya hata ara" /></label>
+            <select value={inboundFilters.marketplace} onChange={(event) => setInboundFilter('marketplace', event.target.value)}>
+              <option value="">Tum marketplace</option>
+              <option value="trendyol">Trendyol</option>
+            </select>
+            <select value={inboundFilters.status} onChange={(event) => setInboundFilter('status', event.target.value)}>
+              <option value="">Tum statusler</option>
+              <option value="processed">Processed</option>
+              <option value="duplicate">Duplicate</option>
+              <option value="invalid_signature">Invalid signature</option>
+              <option value="unknown_account">Unknown account</option>
+              <option value="failed">Failed</option>
+              <option value="received">Received</option>
+            </select>
+            <select value={inboundFilters.signature} onChange={(event) => setInboundFilter('signature', event.target.value)}>
+              <option value="">Tum imza durumlari</option>
+              <option value="valid">Signature valid</option>
+              <option value="invalid">Signature invalid</option>
+            </select>
+            <input type="date" value={inboundFilters.from} onChange={(event) => setInboundFilter('from', event.target.value)} />
+            <input type="date" value={inboundFilters.to} onChange={(event) => setInboundFilter('to', event.target.value)} />
+          </div>
+        </section>
+
+        <section className="log-viewer-layout">
+          <section className="panel">
+            <h2>Inbound Webhook Kayitlari</h2>
+            <DataTable
+              rows={filteredInbound}
+              emptyTitle="Inbound webhook kaydi yok"
+              emptyText="Trendyol public webhook endpointine gelen kayitlar burada gorunur."
+              columns={[
+                { key: 'marketplace_code', label: 'Marketplace', render: (row) => serviceLabel(row.marketplace_code) },
+                { key: 'event', label: 'Event', render: (row) => row.event || '-' },
+                { key: 'status', label: 'Status', render: (row) => <StatusPill tone={inboundTone(row.status, row.signature_valid)} label={row.status || 'received'} /> },
+                { key: 'signature_valid', label: 'Signature', render: (row) => <StatusPill tone={row.signature_valid ? 'success' : 'failed'} label={row.signature_valid ? 'valid' : 'invalid'} /> },
+                { key: 'delivery_id', label: 'Delivery', render: (row) => <span title={row.delivery_id || ''}>{shortValue(row.delivery_id)}</span> },
+                { key: 'idempotency_key', label: 'Idempotency', render: (row) => <span title={row.idempotency_key || ''}>{shortValue(row.idempotency_key)}</span> },
+                { key: 'processed_at', label: 'Processed', render: (row) => formatDate(row.processed_at) },
+                { key: 'last_error', label: 'Son hata', render: (row) => row.last_error || '-' },
+                { key: 'actions', label: 'Detay', render: (row) => <button type="button" className="secondary-button" onClick={() => setSelectedInbound(row)}><Eye size={15} /> Detay</button> },
+              ]}
+            />
+          </section>
+
+          <aside className="panel log-detail-panel">
+            <div className="section-title-row">
+              <h2>Inbound Detayi</h2>
+              {selectedInbound && <StatusPill tone={inboundTone(selectedInbound.status, selectedInbound.signature_valid)} label={selectedInbound.status} />}
+            </div>
+            {!selectedInbound ? (
+              <SoftEmpty>Detay icin bir inbound webhook kaydi secin.</SoftEmpty>
+            ) : (
+              <>
+                {selectedInbound.status === 'duplicate' && (
+                  <SoftEmpty className="workflow-warning"><strong>Replay/duplicate</strong><span>Replay/duplicate olarak tekrar islenmedi.</span></SoftEmpty>
+                )}
+                <div className="log-detail-grid">
+                  <DetailItem label="Firma" value={selectedInbound.company?.name || '-'} />
+                  <DetailItem label="Marketplace hesap" value={selectedInbound.marketplace_account?.name || '-'} />
+                  <DetailItem label="Marketplace" value={selectedInbound.marketplace_code || '-'} />
+                  <DetailItem label="Event" value={selectedInbound.event || '-'} />
+                  <DetailItem label="Signature" value={selectedInbound.signature_valid ? 'valid' : 'invalid'} />
+                  <DetailItem label="Processed" value={formatDate(selectedInbound.processed_at)} />
+                  <DetailItem label="Created" value={formatDate(selectedInbound.created_at)} />
+                  <DetailItem label="Updated" value={formatDate(selectedInbound.updated_at)} />
+                </div>
+                <SoftEmpty><strong>Delivery ID</strong><span>{selectedInbound.delivery_id || '-'}</span></SoftEmpty>
+                <SoftEmpty><strong>Idempotency key</strong><span>{selectedInbound.idempotency_key || '-'}</span></SoftEmpty>
+                {selectedInbound.last_error && <SoftEmpty className="workflow-warning"><strong>Son hata</strong><span>{selectedInbound.last_error}</span></SoftEmpty>}
+                <details className="json-collapse">
+                  <summary>Maskelenmis payload JSON</summary>
+                  <pre>{JSON.stringify(maskValue(selectedInbound.payload || {}), null, 2)}</pre>
+                </details>
+              </>
+            )}
+          </aside>
+        </section>
+      </>
+      )}
     </>
   );
 }

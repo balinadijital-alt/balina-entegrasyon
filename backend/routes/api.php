@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\CurrentAccountController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\HepsiburadaController;
 use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\InboundWebhookDeliveryController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MarketplaceSyncController;
 use App\Http\Controllers\Api\MarketplaceAccountController;
@@ -172,6 +173,7 @@ Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(fun
     Route::post('/marketplace-publish-drafts/{draft}/send', [ProductMarketplaceController::class, 'send']);
 
     Route::get('/api-logs', [ApiLogController::class, 'index']);
+    Route::get('/inbound-webhook-deliveries', [InboundWebhookDeliveryController::class, 'index']);
     Route::get('/queue/status', [QueueDashboardController::class, 'index']);
     Route::post('/queue/failed/{uuid}/retry', [QueueDashboardController::class, 'retry']);
     Route::get('/roles', [RoleController::class, 'index']);
