@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\CatalogResourceController;
 use App\Http\Controllers\Api\CatalogModuleController;
 use App\Http\Controllers\Api\CmsModuleController;
 use App\Http\Controllers\Api\CompanyController;
+use App\Http\Controllers\Api\CompanySettingsController;
 use App\Http\Controllers\Api\CurrentAccountController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\HepsiburadaController;
@@ -48,6 +49,8 @@ Route::get('/health', HealthController::class);
 
 Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(function () {
     Route::get('/dashboard', DashboardController::class);
+    Route::get('/settings', [CompanySettingsController::class, 'show']);
+    Route::put('/settings', [CompanySettingsController::class, 'update']);
 
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);

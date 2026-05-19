@@ -71,6 +71,10 @@ export const api = {
   dashboard: {
     report: () => http.get('/dashboard').then((response) => response.data),
   },
+  settings: {
+    show: () => http.get('/settings').then((response) => asObject(response.data)),
+    update: (payload) => http.put('/settings', payload).then((response) => asObject(response.data)),
+  },
   modules: {
     list: (module, params) => http.get(`/modules/${module}`, { params }).then((response) => response.data),
     create: (module, payload) => http.post(`/modules/${module}`, payload).then((response) => response.data),

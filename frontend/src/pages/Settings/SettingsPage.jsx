@@ -13,12 +13,13 @@ import {
   LockKeyhole,
   Mail,
   RefreshCcw,
+  Save,
   Settings2,
   ShieldCheck,
   Store,
   Webhook,
 } from 'lucide-react';
-import { api, asArray, asObject } from '../../api/client.js';
+import { api, apiErrorMessage, asArray, asObject } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -34,6 +35,23 @@ const tabs = [
   { key: 'general', label: 'Genel Ayarlar', icon: Settings2 },
   { key: 'security', label: 'Guvenlik', icon: ShieldCheck },
 ];
+
+const defaultSettings = {
+  notifications: {},
+  email: {},
+  webhooks: {},
+  localization: {},
+  theme: {},
+  security: {},
+};
+
+function normalizeSettings(response) {
+  const settings = asObject(response, {});
+
+  return Object.fromEntries(
+    Object.entries(defaultSettings).map(([key, fallback]) => [key, asObject(settings[key], fallback)]),
+  );
+}
 
 function valueFrom(result, fallback) {
   return result.status === 'fulfilled' ? result.value : fallback;
@@ -111,6 +129,11 @@ export function SettingsPage({ audience = 'admin' }) {
   const [activeTab, setActiveTab] = useState('companies');
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [revealed, setRevealed] = useState({});
+  const [settingsRevealed, setSettingsRevealed] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState('');
+  const [settingsError, setSettingsError] = useState('');
+  const [settings, setSettings] = useState(defaultSettings);
   const [data, setData] = useState({
     companies: [],
     marketplaces: [],
@@ -137,6 +160,7 @@ export function SettingsPage({ audience = 'admin' }) {
         subscriptions,
         licenses,
         orders,
+        persistedSettings,
       ] = await Promise.allSettled([
         api.companies.list(),
         api.marketplaces.list(),
@@ -147,6 +171,7 @@ export function SettingsPage({ audience = 'admin' }) {
         api.saas.subscriptions(),
         api.saas.licenses(),
         api.orders.list({}),
+        api.settings.show(),
       ]);
 
       const nextData = {
@@ -162,6 +187,7 @@ export function SettingsPage({ audience = 'admin' }) {
       };
 
       setData(nextData);
+      setSettings(normalizeSettings(valueFrom(persistedSettings, {})));
       setSelectedCompany((current) => current || nextData.companies[0] || null);
     });
   };
@@ -169,6 +195,35 @@ export function SettingsPage({ audience = 'admin' }) {
   useEffect(() => {
     load();
   }, []);
+
+  const updateSetting = (section, key, value) => {
+    setSettings((current) => ({
+      ...current,
+      [section]: {
+        ...asObject(current[section], {}),
+        [key]: value,
+      },
+    }));
+    setSettingsMessage('');
+    setSettingsError('');
+  };
+
+  const saveSettings = async (event) => {
+    event.preventDefault();
+    setSettingsSaving(true);
+    setSettingsMessage('');
+    setSettingsError('');
+
+    try {
+      const saved = await api.settings.update(settings);
+      setSettings(normalizeSettings(saved));
+      setSettingsMessage('Ayarlar kaydedildi.');
+    } catch (requestError) {
+      setSettingsError(apiErrorMessage(requestError));
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
 
   const integrationAccounts = useMemo(() => [
     ...data.marketplaces.map((account) => ({
@@ -265,15 +320,6 @@ export function SettingsPage({ audience = 'admin' }) {
   const selectedCompanyIntegrations = selectedCompany
     ? integrationAccounts.filter((account) => Number(account.raw.company_id) === Number(selectedCompany.id))
     : [];
-
-  const settingsCards = [
-    { title: 'Bildirim Ayarlari', text: 'E-posta, panel ve operasyon uyarilari icin merkezi bildirim kurallari.', icon: Bell, enabled: false },
-    { title: 'E-posta Ayarlari', text: 'SMTP, gonderici adresi ve sablon baglantilari.', icon: Mail, enabled: false },
-    { title: 'Webhook Ayarlari', text: 'Siparis, urun, fatura ve kargo olaylari icin webhook hedefleri.', icon: Webhook, enabled: false },
-    { title: 'Dil / Lokasyon', text: 'Dil, tarih formati, saat dilimi ve bolgesel ayarlar.', icon: Globe2, enabled: false },
-    { title: 'Doviz', text: 'Para birimi ve kur guncelleme tercihleri.', icon: Store, enabled: false },
-    { title: 'Tema / Arayuz', text: 'Panel gorunumu, tablo yogunlugu ve tema tercihleri.', icon: Settings2, enabled: false },
-  ];
 
   const metrics = {
     companies: data.companies.length,
@@ -379,16 +425,167 @@ export function SettingsPage({ audience = 'admin' }) {
           )}
 
           {activeTab === 'general' && (
-            <section className="settings-card-grid">
-              {settingsCards.map(({ title, text, icon: Icon, enabled }) => (
-                <article className="settings-option-card" key={title}>
-                  <Icon size={22} />
-                  <strong>{title}</strong>
-                  <span>{text}</span>
-                  <button type="button" disabled={!enabled}>{enabled ? 'Duzenle' : 'Endpoint bekleniyor'}</button>
+            <form className="settings-card-grid" onSubmit={saveSettings}>
+              <article className="settings-option-card">
+                <Bell size={22} />
+                <strong>Bildirim Ayarlari</strong>
+                <span>E-posta, panel ve operasyon uyarilari icin merkezi bildirim kurallari.</span>
+                <label className="field">
+                  <span>E-posta bildirimi</span>
+                  <input type="checkbox" checked={Boolean(settings.notifications.email_enabled)} onChange={(event) => updateSetting('notifications', 'email_enabled', event.target.checked)} />
+                </label>
+                <label className="field">
+                  <span>Panel bildirimi</span>
+                  <input type="checkbox" checked={Boolean(settings.notifications.panel_enabled)} onChange={(event) => updateSetting('notifications', 'panel_enabled', event.target.checked)} />
+                </label>
+                <label className="field">
+                  <span>Sadece kritik uyari</span>
+                  <input type="checkbox" checked={Boolean(settings.notifications.critical_only)} onChange={(event) => updateSetting('notifications', 'critical_only', event.target.checked)} />
+                </label>
+                <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+              </article>
+
+              <article className="settings-option-card">
+                <Mail size={22} />
+                <strong>E-posta Ayarlari</strong>
+                <span>SMTP, gonderici adresi ve sablon baglantilari.</span>
+                <label className="field">
+                  <span>Gonderici adi</span>
+                  <input value={settings.email.from_name || ''} onChange={(event) => updateSetting('email', 'from_name', event.target.value)} />
+                </label>
+                <label className="field">
+                  <span>Gonderici e-posta</span>
+                  <input type="email" value={settings.email.from_email || ''} onChange={(event) => updateSetting('email', 'from_email', event.target.value)} />
+                </label>
+                <label className="field">
+                  <span>SMTP host</span>
+                  <input value={settings.email.smtp_host || ''} onChange={(event) => updateSetting('email', 'smtp_host', event.target.value)} />
+                </label>
+                <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+              </article>
+
+              <article className="settings-option-card">
+                <Webhook size={22} />
+                <strong>Webhook Ayarlari</strong>
+                <span>Siparis, urun, fatura ve kargo olaylari icin webhook hedefleri.</span>
+                <label className="field">
+                  <span>Webhook aktif</span>
+                  <input type="checkbox" checked={Boolean(settings.webhooks.enabled)} onChange={(event) => updateSetting('webhooks', 'enabled', event.target.checked)} />
+                </label>
+                <label className="field">
+                  <span>Hedef URL</span>
+                  <input value={settings.webhooks.endpoint_url || ''} onChange={(event) => updateSetting('webhooks', 'endpoint_url', event.target.value)} />
+                </label>
+                <label className="field">
+                  <span>Secret</span>
+                  <input type={settingsRevealed ? 'text' : 'password'} value={settings.webhooks.secret || ''} onChange={(event) => updateSetting('webhooks', 'secret', event.target.value)} />
+                </label>
+                <button type="button" className="text-link" onClick={() => setSettingsRevealed((current) => !current)}>{settingsRevealed ? <EyeOff size={14} /> : <Eye size={14} />} {settingsRevealed ? 'Gizle' : 'Goster'}</button>
+                <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+              </article>
+
+              <article className="settings-option-card">
+                <Globe2 size={22} />
+                <strong>Dil / Lokasyon</strong>
+                <span>Dil, tarih formati, saat dilimi ve bolgesel ayarlar.</span>
+                <label className="field">
+                  <span>Dil</span>
+                  <select value={settings.localization.locale || 'tr-TR'} onChange={(event) => updateSetting('localization', 'locale', event.target.value)}>
+                    <option value="tr-TR">Turkce</option>
+                    <option value="en-US">English</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <span>Saat dilimi</span>
+                  <input value={settings.localization.timezone || 'Europe/Istanbul'} onChange={(event) => updateSetting('localization', 'timezone', event.target.value)} />
+                </label>
+                <label className="field">
+                  <span>Tarih formati</span>
+                  <select value={settings.localization.date_format || 'dd.MM.yyyy'} onChange={(event) => updateSetting('localization', 'date_format', event.target.value)}>
+                    <option value="dd.MM.yyyy">dd.MM.yyyy</option>
+                    <option value="yyyy-MM-dd">yyyy-MM-dd</option>
+                  </select>
+                </label>
+                <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+              </article>
+
+              <article className="settings-option-card">
+                <Store size={22} />
+                <strong>Doviz</strong>
+                <span>Para birimi ve kur guncelleme tercihleri.</span>
+                <label className="field">
+                  <span>Para birimi</span>
+                  <select value={settings.localization.currency || 'TRY'} onChange={(event) => updateSetting('localization', 'currency', event.target.value)}>
+                    <option value="TRY">TRY</option>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <span>Kur guncelleme</span>
+                  <input type="checkbox" checked={Boolean(settings.localization.currency_auto_update)} onChange={(event) => updateSetting('localization', 'currency_auto_update', event.target.checked)} />
+                </label>
+                <label className="field">
+                  <span>Kur saglayici</span>
+                  <input value={settings.localization.currency_provider || ''} onChange={(event) => updateSetting('localization', 'currency_provider', event.target.value)} />
+                </label>
+                <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+              </article>
+
+              <article className="settings-option-card">
+                <Settings2 size={22} />
+                <strong>Tema / Arayuz</strong>
+                <span>Panel gorunumu, tablo yogunlugu ve tema tercihleri.</span>
+                <label className="field">
+                  <span>Tema</span>
+                  <select value={settings.theme.mode || 'system'} onChange={(event) => updateSetting('theme', 'mode', event.target.value)}>
+                    <option value="system">Sistem</option>
+                    <option value="light">Acik</option>
+                    <option value="dark">Koyu</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <span>Tablo yogunlugu</span>
+                  <select value={settings.theme.density || 'comfortable'} onChange={(event) => updateSetting('theme', 'density', event.target.value)}>
+                    <option value="comfortable">Rahat</option>
+                    <option value="compact">Kompakt</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <span>Animasyonlari azalt</span>
+                  <input type="checkbox" checked={Boolean(settings.theme.reduce_motion)} onChange={(event) => updateSetting('theme', 'reduce_motion', event.target.checked)} />
+                </label>
+                <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+              </article>
+
+              <article className="settings-option-card">
+                <ShieldCheck size={22} />
+                <strong>Guvenlik tercihleri</strong>
+                <span>Credential gorunurlugu ve panel guvenlik tercihleri kaydedilir.</span>
+                <label className="field">
+                  <span>Credential maskesi</span>
+                  <input type="checkbox" checked={settings.security.mask_credentials !== false} onChange={(event) => updateSetting('security', 'mask_credentials', event.target.checked)} />
+                </label>
+                <label className="field">
+                  <span>Gosterim onayi</span>
+                  <input type="checkbox" checked={Boolean(settings.security.reveal_confirmation)} onChange={(event) => updateSetting('security', 'reveal_confirmation', event.target.checked)} />
+                </label>
+                <label className="field">
+                  <span>Oturum uyarisi dk</span>
+                  <input type="number" min="1" value={settings.security.session_warning_minutes || ''} onChange={(event) => updateSetting('security', 'session_warning_minutes', event.target.value)} />
+                </label>
+                <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+              </article>
+
+              {(settingsMessage || settingsError) && (
+                <article className="settings-option-card">
+                  {settingsMessage ? <CheckCircle2 size={22} /> : <AlertTriangle size={22} />}
+                  <strong>{settingsMessage ? 'Kayit tamamlandi' : 'Ayar kaydedilemedi'}</strong>
+                  <span>{settingsMessage || settingsError}</span>
+                  <button type="button" onClick={load} disabled={loading}>Yenile</button>
                 </article>
-              ))}
-            </section>
+              )}
+            </form>
           )}
 
           {activeTab === 'security' && (
