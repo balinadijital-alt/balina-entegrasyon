@@ -151,7 +151,7 @@ class ProductImportService
             $rows = collect($parsed['rows']);
             $total = $rows->count();
             $seen = collect();
-            $stats = ['created' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => 0, 'success' => 0];
+            $stats = ['created' => 0, 'updated' => 0, 'skipped' => 0, 'filtered' => 0, 'errors' => 0, 'success' => 0];
 
             $run->update([
                 'job_uuid' => $jobUuid,
@@ -164,6 +164,19 @@ class ProductImportService
             $rows->each(function (array $raw, int $index) use ($run, $total, $seen, &$stats) {
                 $rowNumber = $index + 2;
                 $payload = $this->mapRow($raw, $run->field_mapping ?? []);
+                $payload = $this->applyTransforms($payload, $run->options ?? []);
+
+                if ($this->shouldSkipRow($payload, $run->options ?? [])) {
+                    if (! empty($payload['sku'])) {
+                        $seen->push((string) $payload['sku']);
+                    }
+                    $stats['filtered']++;
+                    $stats['skipped']++;
+                    $this->tick($run, $index + 1, $total, $stats);
+                    return;
+                }
+
+                $payload = $this->applyPriceRules($payload, $run->options ?? []);
                 $validation = $this->validatePayload($payload, $run->options ?? []);
 
                 if ($validation !== null) {
@@ -186,13 +199,18 @@ class ProductImportService
                 $this->tick($run, $index + 1, $total, $stats);
             });
 
-            $deactivated = $this->deactivateMissing($run, $seen);
+            $missingResult = $this->applyMissingStrategy($run, $seen);
             $report = [
                 'created' => $stats['created'],
                 'updated' => $stats['updated'],
                 'skipped' => $stats['skipped'],
+                'filtered' => $stats['filtered'],
                 'errors' => $stats['errors'],
-                'deactivated' => $deactivated,
+                'deactivated' => $missingResult['deactivated'],
+                'zero_stocked' => $missingResult['zero_stocked'],
+                'filtered_count' => $stats['filtered'],
+                'zero_stocked_count' => $missingResult['zero_stocked'],
+                'deactivated_count' => $missingResult['deactivated'],
             ];
 
             $run->update([
@@ -408,7 +426,7 @@ class ProductImportService
             : Product::create($data + ['company_id' => $run->company_id, 'status' => 'active']);
 
         if (! empty($options['download_images'])) {
-            $this->syncImages($product, $payload['image_urls'] ?? '');
+            $this->syncImages($product, $payload['image_urls'] ?? '', (int) data_get($options, 'image_strategy.max_image_count', 8));
         }
 
         return $product->wasRecentlyCreated ? 'created' : 'updated';
@@ -443,27 +461,15 @@ class ProductImportService
         ];
     }
 
-    private function syncImages(Product $product, ?string $value): void
+    private function syncImages(Product $product, ?string $value, int $maxImages = 8): void
     {
         $urls = collect(preg_split('/[\n,|;]+/', (string) $value))
             ->map(fn ($url) => trim($url))
             ->filter()
-            ->take(8)
+            ->take(max(1, min(8, $maxImages)))
             ->values();
 
         $urls->each(fn ($url, $index) => $this->images->storeFromUrl($product, $url, $index));
-    }
-
-    private function deactivateMissing(ProductImportRun $run, Collection $seen): int
-    {
-        if (empty($run->options['deactivate_missing']) || $seen->isEmpty()) {
-            return 0;
-        }
-
-        return Product::where('company_id', $run->company_id)
-            ->when($run->supplier_name, fn ($query) => $query->where('supplier_name', $run->supplier_name))
-            ->whereNotIn('sku', $seen->unique()->values()->all())
-            ->update(['status' => 'passive']);
     }
 
     private function recordError(ProductImportRun $run, int $rowNumber, array $payload, string $message, array $raw): void
@@ -532,8 +538,176 @@ class ProductImportService
             'update_existing' => filter_var($options['update_existing'] ?? true, FILTER_VALIDATE_BOOLEAN),
             'deactivate_missing' => filter_var($options['deactivate_missing'] ?? false, FILTER_VALIDATE_BOOLEAN),
             'update_stock_price_only' => filter_var($options['update_stock_price_only'] ?? false, FILTER_VALIDATE_BOOLEAN),
-            'download_images' => filter_var($options['download_images'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'download_images' => filter_var($options['download_images'] ?? data_get($options, 'image_strategy.download_images', false), FILTER_VALIDATE_BOOLEAN),
+            'filters' => [
+                'minimum_stock' => $this->nullableNumber(data_get($options, 'filters.minimum_stock')),
+                'minimum_price' => $this->nullableNumber(data_get($options, 'filters.minimum_price')),
+                'include_categories' => $this->listOption(data_get($options, 'filters.include_categories', [])),
+                'exclude_categories' => $this->listOption(data_get($options, 'filters.exclude_categories', [])),
+                'exclude_brands' => $this->listOption(data_get($options, 'filters.exclude_brands', [])),
+            ],
+            'pricing' => [
+                'source_profit_rate' => $this->nullableNumber(data_get($options, 'pricing.source_profit_rate')),
+                'price_multiplier' => $this->nullableNumber(data_get($options, 'pricing.price_multiplier')),
+                'rounding_mode' => in_array(data_get($options, 'pricing.rounding_mode'), ['none', 'nearest_integer', 'nearest_90', 'nearest_99'], true)
+                    ? data_get($options, 'pricing.rounding_mode')
+                    : 'none',
+            ],
+            'transforms' => [
+                'title_prefix' => (string) data_get($options, 'transforms.title_prefix', ''),
+                'title_suffix' => (string) data_get($options, 'transforms.title_suffix', ''),
+                'strip_html_description' => filter_var(data_get($options, 'transforms.strip_html_description', false), FILTER_VALIDATE_BOOLEAN),
+            ],
+            'stock_strategy' => [
+                'missing_product_action' => data_get($options, 'stock_strategy.missing_product_action')
+                    ?: (filter_var($options['deactivate_missing'] ?? false, FILTER_VALIDATE_BOOLEAN) ? 'passive_missing' : 'none'),
+            ],
+            'image_strategy' => [
+                'download_images' => filter_var(data_get($options, 'image_strategy.download_images', $options['download_images'] ?? false), FILTER_VALIDATE_BOOLEAN),
+                'max_image_count' => max(1, min(8, (int) data_get($options, 'image_strategy.max_image_count', 8))),
+            ],
         ];
+    }
+
+    private function shouldSkipRow(array $payload, array $options): bool
+    {
+        $filters = $options['filters'] ?? [];
+
+        if (($filters['minimum_stock'] ?? null) !== null && (int) ($payload['stock'] ?? 0) < (int) $filters['minimum_stock']) {
+            return true;
+        }
+
+        if (($filters['minimum_price'] ?? null) !== null && $this->decimal($payload['price'] ?? 0) < (float) $filters['minimum_price']) {
+            return true;
+        }
+
+        $category = $this->normalizeRuleValue($payload['category'] ?? '');
+        $brand = $this->normalizeRuleValue($payload['brand'] ?? '');
+        $includeCategories = $this->normalizedList($filters['include_categories'] ?? []);
+        $excludeCategories = $this->normalizedList($filters['exclude_categories'] ?? []);
+        $excludeBrands = $this->normalizedList($filters['exclude_brands'] ?? []);
+
+        if ($includeCategories !== [] && ! in_array($category, $includeCategories, true)) {
+            return true;
+        }
+
+        if ($excludeCategories !== [] && in_array($category, $excludeCategories, true)) {
+            return true;
+        }
+
+        return $excludeBrands !== [] && in_array($brand, $excludeBrands, true);
+    }
+
+    private function applyPriceRules(array $payload, array $options): array
+    {
+        if ($payload['price'] === null || $payload['price'] === '') {
+            return $payload;
+        }
+
+        $price = $this->decimal($payload['price']);
+        $pricing = $options['pricing'] ?? [];
+        $multiplier = $pricing['price_multiplier'] ?? null;
+        $profitRate = $pricing['source_profit_rate'] ?? null;
+
+        if ($multiplier !== null && (float) $multiplier > 0) {
+            $price *= (float) $multiplier;
+        }
+
+        if ($profitRate !== null && (float) $profitRate !== 0.0) {
+            $price *= 1 + ((float) $profitRate / 100);
+        }
+
+        $payload['price'] = $this->roundPrice($price, $pricing['rounding_mode'] ?? 'none');
+
+        return $payload;
+    }
+
+    private function applyTransforms(array $payload, array $options): array
+    {
+        $transforms = $options['transforms'] ?? [];
+        $name = trim((string) ($payload['name'] ?? ''));
+
+        if ($name !== '') {
+            $payload['name'] = trim(trim((string) ($transforms['title_prefix'] ?? '')).' '.$name.' '.trim((string) ($transforms['title_suffix'] ?? '')));
+        }
+
+        if (! empty($transforms['strip_html_description']) && isset($payload['description'])) {
+            $payload['description'] = trim(strip_tags((string) $payload['description']));
+        }
+
+        return $payload;
+    }
+
+    private function applyMissingStrategy(ProductImportRun $run, Collection $seen): array
+    {
+        $action = $this->resolveMissingStrategy($run->options ?? []);
+
+        if ($action === 'none' || $seen->isEmpty()) {
+            return ['deactivated' => 0, 'zero_stocked' => 0];
+        }
+
+        $query = Product::where('company_id', $run->company_id)
+            ->when($run->supplier_name, fn ($query) => $query->where('supplier_name', $run->supplier_name))
+            ->whereNotIn('sku', $seen->unique()->values()->all());
+
+        if ($action === 'zero_stock_missing') {
+            return ['deactivated' => 0, 'zero_stocked' => $query->update(['stock' => 0])];
+        }
+
+        return ['deactivated' => $query->update(['status' => 'passive']), 'zero_stocked' => 0];
+    }
+
+    private function resolveMissingStrategy(array $options): string
+    {
+        $action = data_get($options, 'stock_strategy.missing_product_action', 'none');
+
+        if ($action === 'passive_missing' || (! empty($options['deactivate_missing']) && $action === 'none')) {
+            return 'passive_missing';
+        }
+
+        return $action === 'zero_stock_missing' ? 'zero_stock_missing' : 'none';
+    }
+
+    private function roundPrice(float $price, string $mode): float
+    {
+        return match ($mode) {
+            'nearest_integer' => round($price),
+            'nearest_90' => floor($price) + 0.90,
+            'nearest_99' => floor($price) + 0.99,
+            default => round($price, 2),
+        };
+    }
+
+    private function nullableNumber(mixed $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return is_numeric(str_replace(',', '.', (string) $value)) ? $this->decimal($value) : null;
+    }
+
+    private function listOption(mixed $value): array
+    {
+        if (is_array($value)) {
+            return array_values(array_filter(array_map('trim', $value), fn ($item) => $item !== ''));
+        }
+
+        return collect(preg_split('/[\n,;]+/', (string) $value))
+            ->map(fn ($item) => trim($item))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function normalizedList(array $values): array
+    {
+        return collect($values)->map(fn ($value) => $this->normalizeRuleValue($value))->filter()->values()->all();
+    }
+
+    private function normalizeRuleValue(mixed $value): string
+    {
+        return Str::of((string) $value)->lower()->ascii()->trim()->toString();
     }
 
     private function decimal(mixed $value): float

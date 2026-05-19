@@ -45,6 +45,30 @@ const defaultOptions = {
   deactivate_missing: false,
   update_stock_price_only: false,
   download_images: false,
+  filters: {
+    minimum_stock: '',
+    minimum_price: '',
+    include_categories: '',
+    exclude_categories: '',
+    exclude_brands: '',
+  },
+  pricing: {
+    source_profit_rate: '',
+    price_multiplier: '',
+    rounding_mode: 'none',
+  },
+  transforms: {
+    title_prefix: '',
+    title_suffix: '',
+    strip_html_description: false,
+  },
+  stock_strategy: {
+    missing_product_action: 'none',
+  },
+  image_strategy: {
+    download_images: false,
+    max_image_count: 8,
+  },
 };
 
 const xmlInitial = {
@@ -83,6 +107,42 @@ function runDuration(row) {
   return `${row.started_at || '-'} / ${row.finished_at || 'devam ediyor'}`;
 }
 
+function mergeOptions(options) {
+  const current = asObject(options);
+
+  return {
+    ...defaultOptions,
+    ...current,
+    filters: { ...defaultOptions.filters, ...asObject(current.filters) },
+    pricing: { ...defaultOptions.pricing, ...asObject(current.pricing) },
+    transforms: { ...defaultOptions.transforms, ...asObject(current.transforms) },
+    stock_strategy: {
+      ...defaultOptions.stock_strategy,
+      ...asObject(current.stock_strategy),
+      missing_product_action: asObject(current.stock_strategy).missing_product_action || (current.deactivate_missing ? 'passive_missing' : defaultOptions.stock_strategy.missing_product_action),
+    },
+    image_strategy: {
+      ...defaultOptions.image_strategy,
+      ...asObject(current.image_strategy),
+      download_images: current.download_images ?? asObject(current.image_strategy).download_images ?? defaultOptions.image_strategy.download_images,
+    },
+    download_images: current.download_images ?? asObject(current.image_strategy).download_images ?? defaultOptions.download_images,
+  };
+}
+
+function appendFormData(formData, key, value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    Object.entries(value).forEach(([childKey, childValue]) => appendFormData(formData, `${key}[${childKey}]`, childValue));
+    return;
+  }
+
+  formData.append(key, value ?? '');
+}
+
+function optionListText(value) {
+  return Array.isArray(value) ? value.join('\n') : value ?? '';
+}
+
 export function ImportCenterPage() {
   const { notify } = useApp();
   const { loading, error, setError, run } = useAsync();
@@ -106,7 +166,7 @@ export function ImportCenterPage() {
   const validRows = asArray(preview?.valid_rows);
   const invalidRows = asArray(preview?.invalid_rows);
   const safeMapping = asObject(mapping);
-  const safeOptions = asObject(options, defaultOptions);
+  const safeOptions = mergeOptions(options);
   const mappedFieldCount = Object.values(safeMapping).filter(Boolean).length;
   const missingRequiredMappings = requiredFields.filter((field) => !safeMapping[field]);
   const hasIdentifierMapping = Boolean(safeMapping.sku || safeMapping.barcode);
@@ -160,7 +220,7 @@ export function ImportCenterPage() {
       is_active: source.is_active !== false,
     } : xmlInitial);
     setMapping(asObject(source?.field_mapping));
-    setOptions({ ...defaultOptions, ...asObject(source?.options) });
+    setOptions(mergeOptions(source?.options));
     resetPreview(false);
   };
 
@@ -230,7 +290,7 @@ export function ImportCenterPage() {
     body.append('file', excelFile);
     body.append('supplier_name', excelSupplier);
     Object.entries(safeMapping).forEach(([key, value]) => body.append(`field_mapping[${key}]`, value || ''));
-    Object.entries(safeOptions).forEach(([key, value]) => body.append(`options[${key}]`, value));
+    Object.entries(safeOptions).forEach(([key, value]) => appendFormData(body, `options[${key}]`, value));
 
     await run(async () => {
       const response = await api.imports.queueExcel(body);
@@ -282,8 +342,26 @@ export function ImportCenterPage() {
   };
 
   const setOption = (key, value) => setOptions((current) => ({ ...current, [key]: value }));
+  const setNestedOption = (group, key, value) => setOptions((current) => ({
+    ...current,
+    [group]: {
+      ...asObject(current[group]),
+      [key]: value,
+    },
+    ...(group === 'image_strategy' && key === 'download_images' ? { download_images: value } : {}),
+  }));
+  const setMissingAction = (value) => setOptions((current) => ({
+    ...current,
+    deactivate_missing: value === 'passive_missing',
+    stock_strategy: {
+      ...asObject(current.stock_strategy),
+      missing_product_action: value,
+    },
+  }));
   const runById = (id) => runs.find((item) => Number(item.id) === Number(id));
   const latestRun = lastQueuedRunId ? runById(lastQueuedRunId) : runs[0];
+  const latestReport = asObject(latestRun?.report);
+  const selectedReport = asObject(selectedRun?.report);
 
   return (
     <>
@@ -462,15 +540,69 @@ export function ImportCenterPage() {
               </div>
               <div className="option-grid">
                 <Field label="Eslesme anahtari">
-                  <select value={options.match_by} onChange={(event) => setOption('match_by', event.target.value)}>
+                  <select value={safeOptions.match_by} onChange={(event) => setOption('match_by', event.target.value)}>
                     <option value="sku">SKU</option>
                     <option value="barcode">Barkod</option>
                   </select>
                 </Field>
-                <label><input type="checkbox" checked={options.update_existing} onChange={(event) => setOption('update_existing', event.target.checked)} /> Ayni SKU/Barkod varsa guncelle</label>
-                <label><input type="checkbox" checked={options.deactivate_missing} onChange={(event) => setOption('deactivate_missing', event.target.checked)} /> Olmayan urunleri pasife al</label>
-                <label><input type="checkbox" checked={options.update_stock_price_only} onChange={(event) => setOption('update_stock_price_only', event.target.checked)} /> Sadece stok/fiyat guncelle</label>
-                <label><input type="checkbox" checked={options.download_images} onChange={(event) => setOption('download_images', event.target.checked)} /> Gorsel URL indir</label>
+                <label><input type="checkbox" checked={safeOptions.update_existing} onChange={(event) => setOption('update_existing', event.target.checked)} /> Ayni SKU/Barkod varsa guncelle</label>
+                <label><input type="checkbox" checked={safeOptions.update_stock_price_only} onChange={(event) => setOption('update_stock_price_only', event.target.checked)} /> Sadece stok/fiyat guncelle</label>
+              </div>
+              <div className="wizard-step-header compact-header">
+                <span>XML kaynak yonetimi</span>
+                <h3>Gelismis XML Ayarlari</h3>
+                <p>Filtreleme, fiyat, stok stratejisi, baslik/aciklama donusumu ve gorsel limitlerini kaynaga bagli olarak saklayin.</p>
+              </div>
+              <div className="option-grid">
+                <Field label="Minimum stok">
+                  <input type="number" min="0" value={safeOptions.filters.minimum_stock} onChange={(event) => setNestedOption('filters', 'minimum_stock', event.target.value)} placeholder="Orn. 1" />
+                </Field>
+                <Field label="Minimum fiyat">
+                  <input type="number" min="0" step="0.01" value={safeOptions.filters.minimum_price} onChange={(event) => setNestedOption('filters', 'minimum_price', event.target.value)} placeholder="Orn. 100" />
+                </Field>
+                <Field label="Dahil kategoriler">
+                  <textarea rows={3} value={optionListText(safeOptions.filters.include_categories)} onChange={(event) => setNestedOption('filters', 'include_categories', event.target.value)} placeholder="Her satira bir kategori" />
+                </Field>
+                <Field label="Haric kategoriler">
+                  <textarea rows={3} value={optionListText(safeOptions.filters.exclude_categories)} onChange={(event) => setNestedOption('filters', 'exclude_categories', event.target.value)} placeholder="Her satira bir kategori" />
+                </Field>
+                <Field label="Haric markalar">
+                  <textarea rows={3} value={optionListText(safeOptions.filters.exclude_brands)} onChange={(event) => setNestedOption('filters', 'exclude_brands', event.target.value)} placeholder="Her satira bir marka" />
+                </Field>
+                <Field label="Kaynak kar orani (%)">
+                  <input type="number" step="0.01" value={safeOptions.pricing.source_profit_rate} onChange={(event) => setNestedOption('pricing', 'source_profit_rate', event.target.value)} placeholder="Orn. 15" />
+                </Field>
+                <Field label="Fiyat carpani">
+                  <input type="number" min="0" step="0.01" value={safeOptions.pricing.price_multiplier} onChange={(event) => setNestedOption('pricing', 'price_multiplier', event.target.value)} placeholder="Orn. 1.20" />
+                </Field>
+                <Field label="Yuvarlama">
+                  <select value={safeOptions.pricing.rounding_mode} onChange={(event) => setNestedOption('pricing', 'rounding_mode', event.target.value)}>
+                    <option value="none">Yok</option>
+                    <option value="nearest_integer">En yakin tam sayi</option>
+                    <option value="nearest_90">Sonu .90</option>
+                    <option value="nearest_99">Sonu .99</option>
+                  </select>
+                </Field>
+                <Field label="Eksik urun stratejisi">
+                  <select value={safeOptions.stock_strategy.missing_product_action} onChange={(event) => setMissingAction(event.target.value)}>
+                    <option value="none">Islem yapma</option>
+                    <option value="passive_missing">Eksikleri pasife al</option>
+                    <option value="zero_stock_missing">Eksiklerin stokunu sifirla</option>
+                  </select>
+                </Field>
+                <Field label="Urun adi prefix">
+                  <input value={safeOptions.transforms.title_prefix} onChange={(event) => setNestedOption('transforms', 'title_prefix', event.target.value)} placeholder="Orn. Yeni" />
+                </Field>
+                <Field label="Urun adi suffix">
+                  <input value={safeOptions.transforms.title_suffix} onChange={(event) => setNestedOption('transforms', 'title_suffix', event.target.value)} placeholder="Orn. Outlet" />
+                </Field>
+                <label><input type="checkbox" checked={safeOptions.transforms.strip_html_description} onChange={(event) => setNestedOption('transforms', 'strip_html_description', event.target.checked)} /> Aciklamadan HTML temizle</label>
+                <label><input type="checkbox" checked={safeOptions.image_strategy.download_images} onChange={(event) => setNestedOption('image_strategy', 'download_images', event.target.checked)} /> Gorsel URL indir</label>
+                <Field label="Maksimum gorsel">
+                  <select value={safeOptions.image_strategy.max_image_count} onChange={(event) => setNestedOption('image_strategy', 'max_image_count', Number(event.target.value))}>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((count) => <option key={count} value={count}>{count}</option>)}
+                  </select>
+                </Field>
               </div>
               <div className={blockingMappingMissing ? 'state-box workflow-warning' : 'state-box success-empty'}>
                 <CheckCircle2 size={18} />
@@ -508,6 +640,9 @@ export function ImportCenterPage() {
                 <div><span>Durum</span><strong>{statusLabel(latestRun?.status)}</strong></div>
                 <div><span>Basarili</span><strong>{latestRun?.success_count || 0}</strong></div>
                 <div><span>Hatali</span><strong>{latestRun?.error_count || 0}</strong></div>
+                <div><span>Filtrelenen</span><strong>{latestReport.filtered_count || latestReport.filtered || 0}</strong></div>
+                <div><span>Stok sifirlanan</span><strong>{latestReport.zero_stocked_count || latestReport.zero_stocked || 0}</strong></div>
+                <div><span>Pasife alinan</span><strong>{latestReport.deactivated_count || latestReport.deactivated || 0}</strong></div>
                 <div><span>Ilerleme</span><strong>{latestRun?.progress || 0}%</strong></div>
               </div>
             </>
@@ -569,6 +704,9 @@ export function ImportCenterPage() {
             <div><span>Hatali</span><strong>{selectedRun.error_count}</strong></div>
             <div><span>Yeni</span><strong>{selectedRun.created_count}</strong></div>
             <div><span>Guncel</span><strong>{selectedRun.updated_count}</strong></div>
+            <div><span>Filtrelenen</span><strong>{selectedReport.filtered_count || selectedReport.filtered || 0}</strong></div>
+            <div><span>Stok sifirlanan</span><strong>{selectedReport.zero_stocked_count || selectedReport.zero_stocked || 0}</strong></div>
+            <div><span>Pasife alinan</span><strong>{selectedReport.deactivated_count || selectedReport.deactivated || 0}</strong></div>
           </div>
           <DataTable
             rows={asArray(selectedRun.errors)}
