@@ -32,6 +32,7 @@ class HepsiburadaService extends AbstractMarketplaceService
         return [
             'message' => 'Hepsiburada baglantisi basarili.',
             'status' => 'connected',
+            'environment' => $this->environment($account),
             'checked_at' => now()->toISOString(),
             'sample_count' => count($response->json('data', $response->json('items', []))),
         ];
@@ -52,6 +53,7 @@ class HepsiburadaService extends AbstractMarketplaceService
 
         return [
             'categories' => $response->json('data', $response->json('items', $response->json())),
+            'environment' => $this->environment($account),
             'fetched_at' => now()->toISOString(),
         ];
     }
@@ -96,6 +98,7 @@ class HepsiburadaService extends AbstractMarketplaceService
             'message' => 'Hepsiburada urun gonderimi tamamlandi.',
             'count' => $products->count(),
             'tracking_id' => $trackingId,
+            'environment' => $this->environment($account),
         ];
     }
 
@@ -131,6 +134,7 @@ class HepsiburadaService extends AbstractMarketplaceService
         return [
             'message' => 'Hepsiburada stok/fiyat guncellemesi tamamlandi.',
             'count' => $processed,
+            'environment' => $this->environment($account),
         ];
     }
 
@@ -170,6 +174,7 @@ class HepsiburadaService extends AbstractMarketplaceService
         return [
             'message' => 'Hepsiburada siparisleri cekildi.',
             'count' => $orders->count(),
+            'environment' => $this->environment($account),
         ];
     }
 
@@ -209,15 +214,35 @@ class HepsiburadaService extends AbstractMarketplaceService
     private function pending(MarketplaceAccount $account, string $base): PendingRequest
     {
         return Http::withBasicAuth($this->username($account), $this->password($account))
-            ->baseUrl(match ($base) {
-                'listing' => config('marketplaces.hepsiburada.listing_base_url'),
-                'order' => config('marketplaces.hepsiburada.order_base_url'),
-                default => config('marketplaces.hepsiburada.base_url'),
-            })
+            ->baseUrl($this->resolveBaseUrl($account, $base))
             ->timeout((int) config('marketplaces.hepsiburada.timeout', 20))
             ->retry(3, 750, throw: false)
             ->acceptJson()
             ->withHeaders(['User-Agent' => 'Balina-Entegrasyon/1.0']);
+    }
+
+    private function environment(MarketplaceAccount $account): string
+    {
+        return data_get($account->metadata, 'environment') === 'stage' ? 'stage' : 'production';
+    }
+
+    private function resolveBaseUrl(MarketplaceAccount $account, string $base): string
+    {
+        $environment = $this->environment($account);
+
+        $key = match ($base) {
+            'listing' => $environment === 'stage' ? 'stage_listing_base_url' : 'listing_base_url',
+            'order' => $environment === 'stage' ? 'stage_order_base_url' : 'order_base_url',
+            default => $environment === 'stage' ? 'stage_base_url' : 'base_url',
+        };
+
+        $url = config("marketplaces.hepsiburada.{$key}");
+
+        if ($environment === 'stage' && blank($url)) {
+            throw new MarketplaceApiException('Hepsiburada test ortami URL ayarlari eksik. Canli ortama otomatik gecis engellendi.');
+        }
+
+        return (string) $url;
     }
 
     private function productPayload(MarketplaceAccount $account, Product $product): array
