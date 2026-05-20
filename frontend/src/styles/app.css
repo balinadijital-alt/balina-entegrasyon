@@ -3414,6 +3414,135 @@ tbody td:last-child .row-actions:focus-within {
   padding: 10px;
 }
 
+.xml-mapping-dashboard {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 14px;
+}
+
+.xml-mapping-kpis {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.xml-mapping-kpis div {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: grid;
+  gap: 4px;
+  min-height: 76px;
+  padding: 12px;
+}
+
+.xml-mapping-kpis span,
+.xml-mapping-toolbar span,
+.xml-suggestion-cell small {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.xml-mapping-kpis strong {
+  color: var(--text);
+  font-size: 22px;
+}
+
+.xml-mapping-tabs {
+  margin: 0;
+}
+
+.xml-mapping-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.xml-mapping-toolbar div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.xml-mapping-table {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.xml-mapping-row {
+  align-items: center;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(160px, 1.4fr) 120px minmax(180px, 1.3fr) minmax(180px, 1.3fr) minmax(150px, 1fr);
+  padding: 12px;
+}
+
+.xml-mapping-row:first-child {
+  border-top: 0;
+}
+
+.xml-mapping-row.heading {
+  background: #f8fafc;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.xml-mapping-row > strong {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.xml-suggestion-cell {
+  display: grid;
+  gap: 4px;
+}
+
+.xml-suggestion-cell > span {
+  color: var(--text);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.xml-suggestion-confidence {
+  border-radius: 999px;
+  display: inline-flex;
+  font-weight: 800;
+  line-height: 1;
+  padding: 5px 8px;
+  width: fit-content;
+}
+
+.xml-suggestion-confidence.exact {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.xml-suggestion-confidence.normalized {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.xml-suggestion-confidence.contains {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.caution-button {
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
 .split {
   display: grid;
   gap: 18px;
@@ -6639,6 +6768,8 @@ tbody td:last-child .row-actions:focus-within {
   .split,
   .option-grid,
   .import-preview,
+  .xml-mapping-kpis,
+  .xml-mapping-row,
   .queue-summary,
   .usage-grid,
   .settings-grid,

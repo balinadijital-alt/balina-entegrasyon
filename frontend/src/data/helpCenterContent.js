@@ -197,6 +197,8 @@ export const helpCenterArticles = [
       'Kategori / Marka Mapping bölümünde preview’dan gelen ham XML değerleri iç katalogdaki canonical kategori ve marka adlarıyla eşleştirilir.',
       'Eşleşme exact normalized match ile uygulanır; fuzzy veya tahmini eşleştirme yapılmaz.',
       'Mapping boş bırakılırsa XML’den gelen ham kategori ve marka değerleri korunur.',
+      'Eşleşmeyen yönetimi panelinde exact ve normalized öneriler toplu uygulanabilir; contains öneriler düşük güvenli olduğu için satır bazında onaylanmalıdır.',
+      'Öneriler otomatik kaydedilmez. XML eşleşmelerini kaydet aksiyonu mevcut XML kaynak ayarlarına yazar.',
     ],
     relatedLinks: [
       { label: 'Import Merkezi', href: '/imports' },

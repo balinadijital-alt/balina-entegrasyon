@@ -164,6 +164,85 @@ function uniqueMappedValues(rows, field) {
     .filter(Boolean))];
 }
 
+function normalizeCatalogValue(value) {
+  return String(value || '')
+    .trim()
+    .toLocaleLowerCase('tr')
+    .replaceAll('ı', 'i')
+    .replaceAll('ğ', 'g')
+    .replaceAll('ü', 'u')
+    .replaceAll('ş', 's')
+    .replaceAll('ö', 'o')
+    .replaceAll('ç', 'c')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+function suggestCatalogMatch(source, resources) {
+  const raw = String(source || '').trim();
+  if (!raw) return null;
+
+  const candidates = resources
+    .map((resource) => resource?.name)
+    .filter(Boolean)
+    .map((name) => String(name).trim())
+    .filter(Boolean);
+  const exact = candidates.find((name) => name === raw);
+  if (exact) return { value: exact, confidence: 'exact', reason: 'Birebir eslesme' };
+
+  const normalizedRaw = normalizeCatalogValue(raw);
+  const normalized = candidates.find((name) => normalizeCatalogValue(name) === normalizedRaw);
+  if (normalized) return { value: normalized, confidence: 'normalized', reason: 'Normalize edilmis eslesme' };
+
+  const contains = candidates.find((name) => {
+    const normalizedName = normalizeCatalogValue(name);
+    return normalizedName.includes(normalizedRaw) || normalizedRaw.includes(normalizedName);
+  });
+
+  return contains ? { value: contains, confidence: 'contains', reason: 'Dusuk guvenli icerik eslesmesi' } : null;
+}
+
+function buildMappingRows(values, mappings, resources) {
+  const safeMappings = asObject(mappings);
+
+  return values.map((source) => {
+    const mappedValue = safeMappings[source] || '';
+    const suggestion = mappedValue ? null : suggestCatalogMatch(source, resources);
+    return {
+      source,
+      mappedValue,
+      suggestion,
+      status: mappedValue ? 'mapped' : (suggestion ? 'suggested' : 'unmapped'),
+    };
+  });
+}
+
+function mappingStats(rows) {
+  return {
+    total: rows.length,
+    mapped: rows.filter((row) => row.status === 'mapped').length,
+    unmapped: rows.filter((row) => row.status === 'unmapped').length,
+    suggested: rows.filter((row) => row.status === 'suggested').length,
+  };
+}
+
+function mappingStatusLabel(status) {
+  return {
+    mapped: 'Eslesti',
+    suggested: 'Oneri var',
+    unmapped: 'Eslesmedi',
+  }[status] || status;
+}
+
+function mappingStatusTone(status) {
+  return {
+    mapped: 'ready',
+    suggested: 'running',
+    unmapped: 'blocked',
+  }[status] || 'blocked';
+}
+
 export function ImportCenterPage() {
   const { notify } = useApp();
   const { loading, error, setError, run } = useAsync();
@@ -184,6 +263,7 @@ export function ImportCenterPage() {
   const [mapping, setMapping] = useState({});
   const [options, setOptions] = useState(defaultOptions);
   const [lastQueuedRunId, setLastQueuedRunId] = useState(null);
+  const [mappingTab, setMappingTab] = useState('categories');
 
   const headers = useMemo(() => asArray(preview?.headers), [preview]);
   const validRows = asArray(preview?.valid_rows);
@@ -193,6 +273,13 @@ export function ImportCenterPage() {
   const previewBrands = useMemo(() => uniqueMappedValues(previewRows, 'brand'), [validRows, invalidRows]);
   const safeMapping = asObject(mapping);
   const safeOptions = mergeOptions(options);
+  const categoryMappingRows = buildMappingRows(previewCategories, safeOptions.mappings.categories, catalogCategories);
+  const brandMappingRows = buildMappingRows(previewBrands, safeOptions.mappings.brands, catalogBrands);
+  const categoryMappingStats = mappingStats(categoryMappingRows);
+  const brandMappingStats = mappingStats(brandMappingRows);
+  const activeMappingRows = mappingTab === 'categories' ? categoryMappingRows : brandMappingRows;
+  const activeMappingResources = mappingTab === 'categories' ? catalogCategories : catalogBrands;
+  const activeMappingTypeLabel = mappingTab === 'categories' ? 'kategori' : 'marka';
   const mappedFieldCount = Object.values(safeMapping).filter(Boolean).length;
   const missingRequiredMappings = requiredFields.filter((field) => !safeMapping[field]);
   const hasIdentifierMapping = Boolean(safeMapping.sku || safeMapping.barcode);
@@ -395,6 +482,31 @@ export function ImportCenterPage() {
       },
     };
   });
+  const applySuggestedMappings = (type, rows, allowedConfidence) => setOptions((current) => {
+    const mappings = asObject(current.mappings);
+    const nextTypeMappings = { ...asObject(mappings[type]) };
+
+    rows.forEach((row) => {
+      if (row.suggestion && allowedConfidence.includes(row.suggestion.confidence)) {
+        nextTypeMappings[row.source] = row.suggestion.value;
+      }
+    });
+
+    return {
+      ...current,
+      mappings: {
+        ...mappings,
+        [type]: nextTypeMappings,
+      },
+    };
+  });
+  const clearSourceMappings = (type) => setOptions((current) => ({
+    ...current,
+    mappings: {
+      ...asObject(current.mappings),
+      [type]: {},
+    },
+  }));
   const setMappingBehavior = (key, value) => setOptions((current) => ({
     ...current,
     mapping_behavior: {
@@ -658,36 +770,74 @@ export function ImportCenterPage() {
               </div>
               <div className="wizard-step-header compact-header">
                 <span>Canonical katalog</span>
-                <h3>Kategori / Marka Mapping</h3>
-                <p>Preview'dan gelen ham XML kategori ve marka adlarini ic katalog degerlerine esleyin.</p>
+                <h3>Eslesmeyen Kategori / Marka Yonetimi</h3>
+                <p>Preview'dan gelen ham XML degerlerini ic katalogla eslestirin; oneriler kaydedilmeden once sizin onayinizi bekler.</p>
               </div>
               <div className="option-grid">
                 <label><input type="checkbox" checked={safeOptions.mapping_behavior.apply_category_mapping} onChange={(event) => setMappingBehavior('apply_category_mapping', event.target.checked)} /> Kategori mapping uygula</label>
                 <label><input type="checkbox" checked={safeOptions.mapping_behavior.apply_brand_mapping} onChange={(event) => setMappingBehavior('apply_brand_mapping', event.target.checked)} /> Marka mapping uygula</label>
               </div>
-              <div className="import-preview">
-                <div>
-                  <h3>XML kategori mapping</h3>
-                  {previewCategories.length === 0 ? <p className="muted-text">Preview'da kategori degeri bulunamadi.</p> : previewCategories.map((category) => (
-                    <Field key={category} label={category}>
-                      <select value={safeOptions.mappings.categories[category] || ''} onChange={(event) => setSourceMapping('categories', category, event.target.value)}>
-                        <option value="">Ham degeri koru</option>
-                        {catalogCategories.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
-                      </select>
-                    </Field>
-                  ))}
+              <div className="xml-mapping-dashboard">
+                <div className="xml-mapping-kpis">
+                  <div><span>Toplam kategori</span><strong>{categoryMappingStats.total}</strong></div>
+                  <div><span>Eslesen kategori</span><strong>{categoryMappingStats.mapped}</strong></div>
+                  <div><span>Eslesmeyen kategori</span><strong>{categoryMappingStats.unmapped}</strong></div>
+                  <div><span>Onerili kategori</span><strong>{categoryMappingStats.suggested}</strong></div>
+                  <div><span>Toplam marka</span><strong>{brandMappingStats.total}</strong></div>
+                  <div><span>Eslesen marka</span><strong>{brandMappingStats.mapped}</strong></div>
+                  <div><span>Eslesmeyen marka</span><strong>{brandMappingStats.unmapped}</strong></div>
+                  <div><span>Onerili marka</span><strong>{brandMappingStats.suggested}</strong></div>
                 </div>
-                <div>
-                  <h3>XML marka mapping</h3>
-                  {previewBrands.length === 0 ? <p className="muted-text">Preview'da marka degeri bulunamadi.</p> : previewBrands.map((brand) => (
-                    <Field key={brand} label={brand}>
-                      <select value={safeOptions.mappings.brands[brand] || ''} onChange={(event) => setSourceMapping('brands', brand, event.target.value)}>
-                        <option value="">Ham degeri koru</option>
-                        {catalogBrands.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
-                      </select>
-                    </Field>
-                  ))}
+                <div className="tabs xml-mapping-tabs">
+                  <button type="button" className={mappingTab === 'categories' ? 'tab active' : 'tab'} onClick={() => setMappingTab('categories')}>Kategoriler</button>
+                  <button type="button" className={mappingTab === 'brands' ? 'tab active' : 'tab'} onClick={() => setMappingTab('brands')}>Markalar</button>
                 </div>
+                <div className="xml-mapping-toolbar">
+                  <span>{activeMappingRows.length} XML {activeMappingTypeLabel} degeri</span>
+                  <div>
+                    <button type="button" className="secondary-button" onClick={() => applySuggestedMappings(mappingTab, activeMappingRows, ['exact'])}>Tum exact onerileri uygula</button>
+                    <button type="button" className="secondary-button" onClick={() => applySuggestedMappings(mappingTab, activeMappingRows, ['normalized'])}>Tum normalized onerileri uygula</button>
+                    <button type="button" className="secondary-button" onClick={() => clearSourceMappings(mappingTab)}>Mappingleri temizle</button>
+                  </div>
+                </div>
+                {activeMappingRows.length === 0 ? (
+                  <SoftEmpty title="Preview verisi yok" text={`Preview calistiginda XML ${activeMappingTypeLabel} degerleri burada gorunur.`} />
+                ) : (
+                  <div className="xml-mapping-table">
+                    <div className="xml-mapping-row heading">
+                      <span>XML degeri</span>
+                      <span>Durum</span>
+                      <span>Oneri</span>
+                      <span>Ic {activeMappingTypeLabel}</span>
+                      <span>Aksiyon</span>
+                    </div>
+                    {activeMappingRows.map((row) => (
+                      <div className="xml-mapping-row" key={row.source}>
+                        <strong>{row.source}</strong>
+                        <StatusPill tone={mappingStatusTone(row.status)} label={mappingStatusLabel(row.status)} />
+                        <div className="xml-suggestion-cell">
+                          {row.suggestion ? (
+                            <>
+                              <span>{row.suggestion.value}</span>
+                              <small className={`xml-suggestion-confidence ${row.suggestion.confidence}`}>{row.suggestion.confidence}</small>
+                              <small>{row.suggestion.reason}</small>
+                            </>
+                          ) : <span className="muted-text">Oneri yok</span>}
+                        </div>
+                        <select value={row.mappedValue} onChange={(event) => setSourceMapping(mappingTab, row.source, event.target.value)}>
+                          <option value="">Ham degeri koru</option>
+                          {activeMappingResources.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
+                        </select>
+                        <div className="row-actions">
+                          {row.suggestion ? (
+                            <button type="button" className={row.suggestion.confidence === 'contains' ? 'secondary-button caution-button' : 'secondary-button'} onClick={() => setSourceMapping(mappingTab, row.source, row.suggestion.value)}>Oneriyi uygula</button>
+                          ) : null}
+                          {row.mappedValue ? <button type="button" className="secondary-button" onClick={() => setSourceMapping(mappingTab, row.source, '')}>Temizle</button> : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className={blockingMappingMissing ? 'state-box workflow-warning' : 'state-box success-empty'}>
                 <CheckCircle2 size={18} />
