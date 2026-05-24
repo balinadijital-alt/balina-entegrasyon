@@ -3543,6 +3543,46 @@ tbody td:last-child .row-actions:focus-within {
   color: #92400e;
 }
 
+.import-run-detail-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.import-run-tabs {
+  margin-top: 2px;
+}
+
+.import-run-summary-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.import-error-breakdown {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  grid-column: 1 / -1;
+  padding: 14px;
+}
+
+.import-error-breakdown h3 {
+  font-size: 14px;
+  margin: 0 0 10px;
+}
+
+.import-error-breakdown div {
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.import-error-breakdown span {
+  color: var(--muted);
+}
+
 .split {
   display: grid;
   gap: 18px;
@@ -6768,6 +6808,7 @@ tbody td:last-child .row-actions:focus-within {
   .split,
   .option-grid,
   .import-preview,
+  .import-run-summary-grid,
   .xml-mapping-kpis,
   .xml-mapping-row,
   .queue-summary,

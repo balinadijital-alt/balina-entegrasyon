@@ -243,6 +243,27 @@ function mappingStatusTone(status) {
   }[status] || 'blocked';
 }
 
+function filterReasonLabel(reason) {
+  return {
+    min_stock: 'Minimum stok',
+    min_price: 'Minimum fiyat',
+    excluded_category: 'Haric kategori',
+    excluded_brand: 'Haric marka',
+    include_category_miss: 'Dahil kategori disi',
+  }[reason] || reason || '-';
+}
+
+function stockActionLabel(action) {
+  return {
+    zero_stock: 'Stok sifirlandi',
+    passive: 'Pasife alindi',
+  }[action] || action || '-';
+}
+
+function withRowIds(rows, prefix) {
+  return asArray(rows).map((row, index) => ({ id: `${prefix}-${row.row_number || row.sku || index}`, ...asObject(row) }));
+}
+
 export function ImportCenterPage() {
   const { notify } = useApp();
   const { loading, error, setError, run } = useAsync();
@@ -264,6 +285,7 @@ export function ImportCenterPage() {
   const [options, setOptions] = useState(defaultOptions);
   const [lastQueuedRunId, setLastQueuedRunId] = useState(null);
   const [mappingTab, setMappingTab] = useState('categories');
+  const [runDetailTab, setRunDetailTab] = useState('summary');
 
   const headers = useMemo(() => asArray(preview?.headers), [preview]);
   const validRows = asArray(preview?.valid_rows);
@@ -455,6 +477,7 @@ export function ImportCenterPage() {
   const showRun = async (runId) => {
     await run(async () => {
       setSelectedRun(asObject(await api.imports.showRun(runId), null));
+      setRunDetailTab('summary');
     }, { onError: (message) => notify('error', message) });
   };
 
@@ -526,6 +549,12 @@ export function ImportCenterPage() {
   const latestRun = lastQueuedRunId ? runById(lastQueuedRunId) : runs[0];
   const latestReport = asObject(latestRun?.report);
   const selectedReport = asObject(selectedRun?.report);
+  const selectedErrors = withRowIds(selectedRun?.errors, 'error');
+  const selectedFilteredRows = withRowIds(selectedReport.filtered_rows, 'filtered');
+  const selectedMappedRows = withRowIds(selectedReport.mapped_rows, 'mapped');
+  const selectedPriceRows = withRowIds(selectedReport.price_changed_rows, 'price');
+  const selectedStockRows = withRowIds(selectedReport.stock_strategy_rows, 'stock');
+  const selectedErrorBreakdown = Object.entries(asObject(selectedReport.error_breakdown)).map(([message, count]) => ({ id: message, message, count }));
 
   return (
     <>
@@ -933,8 +962,12 @@ export function ImportCenterPage() {
       </section>
 
       {selectedRun && (
-        <section className="panel">
-          <h2>Hata Raporu #{selectedRun.id}</h2>
+        <section className="panel import-run-detail-panel">
+          <div className="wizard-step-header compact-header">
+            <span>Import run #{selectedRun.id}</span>
+            <h2>Import Run Detayi</h2>
+            <p>Satir bazli hata, filtre, mapping, fiyat ve stok stratejisi raporlarini inceleyin.</p>
+          </div>
           <div className="queue-summary">
             <div><span>Toplam</span><strong>{selectedRun.total_rows}</strong></div>
             <div><span>Basarili</span><strong>{selectedRun.success_count}</strong></div>
@@ -949,17 +982,114 @@ export function ImportCenterPage() {
             <div><span>Stok sifirlanan</span><strong>{selectedReport.zero_stocked_count || selectedReport.zero_stocked || 0}</strong></div>
             <div><span>Pasife alinan</span><strong>{selectedReport.deactivated_count || selectedReport.deactivated || 0}</strong></div>
           </div>
-          <DataTable
-            rows={asArray(selectedRun.errors)}
-            emptyTitle="Hata yok"
-            emptyText="Bu import kaydinda satir bazli hata bulunmuyor."
-            columns={[
-              { key: 'row_number', label: 'Satir' },
-              { key: 'sku', label: 'SKU' },
-              { key: 'barcode', label: 'Barkod' },
-              { key: 'message', label: 'Hata' },
-            ]}
-          />
+          <div className="tabs import-run-tabs">
+            {[
+              ['summary', 'Ozet'],
+              ['errors', 'Hatalar'],
+              ['filtered', 'Filtrelenen'],
+              ['mapping', 'Mapping'],
+              ['price', 'Fiyat'],
+              ['stock', 'Stok Stratejisi'],
+            ].map(([key, label]) => (
+              <button type="button" key={key} className={runDetailTab === key ? 'tab active' : 'tab'} onClick={() => setRunDetailTab(key)}>{label}</button>
+            ))}
+          </div>
+
+          {runDetailTab === 'summary' && (
+            <div className="import-run-summary-grid">
+              <SoftEmpty><strong>{selectedFilteredRows.length}</strong><span>Detayli filtre kaydi</span></SoftEmpty>
+              <SoftEmpty><strong>{selectedMappedRows.length}</strong><span>Mapping uygulanan satir</span></SoftEmpty>
+              <SoftEmpty><strong>{selectedPriceRows.length}</strong><span>Fiyat kurali uygulanan satir</span></SoftEmpty>
+              <SoftEmpty><strong>{selectedStockRows.length}</strong><span>Stok stratejisi kaydi</span></SoftEmpty>
+              <div className="import-error-breakdown">
+                <h3>Hata kirilimi</h3>
+                {selectedErrorBreakdown.length === 0 ? (
+                  <p className="muted-text">Validasyon hatasi yok.</p>
+                ) : selectedErrorBreakdown.map((item) => (
+                  <div key={item.id}><span>{item.message}</span><strong>{item.count}</strong></div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {runDetailTab === 'errors' && (
+            <DataTable
+              rows={selectedErrors}
+              emptyTitle="Hata yok"
+              emptyText="Bu import kaydinda satir bazli hata bulunmuyor."
+              columns={[
+                { key: 'row_number', label: 'Satir' },
+                { key: 'sku', label: 'SKU' },
+                { key: 'barcode', label: 'Barkod' },
+                { key: 'message', label: 'Hata' },
+                { key: 'payload', label: 'Payload', render: (row) => <details className="json-collapse"><summary>Detay</summary><pre>{JSON.stringify(row.payload || {}, null, 2)}</pre></details> },
+              ]}
+            />
+          )}
+
+          {runDetailTab === 'filtered' && (
+            <DataTable
+              rows={selectedFilteredRows}
+              emptyTitle="Filtrelenen satir yok"
+              emptyText="Bu import run icinde filtre sebebiyle atlanan satir bulunmuyor."
+              columns={[
+                { key: 'row_number', label: 'Satir' },
+                { key: 'sku', label: 'SKU' },
+                { key: 'barcode', label: 'Barkod' },
+                { key: 'category', label: 'Kategori' },
+                { key: 'brand', label: 'Marka' },
+                { key: 'reason', label: 'Sebep', render: (row) => <StatusPill tone="blocked" label={filterReasonLabel(row.reason)} /> },
+              ]}
+            />
+          )}
+
+          {runDetailTab === 'mapping' && (
+            <DataTable
+              rows={selectedMappedRows}
+              emptyTitle="Mapping uygulanmadi"
+              emptyText="Bu import run icinde kategori veya marka mapping uygulanmis satir yok."
+              columns={[
+                { key: 'row_number', label: 'Satir' },
+                { key: 'sku', label: 'SKU' },
+                { key: 'category_before', label: 'Kategori once' },
+                { key: 'category_after', label: 'Kategori sonra' },
+                { key: 'brand_before', label: 'Marka once' },
+                { key: 'brand_after', label: 'Marka sonra' },
+                { key: 'mapping_type', label: 'Tip', render: (row) => <StatusPill tone={row.mapping_type === 'exact' ? 'ready' : 'running'} label={row.mapping_type || '-'} /> },
+              ]}
+            />
+          )}
+
+          {runDetailTab === 'price' && (
+            <DataTable
+              rows={selectedPriceRows}
+              emptyTitle="Fiyat degisimi yok"
+              emptyText="Bu import run icinde fiyat kuraliyla degisen satir bulunmuyor."
+              columns={[
+                { key: 'row_number', label: 'Satir' },
+                { key: 'sku', label: 'SKU' },
+                { key: 'price_before', label: 'Once' },
+                { key: 'price_after', label: 'Sonra' },
+                { key: 'multiplier', label: 'Carpan' },
+                { key: 'profit_rate', label: 'Kar %' },
+                { key: 'rounding_mode', label: 'Yuvarlama' },
+              ]}
+            />
+          )}
+
+          {runDetailTab === 'stock' && (
+            <DataTable
+              rows={selectedStockRows}
+              emptyTitle="Stok stratejisi islemi yok"
+              emptyText="Bu import run icinde eksik urun icin pasife alma veya stok sifirlama uygulanmadi."
+              columns={[
+                { key: 'sku', label: 'SKU' },
+                { key: 'action', label: 'Aksiyon', render: (row) => <StatusPill tone={row.action === 'zero_stock' ? 'running' : 'blocked'} label={stockActionLabel(row.action)} /> },
+                { key: 'previous_stock', label: 'Onceki stok' },
+                { key: 'new_stock', label: 'Yeni stok' },
+              ]}
+            />
+          )}
         </section>
       )}
     </>

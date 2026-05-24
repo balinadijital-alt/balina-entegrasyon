@@ -20,6 +20,8 @@ use SimpleXMLElement;
 
 class ProductImportService
 {
+    private const REPORT_DETAIL_LIMIT = 100;
+
     public const FIELDS = [
         'name' => 'Urun adi',
         'barcode' => 'Barkod',
@@ -163,6 +165,13 @@ class ProductImportService
                 'unmapped_category' => 0,
                 'unmapped_brand' => 0,
             ];
+            $reportDetails = [
+                'filtered_rows' => [],
+                'mapped_rows' => [],
+                'price_changed_rows' => [],
+                'stock_strategy_rows' => [],
+                'error_breakdown' => [],
+            ];
 
             $run->update([
                 'job_uuid' => $jobUuid,
@@ -172,7 +181,7 @@ class ProductImportService
                 'error_message' => null,
             ]);
 
-            $rows->each(function (array $raw, int $index) use ($run, $total, $seen, &$stats) {
+            $rows->each(function (array $raw, int $index) use ($run, $total, $seen, &$stats, &$reportDetails) {
                 $rowNumber = $index + 2;
                 $payload = $this->mapRow($raw, $run->field_mapping ?? []);
                 $payload = $this->applyTransforms($payload, $run->options ?? []);
@@ -181,22 +190,38 @@ class ProductImportService
                 $stats['mapped_brand'] += $mappingStats['mapped_brand'];
                 $stats['unmapped_category'] += $mappingStats['unmapped_category'];
                 $stats['unmapped_brand'] += $mappingStats['unmapped_brand'];
+                $this->appendReportDetail($reportDetails['mapped_rows'], $this->buildMappingDetail($rowNumber, $payload, $mappingStats));
 
-                if ($this->shouldSkipRow($payload, $run->options ?? [])) {
+                $filterDecision = $this->filterDecision($payload, $run->options ?? []);
+                if ($filterDecision['skip']) {
                     if (! empty($payload['sku'])) {
                         $seen->push((string) $payload['sku']);
                     }
                     $stats['filtered']++;
                     $stats['skipped']++;
+                    $this->appendReportDetail($reportDetails['filtered_rows'], [
+                        'row_number' => $rowNumber,
+                        'sku' => $payload['sku'] ?? null,
+                        'barcode' => $payload['barcode'] ?? null,
+                        'category' => $payload['category'] ?? null,
+                        'brand' => $payload['brand'] ?? null,
+                        'reason' => $filterDecision['reason'],
+                    ]);
                     $this->tick($run, $index + 1, $total, $stats);
                     return;
                 }
 
+                $priceBefore = $payload['price'] ?? null;
                 $payload = $this->applyPriceRules($payload, $run->options ?? []);
+                $this->appendReportDetail(
+                    $reportDetails['price_changed_rows'],
+                    $this->buildPriceChangeDetail($rowNumber, $payload, $priceBefore, $run->options ?? [])
+                );
                 $validation = $this->validatePayload($payload, $run->options ?? []);
 
                 if ($validation !== null) {
                     $this->recordError($run, $rowNumber, $payload, $validation, $raw);
+                    $reportDetails['error_breakdown'][$validation] = ($reportDetails['error_breakdown'][$validation] ?? 0) + 1;
                     $stats['errors']++;
                     $this->tick($run, $index + 1, $total, $stats);
                     return;
@@ -231,6 +256,11 @@ class ProductImportService
                 'mapped_brand_count' => $stats['mapped_brand'],
                 'unmapped_category_count' => $stats['unmapped_category'],
                 'unmapped_brand_count' => $stats['unmapped_brand'],
+                'filtered_rows' => $reportDetails['filtered_rows'],
+                'mapped_rows' => $reportDetails['mapped_rows'],
+                'price_changed_rows' => $reportDetails['price_changed_rows'],
+                'stock_strategy_rows' => $missingResult['rows'],
+                'error_breakdown' => $reportDetails['error_breakdown'],
             ];
 
             $run->update([
@@ -599,14 +629,19 @@ class ProductImportService
 
     private function shouldSkipRow(array $payload, array $options): bool
     {
+        return $this->filterDecision($payload, $options)['skip'];
+    }
+
+    private function filterDecision(array $payload, array $options): array
+    {
         $filters = $options['filters'] ?? [];
 
         if (($filters['minimum_stock'] ?? null) !== null && (int) ($payload['stock'] ?? 0) < (int) $filters['minimum_stock']) {
-            return true;
+            return ['skip' => true, 'reason' => 'min_stock'];
         }
 
         if (($filters['minimum_price'] ?? null) !== null && $this->decimal($payload['price'] ?? 0) < (float) $filters['minimum_price']) {
-            return true;
+            return ['skip' => true, 'reason' => 'min_price'];
         }
 
         $category = $this->normalizeRuleValue($payload['category'] ?? '');
@@ -616,14 +651,18 @@ class ProductImportService
         $excludeBrands = $this->normalizedList($filters['exclude_brands'] ?? []);
 
         if ($includeCategories !== [] && ! in_array($category, $includeCategories, true)) {
-            return true;
+            return ['skip' => true, 'reason' => 'include_category_miss'];
         }
 
         if ($excludeCategories !== [] && in_array($category, $excludeCategories, true)) {
-            return true;
+            return ['skip' => true, 'reason' => 'excluded_category'];
         }
 
-        return $excludeBrands !== [] && in_array($brand, $excludeBrands, true);
+        if ($excludeBrands !== [] && in_array($brand, $excludeBrands, true)) {
+            return ['skip' => true, 'reason' => 'excluded_brand'];
+        }
+
+        return ['skip' => false, 'reason' => null];
     }
 
     private function applyPriceRules(array $payload, array $options): array
@@ -673,6 +712,12 @@ class ProductImportService
             'mapped_brand' => 0,
             'unmapped_category' => 0,
             'unmapped_brand' => 0,
+            'category_before' => $payload['category'] ?? null,
+            'category_after' => $payload['category'] ?? null,
+            'brand_before' => $payload['brand'] ?? null,
+            'brand_after' => $payload['brand'] ?? null,
+            'category_mapping_type' => null,
+            'brand_mapping_type' => null,
         ];
 
         if (filter_var(data_get($options, 'mapping_behavior.apply_category_mapping', true), FILTER_VALIDATE_BOOLEAN)) {
@@ -680,6 +725,8 @@ class ProductImportService
             $payload['category'] = $result['value'];
             $stats['mapped_category'] = $result['mapped'] ? 1 : 0;
             $stats['unmapped_category'] = $result['unmapped'] ? 1 : 0;
+            $stats['category_after'] = $result['value'];
+            $stats['category_mapping_type'] = $result['mapping_type'];
         }
 
         if (filter_var(data_get($options, 'mapping_behavior.apply_brand_mapping', true), FILTER_VALIDATE_BOOLEAN)) {
@@ -687,6 +734,8 @@ class ProductImportService
             $payload['brand'] = $result['value'];
             $stats['mapped_brand'] = $result['mapped'] ? 1 : 0;
             $stats['unmapped_brand'] = $result['unmapped'] ? 1 : 0;
+            $stats['brand_after'] = $result['value'];
+            $stats['brand_mapping_type'] = $result['mapping_type'];
         }
 
         return [$payload, $stats];
@@ -698,7 +747,7 @@ class ProductImportService
         $mappings = data_get($options, "mappings.{$type}", []);
 
         if ($raw === '' || ! is_array($mappings) || $mappings === []) {
-            return ['value' => $value, 'mapped' => false, 'unmapped' => false];
+            return ['value' => $value, 'mapped' => false, 'unmapped' => false, 'mapping_type' => null];
         }
 
         $normalizedRaw = $this->normalizeRuleValue($raw);
@@ -711,11 +760,16 @@ class ProductImportService
             }
 
             if ($this->normalizeRuleValue($source) === $normalizedRaw) {
-                return ['value' => $canonical, 'mapped' => true, 'unmapped' => false];
+                return [
+                    'value' => $canonical,
+                    'mapped' => true,
+                    'unmapped' => false,
+                    'mapping_type' => trim((string) $source) === $raw ? 'exact' : 'normalized',
+                ];
             }
         }
 
-        return ['value' => $value, 'mapped' => false, 'unmapped' => true];
+        return ['value' => $value, 'mapped' => false, 'unmapped' => true, 'mapping_type' => null];
     }
 
     private function applyMissingStrategy(ProductImportRun $run, Collection $seen): array
@@ -723,7 +777,7 @@ class ProductImportService
         $action = $this->resolveMissingStrategy($run->options ?? []);
 
         if ($action === 'none' || $seen->isEmpty()) {
-            return ['deactivated' => 0, 'zero_stocked' => 0];
+            return ['deactivated' => 0, 'zero_stocked' => 0, 'rows' => []];
         }
 
         $query = Product::where('company_id', $run->company_id)
@@ -731,10 +785,86 @@ class ProductImportService
             ->whereNotIn('sku', $seen->unique()->values()->all());
 
         if ($action === 'zero_stock_missing') {
-            return ['deactivated' => 0, 'zero_stocked' => $query->update(['stock' => 0])];
+            $rows = $this->buildStockStrategyDetail(clone $query, 'zero_stock');
+
+            return ['deactivated' => 0, 'zero_stocked' => $query->update(['stock' => 0]), 'rows' => $rows];
         }
 
-        return ['deactivated' => $query->update(['status' => 'passive']), 'zero_stocked' => 0];
+        $rows = $this->buildStockStrategyDetail(clone $query, 'passive');
+
+        return ['deactivated' => $query->update(['status' => 'passive']), 'zero_stocked' => 0, 'rows' => $rows];
+    }
+
+    private function buildMappingDetail(int $rowNumber, array $payload, array $mappingStats): ?array
+    {
+        if (($mappingStats['mapped_category'] ?? 0) === 0 && ($mappingStats['mapped_brand'] ?? 0) === 0) {
+            return null;
+        }
+
+        $types = array_values(array_filter([
+            $mappingStats['category_mapping_type'] ?? null,
+            $mappingStats['brand_mapping_type'] ?? null,
+        ]));
+
+        return [
+            'row_number' => $rowNumber,
+            'sku' => $payload['sku'] ?? null,
+            'category_before' => $mappingStats['category_before'] ?? null,
+            'category_after' => $mappingStats['category_after'] ?? null,
+            'brand_before' => $mappingStats['brand_before'] ?? null,
+            'brand_after' => $mappingStats['brand_after'] ?? null,
+            'mapping_type' => in_array('normalized', $types, true) ? 'normalized' : 'exact',
+        ];
+    }
+
+    private function buildPriceChangeDetail(int $rowNumber, array $payload, mixed $priceBefore, array $options): ?array
+    {
+        if ($priceBefore === null || $priceBefore === '') {
+            return null;
+        }
+
+        $priceAfter = $payload['price'] ?? null;
+        if ($priceAfter === null || $this->decimal($priceBefore) === $this->decimal($priceAfter)) {
+            return null;
+        }
+
+        $pricing = $options['pricing'] ?? [];
+
+        return [
+            'row_number' => $rowNumber,
+            'sku' => $payload['sku'] ?? null,
+            'price_before' => $this->decimal($priceBefore),
+            'price_after' => $this->decimal($priceAfter),
+            'multiplier' => $pricing['price_multiplier'] ?? null,
+            'profit_rate' => $pricing['source_profit_rate'] ?? null,
+            'rounding_mode' => $pricing['rounding_mode'] ?? 'none',
+        ];
+    }
+
+    private function buildStockStrategyDetail($query, string $action): array
+    {
+        return $query
+            ->select(['sku', 'stock', 'status'])
+            ->orderBy('id')
+            ->limit(self::REPORT_DETAIL_LIMIT)
+            ->get()
+            ->map(fn (Product $product) => [
+                'sku' => $product->sku,
+                'action' => $action,
+                'previous_stock' => $product->stock,
+                'new_stock' => $action === 'zero_stock' ? 0 : $product->stock,
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function appendReportDetail(array &$rows, ?array $detail): void
+    {
+        if ($detail === null || count($rows) >= self::REPORT_DETAIL_LIMIT) {
+            return;
+        }
+
+        $rows[] = $detail;
     }
 
     private function resolveMissingStrategy(array $options): string
