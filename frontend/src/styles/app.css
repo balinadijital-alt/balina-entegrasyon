@@ -3583,6 +3583,192 @@ tbody td:last-child .row-actions:focus-within {
   color: var(--muted);
 }
 
+.xml-source-automation-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.xml-source-kpis {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.xml-source-kpis div,
+.xml-source-card,
+.xml-source-detail-panel {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.xml-source-kpis div {
+  display: grid;
+  gap: 4px;
+  min-height: 74px;
+  padding: 12px;
+}
+
+.xml-source-kpis span,
+.xml-source-card-grid span,
+.xml-source-run-summary span,
+.xml-source-detail-grid span,
+.xml-source-run-item span {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.xml-source-kpis strong {
+  color: var(--text);
+  font-size: 22px;
+}
+
+.xml-source-dashboard {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1.5fr) minmax(340px, 0.9fr);
+}
+
+.xml-source-list {
+  display: grid;
+  gap: 12px;
+}
+
+.xml-source-card {
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  text-align: left;
+  width: 100%;
+}
+
+.xml-source-card.active,
+.xml-source-card:hover {
+  border-color: #2563eb;
+  box-shadow: 0 12px 30px rgb(37 99 235 / 10%);
+}
+
+.xml-source-card-head,
+.xml-source-detail-head,
+.xml-source-run-item {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.xml-source-card-head div,
+.xml-source-run-item div {
+  display: grid;
+  gap: 3px;
+}
+
+.xml-source-card-head strong,
+.xml-source-detail-head h3,
+.xml-source-run-item strong {
+  color: var(--text);
+}
+
+.xml-source-card-head span,
+.xml-source-detail-head p {
+  color: var(--muted);
+  margin: 0;
+}
+
+.xml-source-card-grid,
+.xml-source-detail-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.xml-source-card-grid div,
+.xml-source-detail-grid div {
+  background: #f8fafc;
+  border-radius: 8px;
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+}
+
+.xml-source-card-grid strong,
+.xml-source-detail-grid strong {
+  color: var(--text);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.xml-source-progress {
+  display: grid;
+  gap: 6px;
+}
+
+.xml-source-progress > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.xml-source-run-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.xml-source-run-summary span {
+  background: #f8fafc;
+  border-radius: 999px;
+  padding: 5px 8px;
+}
+
+.xml-source-error {
+  background: #fef2f2;
+  border-radius: 8px;
+  color: #991b1b;
+  font-size: 12px;
+  margin: 0;
+  overflow-wrap: anywhere;
+  padding: 8px;
+}
+
+.xml-source-detail-panel {
+  align-self: start;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.xml-source-detail-head h3 {
+  margin: 3px 0;
+}
+
+.xml-source-detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.xml-source-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.xml-source-run-list {
+  display: grid;
+  gap: 10px;
+}
+
+.xml-source-run-list h3 {
+  font-size: 14px;
+  margin: 0;
+}
+
+.xml-source-run-item {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
 .split {
   display: grid;
   gap: 18px;
@@ -6809,6 +6995,10 @@ tbody td:last-child .row-actions:focus-within {
   .option-grid,
   .import-preview,
   .import-run-summary-grid,
+  .xml-source-kpis,
+  .xml-source-dashboard,
+  .xml-source-card-grid,
+  .xml-source-detail-grid,
   .xml-mapping-kpis,
   .xml-mapping-row,
   .queue-summary,

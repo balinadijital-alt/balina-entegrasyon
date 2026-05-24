@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Database, Eye, FileSpreadsheet, Link2, Play, RotateCcw, Save } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock3, Database, Eye, FileSpreadsheet, Link2, PauseCircle, Play, Power, RotateCcw, Save } from 'lucide-react';
 import { api, asArray, asObject } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -264,6 +264,73 @@ function withRowIds(rows, prefix) {
   return asArray(rows).map((row, index) => ({ id: `${prefix}-${row.row_number || row.sku || index}`, ...asObject(row) }));
 }
 
+function parseDate(value) {
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime()) ? date : null;
+}
+
+function formatDateTime(value) {
+  const date = parseDate(value);
+  return date ? date.toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+}
+
+function formatFrequency(minutes) {
+  const safeMinutes = Number(minutes) || 1440;
+  if (safeMinutes < 60) return `${safeMinutes} dk`;
+  if (safeMinutes % 1440 === 0) return `${safeMinutes / 1440} gun`;
+  if (safeMinutes % 60 === 0) return `${safeMinutes / 60} saat`;
+  return `${safeMinutes} dk`;
+}
+
+function getSourceRuns(source, runs) {
+  return asArray(runs)
+    .filter((run) => Number(run.xml_source_id) === Number(source?.id))
+    .sort((a, b) => (parseDate(b.queued_at || b.created_at)?.getTime() || 0) - (parseDate(a.queued_at || a.created_at)?.getTime() || 0));
+}
+
+function getLatestSourceRun(source, runs) {
+  return getSourceRuns(source, runs)[0] || null;
+}
+
+function getRunningSourceRun(source, runs) {
+  return getSourceRuns(source, runs).find((run) => ['queued', 'running'].includes(run.status)) || null;
+}
+
+function getNextRunAt(source) {
+  if (!source?.is_active) return null;
+  const last = parseDate(source.last_import_at);
+  if (!last) return new Date();
+  return new Date(last.getTime() + Math.max(5, Number(source.frequency_minutes) || 1440) * 60 * 1000);
+}
+
+function getAutomationStatus(source, runs) {
+  if (!source?.is_active) return { key: 'paused', label: 'Pasif', tone: 'blocked' };
+
+  const running = getRunningSourceRun(source, runs);
+  if (running?.status === 'running') return { key: 'running', label: 'Calisiyor', tone: 'running' };
+  if (running?.status === 'queued') return { key: 'queued', label: 'Kuyrukta', tone: 'running' };
+  if (source.last_status === 'failed') return { key: 'error', label: 'Hata', tone: 'blocked' };
+
+  const nextRunAt = getNextRunAt(source);
+  if (nextRunAt && nextRunAt <= new Date()) return { key: 'due', label: 'Hazir', tone: 'running' };
+
+  return { key: 'healthy', label: 'Saglikli', tone: 'ready' };
+}
+
+function getSourceRunSummary(source, runs) {
+  const latest = getLatestSourceRun(source, runs);
+  const report = asObject(latest?.report);
+
+  return {
+    latest,
+    success: latest?.success_count || 0,
+    errors: latest?.error_count || 0,
+    filtered: report.filtered_count || report.filtered || 0,
+    mapped: (report.mapped_category_count || 0) + (report.mapped_brand_count || 0),
+    stockStrategy: (report.zero_stocked_count || report.zero_stocked || 0) + (report.deactivated_count || report.deactivated || 0),
+  };
+}
+
 export function ImportCenterPage() {
   const { notify } = useApp();
   const { loading, error, setError, run } = useAsync();
@@ -286,6 +353,7 @@ export function ImportCenterPage() {
   const [lastQueuedRunId, setLastQueuedRunId] = useState(null);
   const [mappingTab, setMappingTab] = useState('categories');
   const [runDetailTab, setRunDetailTab] = useState('summary');
+  const [selectedXmlSourceId, setSelectedXmlSourceId] = useState(null);
 
   const headers = useMemo(() => asArray(preview?.headers), [preview]);
   const validRows = asArray(preview?.valid_rows);
@@ -481,6 +549,29 @@ export function ImportCenterPage() {
     }, { onError: (message) => notify('error', message) });
   };
 
+  const editXmlSource = (source) => {
+    setSelectedXmlSourceId(source.id);
+    setSourceType('xml');
+    selectXmlSource(source.id);
+    setStep(1);
+  };
+
+  const previewXmlSource = (source) => {
+    setSelectedXmlSourceId(source.id);
+    setSourceType('xml');
+    selectXmlSource(source.id);
+    setStep(2);
+  };
+
+  const toggleXmlSourceActive = async (source) => {
+    await run(async () => {
+      const updated = await api.xmlSources.update(source.id, { is_active: !source.is_active });
+      setXmlSources((current) => current.map((item) => (Number(item.id) === Number(source.id) ? { ...item, ...updated } : item)));
+      notify('success', updated.is_active ? 'XML kaynagi aktif edildi.' : 'XML kaynagi pasife alindi.');
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
   const setOption = (key, value) => setOptions((current) => ({ ...current, [key]: value }));
   const setNestedOption = (group, key, value) => setOptions((current) => ({
     ...current,
@@ -555,6 +646,20 @@ export function ImportCenterPage() {
   const selectedPriceRows = withRowIds(selectedReport.price_changed_rows, 'price');
   const selectedStockRows = withRowIds(selectedReport.stock_strategy_rows, 'stock');
   const selectedErrorBreakdown = Object.entries(asObject(selectedReport.error_breakdown)).map(([message, count]) => ({ id: message, message, count }));
+  const selectedXmlSource = xmlSources.find((source) => Number(source.id) === Number(selectedXmlSourceId)) || xmlSources[0] || null;
+  const selectedSourceRuns = selectedXmlSource ? getSourceRuns(selectedXmlSource, runs).slice(0, 10) : [];
+  const selectedSourceStatus = selectedXmlSource ? getAutomationStatus(selectedXmlSource, runs) : null;
+  const selectedSourceSummary = selectedXmlSource ? getSourceRunSummary(selectedXmlSource, runs) : null;
+  const sourceAutomationStats = xmlSources.reduce((stats, source) => {
+    const status = getAutomationStatus(source, runs).key;
+    return {
+      total: stats.total + 1,
+      active: stats.active + (source.is_active ? 1 : 0),
+      due: stats.due + (status === 'due' ? 1 : 0),
+      busy: stats.busy + (['queued', 'running'].includes(status) ? 1 : 0),
+      errors: stats.errors + (status === 'error' ? 1 : 0),
+    };
+  }, { total: 0, active: 0, due: 0, busy: 0, errors: 0 });
 
   return (
     <>
@@ -922,22 +1027,124 @@ export function ImportCenterPage() {
       </section>
 
       <section className="import-history-grid">
-        <section className="panel">
-          <h2>XML Kaynaklari</h2>
-          <DataTable
-            rows={xmlSources}
-            emptyTitle="XML kaynagi yok"
-            emptyText="Tedarikci XML URL'si ekleyerek periyodik urun aktarimina baslayin."
-            columns={[
-              { key: 'name', label: 'Kaynak' },
-              { key: 'company', label: 'Firma', render: (row) => row.company?.name || '-' },
-              { key: 'supplier_name', label: 'Tedarikci' },
-              { key: 'frequency_minutes', label: 'Siklik', render: (row) => `${row.frequency_minutes || 1440} dk` },
-              { key: 'last_import_at', label: 'Son Calisma', render: (row) => row.last_import_at || '-' },
-              { key: 'last_status', label: 'Sonuc', render: (row) => <StatusPill tone={statusClass(row.last_status)} label={statusLabel(row.last_status)} /> },
-              { key: 'actions', label: 'Islem', render: (row) => <div className="row-actions"><button type="button" onClick={() => { setSourceType('xml'); selectXmlSource(row.id); setStep(2); }}><Eye size={15} /> Onizle</button><button type="button" onClick={() => importXml(row)}><Play size={15} /> Calistir</button></div> },
-            ]}
-          />
+        <section className="panel xml-source-automation-panel">
+          <div className="wizard-step-header compact-header">
+            <span>XML otomasyon</span>
+            <h2>XML Kaynak Yonetimi</h2>
+            <p>Scheduler 5 dakikada bir calisir; siradaki calisma zamani kaynak frekansi ve son import zamanindan yaklasik hesaplanir.</p>
+          </div>
+          <div className="xml-source-kpis">
+            <div><span>Toplam kaynak</span><strong>{sourceAutomationStats.total}</strong></div>
+            <div><span>Aktif kaynak</span><strong>{sourceAutomationStats.active}</strong></div>
+            <div><span>Calismaya hazir</span><strong>{sourceAutomationStats.due}</strong></div>
+            <div><span>Kuyruk / calisan</span><strong>{sourceAutomationStats.busy}</strong></div>
+            <div><span>Son calisma hatali</span><strong>{sourceAutomationStats.errors}</strong></div>
+          </div>
+
+          {xmlSources.length === 0 ? (
+            <SoftEmpty title="XML kaynagi yok" text="Tedarikci XML URL'si ekleyerek periyodik urun aktarimina baslayin." />
+          ) : (
+            <div className="xml-source-dashboard">
+              <div className="xml-source-list">
+                {xmlSources.map((source) => {
+                  const status = getAutomationStatus(source, runs);
+                  const runningRun = getRunningSourceRun(source, runs);
+                  const summary = getSourceRunSummary(source, runs);
+                  const isSelected = Number(selectedXmlSource?.id) === Number(source.id);
+
+                  return (
+                    <button type="button" key={source.id} className={isSelected ? 'xml-source-card active' : 'xml-source-card'} onClick={() => setSelectedXmlSourceId(source.id)}>
+                      <div className="xml-source-card-head">
+                        <div>
+                          <strong>{source.name}</strong>
+                          <span>{source.supplier_name || 'Tedarikci yok'} · {source.company?.name || 'Firma yok'}</span>
+                        </div>
+                        <StatusPill tone={status.tone} label={status.label} />
+                      </div>
+                      <div className="xml-source-card-grid">
+                        <div><span>Siklik</span><strong>{formatFrequency(source.frequency_minutes)}</strong></div>
+                        <div><span>Siradaki</span><strong>{source.is_active ? formatDateTime(getNextRunAt(source)) : 'Pasif'}</strong></div>
+                        <div><span>Son calisma</span><strong>{formatDateTime(source.last_import_at)}</strong></div>
+                        <div><span>Son durum</span><strong>{statusLabel(source.last_status)}</strong></div>
+                      </div>
+                      {runningRun ? (
+                        <div className="xml-source-progress">
+                          <span>{statusLabel(runningRun.status)} · %{runningRun.progress || 0}</span>
+                          <div className="progress inline-progress"><span style={{ width: `${runningRun.progress || 0}%` }} /></div>
+                        </div>
+                      ) : null}
+                      <div className="xml-source-run-summary">
+                        <span>Basarili <strong>{summary.success}</strong></span>
+                        <span>Hatali <strong>{summary.errors}</strong></span>
+                        <span>Filtre <strong>{summary.filtered}</strong></span>
+                        <span>Mapping <strong>{summary.mapped}</strong></span>
+                        <span>Stok <strong>{summary.stockStrategy}</strong></span>
+                      </div>
+                      {source.last_error ? <p className="xml-source-error">{source.last_error}</p> : null}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <aside className="xml-source-detail-panel">
+                {selectedXmlSource ? (
+                  <>
+                    <div className="xml-source-detail-head">
+                      <div>
+                        <span className="eyebrow">Kaynak detayi</span>
+                        <h3>{selectedXmlSource.name}</h3>
+                        <p>{selectedXmlSource.supplier_name || 'Tedarikci yok'}</p>
+                      </div>
+                      <StatusPill tone={selectedSourceStatus?.tone} label={selectedSourceStatus?.label} />
+                    </div>
+                    <div className="xml-source-detail-grid">
+                      <div><span>Firma</span><strong>{selectedXmlSource.company?.name || '-'}</strong></div>
+                      <div><span>Otomasyon</span><strong>{selectedXmlSource.is_active ? 'Aktif' : 'Pasif'}</strong></div>
+                      <div><span>Calisma sikligi</span><strong>{formatFrequency(selectedXmlSource.frequency_minutes)}</strong></div>
+                      <div><span>Siradaki calisma</span><strong>{selectedXmlSource.is_active ? formatDateTime(getNextRunAt(selectedXmlSource)) : 'Scheduler pasif'}</strong></div>
+                      <div><span>Son calisma</span><strong>{formatDateTime(selectedXmlSource.last_import_at)}</strong></div>
+                      <div><span>Son run</span><strong>{selectedSourceSummary?.latest?.id || '-'}</strong></div>
+                    </div>
+                    {!selectedXmlSource.is_active ? (
+                      <div className="state-box workflow-warning">
+                        <PauseCircle size={18} />
+                        <span>Pasif kaynaklari scheduler calistirmaz. Manuel calisma otomasyondan bagimsizdir.</span>
+                      </div>
+                    ) : null}
+                    {selectedXmlSource.last_error ? (
+                      <div className="state-box workflow-warning">
+                        <AlertTriangle size={18} />
+                        <span>{selectedXmlSource.last_error}</span>
+                      </div>
+                    ) : null}
+                    <div className="xml-source-actions">
+                      <button type="button" className="secondary-button" onClick={() => previewXmlSource(selectedXmlSource)}><Eye size={15} /> Onizle</button>
+                      <button type="button" onClick={() => importXml(selectedXmlSource)}><Play size={15} /> Manuel Calistir</button>
+                      <button type="button" className="secondary-button" onClick={() => editXmlSource(selectedXmlSource)}><Save size={15} /> Duzenle</button>
+                      <button type="button" className="secondary-button" onClick={() => toggleXmlSourceActive(selectedXmlSource)}>{selectedXmlSource.is_active ? <PauseCircle size={15} /> : <Power size={15} />} {selectedXmlSource.is_active ? 'Pasife Al' : 'Aktif Et'}</button>
+                    </div>
+                    <div className="xml-source-run-list">
+                      <h3>Kaynak bazli son runlar</h3>
+                      {selectedSourceRuns.length === 0 ? (
+                        <SoftEmpty title="Run gecmisi yok" text="Bu kaynak icin son 30 import kaydi icinde run bulunmuyor." />
+                      ) : selectedSourceRuns.map((sourceRun) => (
+                        <div className="xml-source-run-item" key={sourceRun.id}>
+                          <div>
+                            <strong>Run #{sourceRun.id}</strong>
+                            <span>{formatDateTime(sourceRun.queued_at || sourceRun.created_at)} · {sourceRun.progress || 0}%</span>
+                          </div>
+                          <StatusPill tone={statusClass(sourceRun.status)} label={statusLabel(sourceRun.status)} />
+                          <button type="button" className="secondary-button" onClick={() => showRun(sourceRun.id)}>Run detayini ac</button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <SoftEmpty title="Kaynak secin" text="Otomasyon durumu ve run gecmisi icin bir XML kaynagi secin." />
+                )}
+              </aside>
+            </div>
+          )}
         </section>
 
         <section className="panel">
