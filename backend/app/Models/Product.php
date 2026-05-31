@@ -15,6 +15,7 @@ class Product extends Model
         'company_id',
         'supplier_name',
         'xml_source_id',
+        'parent_product_id',
         'source_product_code',
         'sku',
         'barcode',
@@ -42,7 +43,10 @@ class Product extends Model
         'gallery_images',
         'video_url',
         'variant_group',
+        'variant_group_key',
         'variant_options',
+        'variant_attributes',
+        'variant_sort_order',
         'trendyol_attributes',
         'hepsiburada_attributes',
         'tags',
@@ -71,6 +75,8 @@ class Product extends Model
             'weight' => 'decimal:2',
             'gallery_images' => 'array',
             'variant_options' => 'array',
+            'variant_attributes' => 'array',
+            'variant_sort_order' => 'integer',
             'trendyol_attributes' => 'array',
             'hepsiburada_attributes' => 'array',
             'tags' => 'array',
@@ -91,6 +97,16 @@ class Product extends Model
     public function xmlSource(): BelongsTo
     {
         return $this->belongsTo(XmlSource::class);
+    }
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Product::class, 'parent_product_id');
+    }
+
+    public function variants(): HasMany
+    {
+        return $this->hasMany(Product::class, 'parent_product_id')->orderBy('variant_sort_order')->orderBy('id');
     }
 
     public function images(): HasMany

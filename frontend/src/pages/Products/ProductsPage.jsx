@@ -42,6 +42,23 @@ function formatDateTime(value) {
   return new Intl.DateTimeFormat('tr-TR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
 }
 
+function variantSummary(product) {
+  const variants = Array.isArray(product.variants) ? product.variants : [];
+  const childCount = product.variants_count ?? variants.length;
+  const totalStock = variants.reduce((sum, variant) => sum + Number(variant.stock || 0), 0);
+  const prices = variants.map((variant) => Number(variant.price || 0)).filter((price) => price > 0);
+  const minPrice = prices.length ? Math.min(...prices) : null;
+  const maxPrice = prices.length ? Math.max(...prices) : null;
+
+  return { childCount, totalStock, minPrice, maxPrice };
+}
+
+function variantBadge(product) {
+  if (product.product_type === 'parent') return 'Parent';
+  if (product.parent_product_id || product.product_type === 'variant') return 'Variant';
+  return null;
+}
+
 export function ProductsPage() {
   const { notify } = useApp();
   const { loading, error, run } = useAsync();
@@ -198,7 +215,7 @@ export function ProductsPage() {
 
   const filteredProducts = products.filter((product) => {
     const query = search.trim().toLowerCase();
-    const matchesSearch = !query || [product.name, product.sku, product.barcode].some((value) => String(value || '').toLowerCase().includes(query));
+    const matchesSearch = !query || [product.name, product.sku, product.barcode, product.parent?.sku].some((value) => String(value || '').toLowerCase().includes(query));
     const matchesStatus = !status || product.status === status;
     const matchesCompany = !companyId || String(product.company_id) === String(companyId);
     const missing = missingFields(product);
@@ -337,8 +354,22 @@ export function ProductsPage() {
           columns={[
             { key: 'select', label: '', render: (row) => <input type="checkbox" checked={selected.includes(row.id)} onChange={() => toggleSelected(row.id)} /> },
             { key: 'image', label: 'Gorsel', render: (row) => productImage(row) ? <img className="table-product-image" src={productImage(row)} alt={row.name} /> : <span className="table-product-placeholder"><PackagePlus size={16} /></span> },
-            { key: 'name', label: 'Urun', render: (row) => <div className="table-product-title"><strong>{row.name}</strong><span>{row.sku}</span></div> },
+            { key: 'name', label: 'Urun', render: (row) => <div className="table-product-title"><strong>{row.name}</strong><span>{row.sku}</span>{variantBadge(row) ? <small className={`variant-badge ${row.product_type === 'parent' ? 'parent' : 'child'}`}>{variantBadge(row)}</small> : null}</div> },
             { key: 'xml_source', label: 'XML Kaynak', render: (row) => <div className="table-product-title"><strong>{row.xml_source?.name || '-'}</strong><span>{row.source_product_code || row.supplier_name || '-'}</span><small>{formatDateTime(row.last_xml_sync_at)}</small></div> },
+            {
+              key: 'variant',
+              label: 'Varyant',
+              render: (row) => {
+                const summary = variantSummary(row);
+                if (row.product_type === 'parent') {
+                  return <div className="table-product-title"><strong>{summary.childCount} child</strong><span>Toplam stok {summary.totalStock}</span><small>{summary.minPrice === null ? '-' : `${formatPrice(summary.minPrice)} - ${formatPrice(summary.maxPrice)}`}</small></div>;
+                }
+                if (row.parent_product_id || row.parent) {
+                  return <div className="table-product-title"><strong>{row.parent?.sku || `Parent #${row.parent_product_id}`}</strong><span>{row.variant_group_key || row.variant_group || '-'}</span></div>;
+                }
+                return '-';
+              },
+            },
             { key: 'stock', label: 'Stok', render: (row) => quickEditId === row.id ? <input type="number" value={quickEdit.stock} onChange={(event) => setQuickEdit({ ...quickEdit, stock: event.target.value })} /> : <span className={Number(row.stock || 0) <= Number(row.critical_stock || 0) ? 'badge running' : 'badge active'}>{row.stock}</span> },
             { key: 'price', label: 'Fiyat', render: (row) => quickEditId === row.id ? <input type="number" value={quickEdit.price} onChange={(event) => setQuickEdit({ ...quickEdit, price: event.target.value })} /> : formatPrice(row.price) },
             { key: 'score', label: 'Hazirlik Durumu', render: (row) => <div className="score-cell"><strong>{readinessScore(row)}%</strong><span>{publishBlockReason(row)}</span></div> },
@@ -363,8 +394,8 @@ export function ProductsPage() {
                     <Link to={`/products/${row.id}`}><Eye size={15} /> Detay</Link>
                     <Link to={`/products/category-mapping?category=${encodeURIComponent(row.category || '')}`}><Layers3 size={15} /> Kategori esle</Link>
                     <button type="button" onClick={() => startQuickEdit(row)}>Stok/fiyat duzenle</button>
-                    <button type="button" disabled={loading} onClick={() => addToPublishQueue([row.id])}>Aktarima ekle</button>
-                    <button type="button" disabled={loading} onClick={() => sendProducts([row.id])}><Send size={15} /> Hazirla</button>
+                    <button type="button" disabled={loading || row.product_type === 'parent'} onClick={() => addToPublishQueue([row.id])}>Aktarima ekle</button>
+                    <button type="button" disabled={loading || row.product_type === 'parent'} onClick={() => sendProducts([row.id])}><Send size={15} /> Hazirla</button>
                   </div>
                 </details>
               ),

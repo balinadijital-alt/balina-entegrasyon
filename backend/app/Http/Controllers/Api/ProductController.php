@@ -13,7 +13,15 @@ class ProductController extends Controller
     public function index(Request $request): JsonResponse
     {
         $products = Product::query()
-            ->with(['company:id,name', 'xmlSource:id,name', 'images', 'marketplaceStatuses'])
+            ->with([
+                'company:id,name',
+                'xmlSource:id,name',
+                'parent:id,name,sku,product_type',
+                'variants:id,parent_product_id,sku,name,stock,price,barcode,variant_attributes,status',
+                'images',
+                'marketplaceStatuses',
+            ])
+            ->withCount('variants')
             ->when($this->tenantCompanyId($request), fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->when($request->filled('company_id'), fn ($query) => $query->where('company_id', $request->integer('company_id')))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
@@ -35,14 +43,14 @@ class ProductController extends Controller
         $product = Product::create($this->validated($request));
         $readiness->check($product);
 
-        return response()->json($product->load('company', 'images', 'marketplaceStatuses'), 201);
+        return response()->json($product->load('company', 'parent:id,name,sku,product_type', 'variants', 'images', 'marketplaceStatuses'), 201);
     }
 
     public function show(Product $product): JsonResponse
     {
         $this->abortIfNotTenant(request(), $product);
 
-        return response()->json($product->load('company', 'xmlSource:id,name', 'images', 'marketplaceStatuses'));
+        return response()->json($product->load('company', 'xmlSource:id,name', 'parent:id,name,sku,product_type', 'variants', 'images', 'marketplaceStatuses'));
     }
 
     public function update(Request $request, Product $product, ProductReadinessService $readiness): JsonResponse
@@ -52,7 +60,7 @@ class ProductController extends Controller
         $product->update($this->validated($request, $product->id));
         $readiness->check($product);
 
-        return response()->json($product->load('company', 'xmlSource:id,name', 'images', 'marketplaceStatuses'));
+        return response()->json($product->load('company', 'xmlSource:id,name', 'parent:id,name,sku,product_type', 'variants', 'images', 'marketplaceStatuses'));
     }
 
     public function destroy(Product $product): JsonResponse
@@ -72,7 +80,7 @@ class ProductController extends Controller
             'sku' => ['required', 'string', 'max:128'],
             'barcode' => ['nullable', 'string', 'max:128'],
             'name' => ['required', 'string', 'max:255'],
-            'product_type' => ['nullable', 'in:standard,variant,digital,square_meter'],
+            'product_type' => ['nullable', 'in:standard,variant,parent,digital,square_meter'],
             'short_description' => ['nullable', 'string'],
             'description' => ['nullable', 'string'],
             'seo_title' => ['nullable', 'string', 'max:255'],

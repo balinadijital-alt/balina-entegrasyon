@@ -66,7 +66,11 @@ class HepsiburadaService extends AbstractMarketplaceService
     public function sendProducts(MarketplaceAccount $account): array
     {
         $this->assertAccount($account);
-        $products = $account->company->products()->with('images')->where('status', 'active')->get();
+        $products = $account->company->products()
+            ->with('images')
+            ->where('status', 'active')
+            ->where(fn ($query) => $query->whereNull('product_type')->orWhere('product_type', '!=', 'parent'))
+            ->get();
 
         if ($products->isEmpty()) {
             throw new MarketplaceApiException('Hepsiburada icin aktif urun bulunamadi.');
@@ -105,7 +109,10 @@ class HepsiburadaService extends AbstractMarketplaceService
     public function updatePriceAndInventory(MarketplaceAccount $account): array
     {
         $this->assertAccount($account);
-        $products = $account->company->products()->where('status', 'active')->get();
+        $products = $account->company->products()
+            ->where('status', 'active')
+            ->where(fn ($query) => $query->whereNull('product_type')->orWhere('product_type', '!=', 'parent'))
+            ->get();
 
         if ($products->isEmpty()) {
             throw new MarketplaceApiException('Stok/fiyat guncellemesi icin aktif urun bulunamadi.');

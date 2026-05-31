@@ -109,7 +109,11 @@ class TrendyolService extends AbstractMarketplaceService
     {
         $this->assertTrendyolAccount($account);
 
-        $products = $account->company->products()->with('images')->where('status', 'active')->get();
+        $products = $account->company->products()
+            ->with('images')
+            ->where('status', 'active')
+            ->where(fn ($query) => $query->whereNull('product_type')->orWhere('product_type', '!=', 'parent'))
+            ->get();
 
         if ($products->isEmpty()) {
             throw new MarketplaceApiException('Trendyol icin aktif urun bulunamadi.');
@@ -142,7 +146,10 @@ class TrendyolService extends AbstractMarketplaceService
     {
         $this->assertTrendyolAccount($account);
 
-        $products = $account->company->products()->where('status', 'active')->get();
+        $products = $account->company->products()
+            ->where('status', 'active')
+            ->where(fn ($query) => $query->whereNull('product_type')->orWhere('product_type', '!=', 'parent'))
+            ->get();
 
         if ($products->isEmpty()) {
             throw new MarketplaceApiException('Stok/fiyat guncellemesi icin aktif urun bulunamadi.');

@@ -21,6 +21,7 @@ class MarketplacePublishService
             ->with(['company:id,name', 'images', 'marketplaceStatuses'])
             ->where('company_id', $marketplace->company_id)
             ->whereIn('id', $productIds)
+            ->where(fn ($query) => $query->whereNull('product_type')->orWhere('product_type', '!=', 'parent'))
             ->get();
 
         $reports = $products

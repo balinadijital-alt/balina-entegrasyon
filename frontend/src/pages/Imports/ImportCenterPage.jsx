@@ -386,6 +386,7 @@ export function ImportCenterPage() {
   const previewPriceRows = withRowIds(preview?.price_changed_rows, 'preview-price');
   const previewReadinessRows = withRowIds(preview?.readiness_rows, 'preview-readiness');
   const previewOwnershipConflictRows = withRowIds(preview?.ownership_conflict_rows, 'preview-ownership-conflict');
+  const previewVariantRows = withRowIds(preview?.variant_rows, 'preview-variant');
   const stockStrategyPreview = asObject(preview?.stock_strategy_preview);
   const previewStockRows = withRowIds(stockStrategyPreview.affected_products, 'preview-stock');
   const previewCategories = useMemo(() => uniqueMappedValues(previewRows, 'category'), [validRows, invalidRows]);
@@ -677,6 +678,7 @@ export function ImportCenterPage() {
   const selectedStockRows = withRowIds(selectedReport.stock_strategy_rows, 'stock');
   const selectedConflictRows = withRowIds(selectedReport.conflict_rows, 'conflict');
   const selectedClaimedRows = withRowIds(selectedReport.claimed_existing_rows, 'claimed');
+  const selectedVariantRows = withRowIds(selectedReport.variant_rows, 'variant');
   const selectedErrorBreakdown = Object.entries(asObject(selectedReport.error_breakdown)).map(([message, count]) => ({ id: message, message, count }));
   const selectedXmlSource = xmlSources.find((source) => Number(source.id) === Number(selectedXmlSourceId)) || xmlSources[0] || null;
   const selectedSourceRuns = selectedXmlSource ? getSourceRuns(selectedXmlSource, runs).slice(0, 10) : [];
@@ -870,6 +872,7 @@ export function ImportCenterPage() {
                       <div><span>Filtrelenecek</span><strong>{simulationSummary.filtered_count || 0}</strong></div>
                       <div><span>Hatali</span><strong>{simulationSummary.invalid_count || 0}</strong></div>
                       <div><span>Source conflict</span><strong>{simulationSummary.conflict_count || 0}</strong></div>
+                      <div><span>Variant group</span><strong>{simulationSummary.variant_child_count || 0}</strong></div>
                       <div><span>Mapping uygulanacak</span><strong>{simulationSummary.mapped_count || 0}</strong></div>
                       <div><span>Fiyatı değişecek</span><strong>{simulationSummary.price_changed_count || 0}</strong></div>
                       <div><span>Readiness eksikli</span><strong>{simulationSummary.readiness_issue_count || 0}</strong></div>
@@ -880,6 +883,7 @@ export function ImportCenterPage() {
                         ['importable', 'Import Edilecek'],
                         ['filtered', 'Filtrelenen'],
                         ['conflict', 'Ownership Conflict'],
+                        ['variant', 'Varyant'],
                         ['mapping', 'Mapping'],
                         ['price', 'Fiyat'],
                         ['readiness', 'Readiness'],
@@ -964,6 +968,23 @@ export function ImportCenterPage() {
                           { key: 'existing_xml_source_id', label: 'Mevcut source' },
                           { key: 'current_xml_source_id', label: 'Bu source' },
                           { key: 'reason', label: 'Sebep', render: (row) => <StatusPill tone="blocked" label={row.reason || '-'} /> },
+                        ]}
+                      />
+                    )}
+
+                    {simulationTab === 'variant' && (
+                      <DataTable
+                        rows={previewVariantRows}
+                        emptyTitle="Variant group algilanmadi"
+                        emptyText="Mevcut preview orneginde parent/child aday satiri bulunmuyor."
+                        columns={[
+                          { key: 'row_number', label: 'Satir' },
+                          { key: 'sku', label: 'Child SKU' },
+                          { key: 'barcode', label: 'Barkod' },
+                          { key: 'variant_group_key', label: 'Group key' },
+                          { key: 'parent_sku', label: 'Parent SKU' },
+                          { key: 'parent_exists', label: 'Parent', render: (row) => <StatusPill tone={row.parent_exists ? 'ready' : 'running'} label={row.parent_exists ? 'Mevcut' : 'Olusturulacak'} /> },
+                          { key: 'variant_attributes', label: 'Nitelikler', render: (row) => Object.entries(asObject(row.variant_attributes)).map(([key, value]) => `${key}: ${value}`).join(', ') || '-' },
                         ]}
                       />
                     )}
@@ -1385,6 +1406,8 @@ export function ImportCenterPage() {
             <div><span>Marka eslesmeyen</span><strong>{selectedReport.unmapped_brand_count || 0}</strong></div>
             <div><span>Source conflict</span><strong>{selectedReport.conflict_count || 0}</strong></div>
             <div><span>Claim edilen</span><strong>{selectedReport.claimed_existing_count || 0}</strong></div>
+            <div><span>Variant child</span><strong>{selectedReport.variant_child_count || 0}</strong></div>
+            <div><span>Parent created</span><strong>{selectedReport.variant_parent_created_count || 0}</strong></div>
             <div><span>Stok sifirlanan</span><strong>{selectedReport.zero_stocked_count || selectedReport.zero_stocked || 0}</strong></div>
             <div><span>Pasife alinan</span><strong>{selectedReport.deactivated_count || selectedReport.deactivated || 0}</strong></div>
           </div>
@@ -1397,6 +1420,7 @@ export function ImportCenterPage() {
               ['price', 'Fiyat'],
               ['conflict', 'Ownership Conflict'],
               ['claimed', 'Claim Edilen'],
+              ['variant', 'Varyant'],
               ['stock', 'Stok Stratejisi'],
             ].map(([key, label]) => (
               <button type="button" key={key} className={runDetailTab === key ? 'tab active' : 'tab'} onClick={() => setRunDetailTab(key)}>{label}</button>
@@ -1410,6 +1434,7 @@ export function ImportCenterPage() {
               <SoftEmpty><strong>{selectedPriceRows.length}</strong><span>Fiyat kurali uygulanan satir</span></SoftEmpty>
               <SoftEmpty><strong>{selectedConflictRows.length}</strong><span>Source conflict satiri</span></SoftEmpty>
               <SoftEmpty><strong>{selectedClaimedRows.length}</strong><span>Claim edilen mevcut urun</span></SoftEmpty>
+              <SoftEmpty><strong>{selectedVariantRows.length}</strong><span>Parent/child varyant satiri</span></SoftEmpty>
               <SoftEmpty><strong>{selectedStockRows.length}</strong><span>Stok stratejisi kaydi</span></SoftEmpty>
               <div className="import-error-breakdown">
                 <h3>Hata kirilimi</h3>
@@ -1517,6 +1542,24 @@ export function ImportCenterPage() {
                 { key: 'product_id', label: 'Urun ID' },
                 { key: 'xml_source_id', label: 'XML source' },
                 { key: 'source_product_code', label: 'Source kodu' },
+              ]}
+            />
+          )}
+
+          {runDetailTab === 'variant' && (
+            <DataTable
+              rows={selectedVariantRows}
+              emptyTitle="Varyant satiri yok"
+              emptyText="Bu import run icinde parent/child varyant baglantisi kurulan satir bulunmuyor."
+              columns={[
+                { key: 'row_number', label: 'Satir' },
+                { key: 'sku', label: 'Child SKU' },
+                { key: 'barcode', label: 'Barkod' },
+                { key: 'variant_group_key', label: 'Group key' },
+                { key: 'parent_product_id', label: 'Parent ID' },
+                { key: 'parent_sku', label: 'Parent SKU' },
+                { key: 'parent_created', label: 'Parent', render: (row) => <StatusPill tone={row.parent_created ? 'running' : 'ready'} label={row.parent_created ? 'Olusturuldu' : 'Mevcut'} /> },
+                { key: 'variant_attributes', label: 'Nitelikler', render: (row) => Object.entries(asObject(row.variant_attributes)).map(([key, value]) => `${key}: ${value}`).join(', ') || '-' },
               ]}
             />
           )}

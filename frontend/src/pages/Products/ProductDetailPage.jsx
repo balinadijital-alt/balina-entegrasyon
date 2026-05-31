@@ -47,6 +47,10 @@ function formatDateTime(value) {
   return new Intl.DateTimeFormat('tr-TR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
 }
 
+function formatPrice(value) {
+  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(Number(value || 0));
+}
+
 export function ProductDetailPage() {
   const { id } = useParams();
   const { notify } = useApp();
@@ -103,6 +107,8 @@ export function ProductDetailPage() {
 
   const image = productImage(product);
   const missing = missingFields(product);
+  const childVariants = Array.isArray(product.variants) ? product.variants : [];
+  const legacyVariants = Array.isArray(product.variant_options) ? product.variant_options : [];
 
   return (
     <>
@@ -159,6 +165,8 @@ export function ProductDetailPage() {
             <div className="detail-card"><span>KDV</span><strong>%{product.vat_rate}</strong></div>
             <div className="detail-card"><span>Desi</span><strong>{product.dimensional_weight || '-'}</strong></div>
             <div className="detail-card"><span>Durum</span><strong>{product.status}</strong></div>
+            <div className="detail-card"><span>Parent</span><strong>{product.parent?.sku || '-'}</strong></div>
+            <div className="detail-card"><span>Varyant grubu</span><strong>{product.variant_group_key || product.variant_group || '-'}</strong></div>
           </div>
         </section>
       )}
@@ -177,11 +185,31 @@ export function ProductDetailPage() {
       {activeTab === 'variants' && (
         <section className="panel">
           <h2>Varyantlar</h2>
-          {(product.variant_options || []).length === 0 ? (
+          {product.parent ? (
+            <div className="state-box">
+              <span>Bu urun {product.parent.sku} parent urununun child varyantidir.</span>
+            </div>
+          ) : null}
+          {childVariants.length > 0 ? (
+            <DataTable
+              rows={childVariants}
+              emptyTitle="Child varyant yok"
+              emptyText="Bu parent urune bagli child varyant bulunmuyor."
+              columns={[
+                { key: 'sku', label: 'SKU' },
+                { key: 'barcode', label: 'Barkod' },
+                { key: 'name', label: 'Urun' },
+                { key: 'stock', label: 'Stok' },
+                { key: 'price', label: 'Fiyat', render: (row) => formatPrice(row.price) },
+                { key: 'variant_attributes', label: 'Nitelikler', render: (row) => Object.entries(row.variant_attributes || {}).map(([key, value]) => `${key}: ${value}`).join(', ') || '-' },
+                { key: 'status', label: 'Durum' },
+              ]}
+            />
+          ) : legacyVariants.length === 0 ? (
             <div className="soft-empty">Bu urunde varyant bulunmuyor.</div>
           ) : (
             <div className="category-list">
-              {(product.variant_options || []).map((variant, index) => <span key={variant.sku || variant.name || index}>{variant.name || variant.sku || `Varyant ${index + 1}`}</span>)}
+              {legacyVariants.map((variant, index) => <span key={variant.sku || variant.name || index}>{variant.name || variant.sku || `Varyant ${index + 1}`}</span>)}
             </div>
           )}
         </section>

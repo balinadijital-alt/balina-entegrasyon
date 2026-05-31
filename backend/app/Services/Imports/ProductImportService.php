@@ -175,6 +175,8 @@ class ProductImportService
                 'unmapped_brand' => 0,
                 'conflict' => 0,
                 'claimed_existing' => 0,
+                'variant_child' => 0,
+                'variant_parent_created' => 0,
             ];
             $reportDetails = [
                 'filtered_rows' => [],
@@ -183,6 +185,7 @@ class ProductImportService
                 'stock_strategy_rows' => [],
                 'conflict_rows' => [],
                 'claimed_existing_rows' => [],
+                'variant_rows' => [],
                 'error_breakdown' => [],
             ];
 
@@ -254,6 +257,14 @@ class ProductImportService
                     $this->appendReportDetail($reportDetails['claimed_existing_rows'], $result['claim_detail']);
                 }
 
+                if (! empty($result['variant_detail'])) {
+                    $stats['variant_child']++;
+                    if (! empty($result['variant_detail']['parent_created'])) {
+                        $stats['variant_parent_created']++;
+                    }
+                    $this->appendReportDetail($reportDetails['variant_rows'], $result['variant_detail']);
+                }
+
                 if ($result['status'] !== 'skipped') {
                     $stats['success']++;
                 }
@@ -283,12 +294,15 @@ class ProductImportService
                 'unmapped_brand_count' => $stats['unmapped_brand'],
                 'conflict_count' => $stats['conflict'],
                 'claimed_existing_count' => $stats['claimed_existing'],
+                'variant_child_count' => $stats['variant_child'],
+                'variant_parent_created_count' => $stats['variant_parent_created'],
                 'filtered_rows' => $reportDetails['filtered_rows'],
                 'mapped_rows' => $reportDetails['mapped_rows'],
                 'price_changed_rows' => $reportDetails['price_changed_rows'],
                 'stock_strategy_rows' => $missingResult['rows'],
                 'conflict_rows' => $reportDetails['conflict_rows'],
                 'claimed_existing_rows' => $reportDetails['claimed_existing_rows'],
+                'variant_rows' => $reportDetails['variant_rows'],
                 'error_breakdown' => $reportDetails['error_breakdown'],
             ];
 
@@ -353,6 +367,7 @@ class ProductImportService
         $priceChangedRows = [];
         $readinessRows = [];
         $conflictRows = [];
+        $variantRows = [];
         $seen = collect();
 
         foreach (array_slice($rows, 0, 25) as $index => $raw) {
@@ -372,6 +387,7 @@ class ProductImportService
             $validation = $filterDecision['skip'] ? null : $this->validatePayload($pricedPayload, $options);
             $readiness = $this->lightweightReadiness($pricedPayload);
             $conflict = $filterDecision['skip'] ? null : $this->previewOwnershipConflict($companyId, $sourceType, $xmlSourceId, $pricedPayload, $options, $rowNumber);
+            $variantDetail = $this->previewVariantDetail($companyId, $sourceType, $xmlSourceId, $pricedPayload, $rowNumber);
 
             if (! empty($pricedPayload['sku']) && ($filterDecision['skip'] || ($validation === null && $conflict === null))) {
                 $seen->push((string) $pricedPayload['sku']);
@@ -398,6 +414,7 @@ class ProductImportService
             }
 
             $this->appendReportDetail($conflictRows, $conflict);
+            $this->appendReportDetail($variantRows, $variantDetail);
 
             $simulationRows[] = [
                 'row' => $rowNumber,
@@ -411,6 +428,7 @@ class ProductImportService
                 'price_change' => $priceDetail,
                 'readiness' => $readiness,
                 'ownership_conflict' => $conflict,
+                'variant' => $variantDetail,
             ];
         }
 
@@ -423,6 +441,7 @@ class ProductImportService
                 'filtered_count' => count($filteredRows),
                 'invalid_count' => collect($simulationRows)->where('status', 'invalid')->count(),
                 'conflict_count' => count($conflictRows),
+                'variant_child_count' => count($variantRows),
                 'mapped_count' => count($mappedRows),
                 'price_changed_count' => count($priceChangedRows),
                 'readiness_issue_count' => count($readinessRows),
@@ -433,6 +452,7 @@ class ProductImportService
             'price_changed_rows' => $priceChangedRows,
             'readiness_rows' => $readinessRows,
             'ownership_conflict_rows' => $conflictRows,
+            'variant_rows' => $variantRows,
             'stock_strategy_preview' => $stockPreview,
         ];
     }
@@ -606,7 +626,15 @@ class ProductImportService
             return ['status' => 'skipped', 'claimed' => false, 'detail' => null];
         }
 
+        $variantGroupKey = $this->resolveVariantGroupKey($run, $payload);
+        $variantParent = $variantGroupKey ? $this->findOrCreateVariantParent($run, $payload, $variantGroupKey) : null;
+        $variantAttributes = $variantGroupKey ? $this->buildVariantAttributes($payload) : null;
+        $variantDetail = $variantParent
+            ? $this->buildVariantDetail($rowNumber, $variantParent, $payload, $variantGroupKey, $variantAttributes)
+            : null;
+
         $data = $this->productData($run, $payload, (bool) ($options['update_stock_price_only'] ?? false));
+        $data = $this->attachVariantToParent($data, $variantParent, $variantGroupKey, $variantAttributes, $rowNumber);
         $product = $product
             ? tap($product)->update($data)
             : Product::create($data + ['company_id' => $run->company_id, 'status' => 'active']);
@@ -620,6 +648,7 @@ class ProductImportService
             'claimed' => $willClaim,
             'detail' => null,
             'claim_detail' => $willClaim ? $this->buildClaimedExistingDetail($rowNumber, $product, $payload, $identifier, $run, $sourceProductCode) : null,
+            'variant_detail' => $variantDetail,
         ];
     }
 
@@ -658,6 +687,160 @@ class ProductImportService
             'vat_rate' => 20,
             'status' => 'active',
         ];
+    }
+
+    private function resolveVariantGroupKey(ProductImportRun $run, array $payload): ?string
+    {
+        if ($run->source_type !== 'xml' || $run->xml_source_id === null) {
+            return null;
+        }
+
+        if (! filled($payload['variant_group'] ?? null) && ! filled($payload['variants'] ?? null)) {
+            return null;
+        }
+
+        $raw = filled($payload['variant_group'] ?? null)
+            ? (string) $payload['variant_group']
+            : (string) $this->sourceProductCode($payload);
+
+        $key = Str::of($raw)
+            ->lower()
+            ->ascii()
+            ->replaceMatches('/[^a-z0-9]+/', '-')
+            ->trim('-')
+            ->toString();
+
+        return $key === '' ? null : $key;
+    }
+
+    private function findOrCreateVariantParent(ProductImportRun $run, array $payload, string $variantGroupKey): Product
+    {
+        $query = Product::where('company_id', $run->company_id)
+            ->where('xml_source_id', $run->xml_source_id)
+            ->where('variant_group_key', $variantGroupKey)
+            ->where('product_type', 'parent')
+            ->whereNull('parent_product_id');
+
+        $parent = $query->first();
+
+        if ($parent) {
+            $parent->update([
+                'last_import_run_id' => $run->id,
+                'last_imported_at' => now(),
+                'last_xml_sync_at' => now(),
+            ]);
+
+            return $parent;
+        }
+
+        return Product::create([
+            'company_id' => $run->company_id,
+            'supplier_name' => $run->supplier_name,
+            'xml_source_id' => $run->xml_source_id,
+            'source_product_code' => $variantGroupKey,
+            'sku' => $this->variantParentSku($run, $variantGroupKey),
+            'barcode' => null,
+            'name' => trim((string) ($payload['variant_group'] ?? '')) ?: trim((string) ($payload['name'] ?? 'Varyant grubu')),
+            'product_type' => 'parent',
+            'description' => $payload['description'] ?: null,
+            'brand' => $payload['brand'] ?: null,
+            'category' => $payload['category'] ?: null,
+            'price' => $this->decimal($payload['price'] ?? 0),
+            'list_price' => $payload['list_price'] !== null && $payload['list_price'] !== '' ? $this->decimal($payload['list_price']) : null,
+            'stock' => 0,
+            'vat_rate' => 20,
+            'variant_group' => $payload['variant_group'] ?: null,
+            'variant_group_key' => $variantGroupKey,
+            'last_import_run_id' => $run->id,
+            'last_imported_at' => now(),
+            'last_xml_sync_at' => now(),
+            'status' => 'active',
+        ]);
+    }
+
+    private function buildVariantAttributes(array $payload): ?array
+    {
+        $options = $this->variantOptions($payload['variants'] ?? null);
+
+        if (is_array($options) && $options !== []) {
+            return $options;
+        }
+
+        if (filled($payload['variant_group'] ?? null)) {
+            return ['group' => (string) $payload['variant_group']];
+        }
+
+        return null;
+    }
+
+    private function attachVariantToParent(array $data, ?Product $parent, ?string $variantGroupKey, ?array $variantAttributes, int $rowNumber): array
+    {
+        if (! $parent || ! $variantGroupKey) {
+            return $data;
+        }
+
+        return $data + [
+            'parent_product_id' => $parent->id,
+            'variant_group_key' => $variantGroupKey,
+            'variant_attributes' => $variantAttributes,
+            'variant_sort_order' => $rowNumber,
+            'product_type' => 'variant',
+        ];
+    }
+
+    private function buildVariantDetail(int $rowNumber, Product $parent, array $payload, string $variantGroupKey, ?array $variantAttributes): array
+    {
+        return [
+            'row_number' => $rowNumber,
+            'sku' => $payload['sku'] ?? null,
+            'barcode' => $payload['barcode'] ?? null,
+            'variant_group_key' => $variantGroupKey,
+            'variant_attributes' => $variantAttributes,
+            'parent_product_id' => $parent->id,
+            'parent_sku' => $parent->sku,
+            'parent_created' => $parent->wasRecentlyCreated,
+        ];
+    }
+
+    private function previewVariantDetail(int $companyId, string $sourceType, ?int $xmlSourceId, array $payload, int $rowNumber): ?array
+    {
+        if ($sourceType !== 'xml' || $xmlSourceId === null) {
+            return null;
+        }
+
+        $run = new ProductImportRun([
+            'company_id' => $companyId,
+            'source_type' => $sourceType,
+            'xml_source_id' => $xmlSourceId,
+        ]);
+        $variantGroupKey = $this->resolveVariantGroupKey($run, $payload);
+
+        if (! $variantGroupKey) {
+            return null;
+        }
+
+        $parent = Product::where('company_id', $companyId)
+            ->where('xml_source_id', $xmlSourceId)
+            ->where('variant_group_key', $variantGroupKey)
+            ->where('product_type', 'parent')
+            ->whereNull('parent_product_id')
+            ->first();
+
+        return [
+            'row_number' => $rowNumber,
+            'sku' => $payload['sku'] ?? null,
+            'barcode' => $payload['barcode'] ?? null,
+            'variant_group_key' => $variantGroupKey,
+            'variant_attributes' => $this->buildVariantAttributes($payload),
+            'parent_product_id' => $parent?->id,
+            'parent_sku' => $parent?->sku ?? $this->variantParentSku($run, $variantGroupKey),
+            'parent_exists' => (bool) $parent,
+        ];
+    }
+
+    private function variantParentSku(ProductImportRun $run, string $variantGroupKey): string
+    {
+        return 'XMLP-'.$run->xml_source_id.'-'.substr(sha1($variantGroupKey), 0, 12);
     }
 
     private function syncImages(Product $product, ?string $value, int $maxImages = 8): void
