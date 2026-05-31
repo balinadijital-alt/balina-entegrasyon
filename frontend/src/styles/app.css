@@ -3414,6 +3414,51 @@ tbody td:last-child .row-actions:focus-within {
   padding: 10px;
 }
 
+.preview-simulation-panel {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 14px;
+}
+
+.preview-simulation-kpis {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.preview-simulation-kpis div {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  min-height: 74px;
+  padding: 12px;
+}
+
+.preview-simulation-kpis span {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.preview-simulation-kpis strong {
+  color: var(--text);
+  font-size: 22px;
+}
+
+.preview-simulation-tabs {
+  margin: 0;
+}
+
+.preview-stock-simulation {
+  display: grid;
+  gap: 12px;
+}
+
 .xml-mapping-dashboard {
   background: #f8fafc;
   border: 1px solid var(--border);
@@ -6994,6 +7039,7 @@ tbody td:last-child .row-actions:focus-within {
   .split,
   .option-grid,
   .import-preview,
+  .preview-simulation-kpis,
   .import-run-summary-grid,
   .xml-source-kpis,
   .xml-source-dashboard,

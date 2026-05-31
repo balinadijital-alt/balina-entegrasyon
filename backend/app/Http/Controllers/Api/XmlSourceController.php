@@ -41,9 +41,12 @@ class XmlSourceController extends Controller
 
     public function preview(XmlSource $xmlSource, Request $request, ProductImportService $service): JsonResponse
     {
-        $data = $request->validate(['field_mapping' => ['nullable', 'array']]);
+        $data = $request->validate([
+            'field_mapping' => ['nullable', 'array'],
+            'options' => ['nullable', 'array'],
+        ]);
 
-        return response()->json($service->previewXmlSource($xmlSource, $data['field_mapping'] ?? []));
+        return response()->json($service->previewXmlSource($xmlSource, $data['field_mapping'] ?? [], $data['options'] ?? []));
     }
 
     public function import(XmlSource $xmlSource, Request $request, ProductImportService $service): JsonResponse

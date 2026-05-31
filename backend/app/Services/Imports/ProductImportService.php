@@ -66,11 +66,19 @@ class ProductImportService
         return $this->previewRows($companyId, 'excel', $parsed['headers'], $parsed['rows'], $mapping);
     }
 
-    public function previewXmlSource(XmlSource $source, array $mapping = []): array
+    public function previewXmlSource(XmlSource $source, array $mapping = [], array $options = []): array
     {
         $parsed = $this->parseXml($this->fetchXml($source));
 
-        return $this->previewRows($source->company_id, 'xml', $parsed['headers'], $parsed['rows'], $mapping ?: ($source->field_mapping ?? []));
+        return $this->previewRows(
+            $source->company_id,
+            'xml',
+            $parsed['headers'],
+            $parsed['rows'],
+            $mapping ?: ($source->field_mapping ?? []),
+            $this->defaultOptions($options ?: ($source->options ?? [])),
+            $source->supplier_name
+        );
     }
 
     public function queueExcel(int $companyId, UploadedFile $file, array $data): ProductImportRun
@@ -290,7 +298,7 @@ class ProductImportService
         }
     }
 
-    private function previewRows(int $companyId, string $sourceType, array $headers, array $rows, array $mapping): array
+    private function previewRows(int $companyId, string $sourceType, array $headers, array $rows, array $mapping, array $options = [], ?string $supplierName = null): array
     {
         $mapping = $mapping ?: $this->suggestMapping($headers);
         $valid = [];
@@ -312,6 +320,92 @@ class ProductImportService
             'invalid_rows' => $invalid,
             'sample_rows' => array_slice($rows, 0, 10),
             'total_previewed' => min(count($rows), 25),
+            ...$this->simulatePreviewRows($companyId, $sourceType, $rows, $mapping, $options ?: $this->defaultOptions([]), $supplierName),
+        ];
+    }
+
+    private function simulatePreviewRows(int $companyId, string $sourceType, array $rows, array $mapping, array $options, ?string $supplierName = null): array
+    {
+        $simulationRows = [];
+        $filteredRows = [];
+        $mappedRows = [];
+        $priceChangedRows = [];
+        $readinessRows = [];
+        $seen = collect();
+
+        foreach (array_slice($rows, 0, 25) as $index => $raw) {
+            $rowNumber = $index + 2;
+            $originalPayload = $this->mapRow($raw, $mapping);
+            $payload = $this->applyTransforms($originalPayload, $options);
+            [$payload, $mappingStats] = $this->applySourceMappings($payload, $options);
+            $mappingDetail = $this->buildMappingDetail($rowNumber, $payload, $mappingStats);
+            $this->appendReportDetail($mappedRows, $mappingDetail);
+
+            $filterDecision = $this->filterDecision($payload, $options);
+            $priceBefore = $payload['price'] ?? null;
+            $pricedPayload = $this->applyPriceRules($payload, $options);
+            $priceDetail = $this->buildPriceChangeDetail($rowNumber, $pricedPayload, $priceBefore, $options);
+            $this->appendReportDetail($priceChangedRows, $priceDetail);
+
+            $validation = $filterDecision['skip'] ? null : $this->validatePayload($pricedPayload, $options);
+            $readiness = $this->lightweightReadiness($pricedPayload);
+
+            if (! empty($pricedPayload['sku']) && ($filterDecision['skip'] || $validation === null)) {
+                $seen->push((string) $pricedPayload['sku']);
+            }
+
+            if ($filterDecision['skip']) {
+                $this->appendReportDetail($filteredRows, [
+                    'row_number' => $rowNumber,
+                    'sku' => $pricedPayload['sku'] ?? null,
+                    'barcode' => $pricedPayload['barcode'] ?? null,
+                    'category' => $pricedPayload['category'] ?? null,
+                    'brand' => $pricedPayload['brand'] ?? null,
+                    'reason' => $filterDecision['reason'],
+                ]);
+            }
+
+            if ($readiness['missing_fields'] !== []) {
+                $this->appendReportDetail($readinessRows, [
+                    'row_number' => $rowNumber,
+                    'sku' => $pricedPayload['sku'] ?? null,
+                    'missing_fields' => $readiness['missing_fields'],
+                    'score' => $readiness['score'],
+                ]);
+            }
+
+            $simulationRows[] = [
+                'row' => $rowNumber,
+                'status' => $validation !== null ? 'invalid' : ($filterDecision['skip'] ? 'filtered' : 'importable'),
+                'reason' => $filterDecision['reason'],
+                'message' => $validation,
+                'raw' => $raw,
+                'mapped_before' => $originalPayload,
+                'mapped' => $pricedPayload,
+                'mapping' => $mappingDetail,
+                'price_change' => $priceDetail,
+                'readiness' => $readiness,
+            ];
+        }
+
+        $stockPreview = $this->stockStrategyPreview($companyId, $sourceType, $supplierName, $seen, $options);
+
+        return [
+            'simulation_summary' => [
+                'total_previewed' => count($simulationRows),
+                'importable_count' => collect($simulationRows)->where('status', 'importable')->count(),
+                'filtered_count' => count($filteredRows),
+                'invalid_count' => collect($simulationRows)->where('status', 'invalid')->count(),
+                'mapped_count' => count($mappedRows),
+                'price_changed_count' => count($priceChangedRows),
+                'readiness_issue_count' => count($readinessRows),
+            ],
+            'simulation_rows' => $simulationRows,
+            'filtered_rows' => $filteredRows,
+            'mapped_rows' => $mappedRows,
+            'price_changed_rows' => $priceChangedRows,
+            'readiness_rows' => $readinessRows,
+            'stock_strategy_preview' => $stockPreview,
         ];
     }
 
@@ -856,6 +950,70 @@ class ProductImportService
             ])
             ->values()
             ->all();
+    }
+
+    private function lightweightReadiness(array $payload): array
+    {
+        $checks = [
+            'sku' => filled($payload['sku'] ?? null),
+            'barcode' => filled($payload['barcode'] ?? null),
+            'name' => filled($payload['name'] ?? null),
+            'brand' => filled($payload['brand'] ?? null),
+            'category' => filled($payload['category'] ?? null),
+            'price' => ($payload['price'] ?? null) !== null && $payload['price'] !== '' && $this->decimal($payload['price']) > 0,
+            'stock' => ($payload['stock'] ?? null) !== null && $payload['stock'] !== '' && is_numeric($payload['stock']) && (int) $payload['stock'] >= 0,
+            'image_urls' => filled($payload['image_urls'] ?? null),
+        ];
+
+        $missing = collect($checks)
+            ->filter(fn (bool $passed) => ! $passed)
+            ->keys()
+            ->values()
+            ->all();
+
+        $passed = count($checks) - count($missing);
+
+        return [
+            'ready' => $missing === [],
+            'score' => (int) round(($passed / max(count($checks), 1)) * 100),
+            'missing_fields' => $missing,
+            'checks' => $checks,
+        ];
+    }
+
+    private function stockStrategyPreview(int $companyId, string $sourceType, ?string $supplierName, Collection $seen, array $options): array
+    {
+        $action = $this->resolveMissingStrategy($options);
+
+        if ($sourceType !== 'xml' || $action === 'none' || $seen->isEmpty()) {
+            return [
+                'strategy' => $action,
+                'affected_count' => 0,
+                'affected_products' => [],
+            ];
+        }
+
+        $query = Product::where('company_id', $companyId)
+            ->when($supplierName, fn ($query) => $query->where('supplier_name', $supplierName))
+            ->whereNotIn('sku', $seen->unique()->values()->all());
+
+        return [
+            'strategy' => $action,
+            'affected_count' => (clone $query)->count(),
+            'affected_products' => (clone $query)
+                ->select(['sku', 'stock', 'status'])
+                ->orderBy('id')
+                ->limit(self::REPORT_DETAIL_LIMIT)
+                ->get()
+                ->map(fn (Product $product) => [
+                    'sku' => $product->sku,
+                    'action' => $action === 'zero_stock_missing' ? 'zero_stock' : 'passive',
+                    'previous_stock' => $product->stock,
+                    'new_stock' => $action === 'zero_stock_missing' ? 0 : $product->stock,
+                ])
+                ->values()
+                ->all(),
+        ];
     }
 
     private function appendReportDetail(array &$rows, ?array $detail): void

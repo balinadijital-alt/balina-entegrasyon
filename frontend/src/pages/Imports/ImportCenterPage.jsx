@@ -260,6 +260,22 @@ function stockActionLabel(action) {
   }[action] || action || '-';
 }
 
+function simulationStatusLabel(status) {
+  return {
+    importable: 'Import edilecek',
+    filtered: 'Filtrelenecek',
+    invalid: 'Hatali',
+  }[status] || status || '-';
+}
+
+function simulationStatusTone(status) {
+  return {
+    importable: 'ready',
+    filtered: 'running',
+    invalid: 'blocked',
+  }[status] || 'blocked';
+}
+
 function withRowIds(rows, prefix) {
   return asArray(rows).map((row, index) => ({ id: `${prefix}-${row.row_number || row.sku || index}`, ...asObject(row) }));
 }
@@ -354,11 +370,21 @@ export function ImportCenterPage() {
   const [mappingTab, setMappingTab] = useState('categories');
   const [runDetailTab, setRunDetailTab] = useState('summary');
   const [selectedXmlSourceId, setSelectedXmlSourceId] = useState(null);
+  const [simulationTab, setSimulationTab] = useState('summary');
 
   const headers = useMemo(() => asArray(preview?.headers), [preview]);
   const validRows = asArray(preview?.valid_rows);
   const invalidRows = asArray(preview?.invalid_rows);
   const previewRows = [...validRows, ...invalidRows];
+  const simulationSummary = asObject(preview?.simulation_summary);
+  const simulationRows = withRowIds(preview?.simulation_rows, 'simulation');
+  const previewImportableRows = simulationRows.filter((row) => row.status === 'importable');
+  const previewFilteredRows = withRowIds(preview?.filtered_rows, 'preview-filtered');
+  const previewMappedRows = withRowIds(preview?.mapped_rows, 'preview-mapped');
+  const previewPriceRows = withRowIds(preview?.price_changed_rows, 'preview-price');
+  const previewReadinessRows = withRowIds(preview?.readiness_rows, 'preview-readiness');
+  const stockStrategyPreview = asObject(preview?.stock_strategy_preview);
+  const previewStockRows = withRowIds(stockStrategyPreview.affected_products, 'preview-stock');
   const previewCategories = useMemo(() => uniqueMappedValues(previewRows, 'category'), [validRows, invalidRows]);
   const previewBrands = useMemo(() => uniqueMappedValues(previewRows, 'brand'), [validRows, invalidRows]);
   const safeMapping = asObject(mapping);
@@ -476,8 +502,9 @@ export function ImportCenterPage() {
     }
 
     await run(async () => {
-      const response = await api.xmlSources.preview(activeXmlSource.id, { field_mapping: safeMapping });
+      const response = await api.xmlSources.preview(activeXmlSource.id, { field_mapping: safeMapping, options: safeOptions });
       setPreview(response);
+      setSimulationTab('summary');
       setMapping(asObject(response.suggested_mapping));
       setExcelCompanyId(String(activeXmlSource.company_id));
       setExcelSupplier(activeXmlSource.supplier_name || '');
@@ -815,16 +842,160 @@ export function ImportCenterPage() {
                 <p>Import baslamadan once basarili ve hatali satirlari kontrol edin.</p>
               </div>
               {!preview ? <SoftEmpty>Onizleme bulunamadi.</SoftEmpty> : (
-                <div className="import-preview">
-                  <div>
-                    <h3>Basarili onizleme</h3>
-                    {validRows.length === 0 ? <p className="bad-text">Gecerli satir bulunamadi.</p> : validRows.slice(0, 6).map((row) => <pre key={row.row}>{JSON.stringify(row.mapped, null, 2)}</pre>)}
+                <>
+                  <div className="import-preview">
+                    <div>
+                      <h3>Basarili onizleme</h3>
+                      {validRows.length === 0 ? <p className="bad-text">Gecerli satir bulunamadi.</p> : validRows.slice(0, 6).map((row) => <pre key={row.row}>{JSON.stringify(row.mapped, null, 2)}</pre>)}
+                    </div>
+                    <div>
+                      <h3>Hatali satirlar</h3>
+                      {invalidRows.length === 0 ? <p className="ok-text">Hata yok</p> : invalidRows.slice(0, 10).map((row) => <p key={row.row} className="bad-text">Satir {row.row}: {row.message}</p>)}
+                    </div>
                   </div>
-                  <div>
-                    <h3>Hatali satirlar</h3>
-                    {invalidRows.length === 0 ? <p className="ok-text">Hata yok</p> : invalidRows.slice(0, 10).map((row) => <p key={row.row} className="bad-text">Satir {row.row}: {row.message}</p>)}
+                  <div className="preview-simulation-panel">
+                    <div className="wizard-step-header compact-header">
+                      <span>Read-only dry run</span>
+                      <h3>Simülasyon Önizleme</h3>
+                      <p>Bu simülasyon DB'ye kayıt yapmaz, ürün güncellemez ve import başlatmaz.</p>
+                    </div>
+                    <div className="preview-simulation-kpis">
+                      <div><span>Toplam preview</span><strong>{simulationSummary.total_previewed || 0}</strong></div>
+                      <div><span>Import edilecek</span><strong>{simulationSummary.importable_count || 0}</strong></div>
+                      <div><span>Filtrelenecek</span><strong>{simulationSummary.filtered_count || 0}</strong></div>
+                      <div><span>Hatali</span><strong>{simulationSummary.invalid_count || 0}</strong></div>
+                      <div><span>Mapping uygulanacak</span><strong>{simulationSummary.mapped_count || 0}</strong></div>
+                      <div><span>Fiyatı değişecek</span><strong>{simulationSummary.price_changed_count || 0}</strong></div>
+                      <div><span>Readiness eksikli</span><strong>{simulationSummary.readiness_issue_count || 0}</strong></div>
+                    </div>
+                    <div className="tabs preview-simulation-tabs">
+                      {[
+                        ['summary', 'Simülasyon Özeti'],
+                        ['importable', 'Import Edilecek'],
+                        ['filtered', 'Filtrelenen'],
+                        ['mapping', 'Mapping'],
+                        ['price', 'Fiyat'],
+                        ['readiness', 'Readiness'],
+                        ['stock', 'Stok Stratejisi'],
+                      ].map(([key, label]) => (
+                        <button type="button" key={key} className={simulationTab === key ? 'tab active' : 'tab'} onClick={() => setSimulationTab(key)}>{label}</button>
+                      ))}
+                    </div>
+
+                    {simulationTab === 'summary' && (
+                      <DataTable
+                        rows={simulationRows}
+                        emptyTitle="Simulasyon satiri yok"
+                        emptyText="Onizleme calistiginda dry-run satirlari burada gorunur."
+                        columns={[
+                          { key: 'row', label: 'Satir' },
+                          { key: 'status', label: 'Durum', render: (row) => <StatusPill tone={simulationStatusTone(row.status)} label={simulationStatusLabel(row.status)} /> },
+                          { key: 'sku', label: 'SKU', render: (row) => row.mapped?.sku || '-' },
+                          { key: 'name', label: 'Urun', render: (row) => row.mapped?.name || '-' },
+                          { key: 'reason', label: 'Sebep', render: (row) => filterReasonLabel(row.reason) },
+                          { key: 'readiness', label: 'Readiness', render: (row) => `${row.readiness?.score || 0}%` },
+                        ]}
+                      />
+                    )}
+
+                    {simulationTab === 'importable' && (
+                      <DataTable
+                        rows={previewImportableRows}
+                        emptyTitle="Import edilecek satir yok"
+                        emptyText="Filtre ve validasyon sonrasi import edilecek preview satiri bulunmuyor."
+                        columns={[
+                          { key: 'row', label: 'Satir' },
+                          { key: 'sku', label: 'SKU', render: (row) => row.mapped?.sku || '-' },
+                          { key: 'barcode', label: 'Barkod', render: (row) => row.mapped?.barcode || '-' },
+                          { key: 'price', label: 'Fiyat', render: (row) => row.mapped?.price ?? '-' },
+                          { key: 'stock', label: 'Stok', render: (row) => row.mapped?.stock ?? '-' },
+                        ]}
+                      />
+                    )}
+
+                    {simulationTab === 'filtered' && (
+                      <DataTable
+                        rows={previewFilteredRows}
+                        emptyTitle="Filtrelenecek satir yok"
+                        emptyText="Mevcut preview orneginde filtreye takilan satir bulunmuyor."
+                        columns={[
+                          { key: 'row_number', label: 'Satir' },
+                          { key: 'sku', label: 'SKU' },
+                          { key: 'category', label: 'Kategori' },
+                          { key: 'brand', label: 'Marka' },
+                          { key: 'reason', label: 'Sebep', render: (row) => <StatusPill tone="running" label={filterReasonLabel(row.reason)} /> },
+                        ]}
+                      />
+                    )}
+
+                    {simulationTab === 'mapping' && (
+                      <DataTable
+                        rows={previewMappedRows}
+                        emptyTitle="Mapping uygulanmayacak"
+                        emptyText="Mevcut preview orneginde kategori/marka mapping etkisi yok."
+                        columns={[
+                          { key: 'row_number', label: 'Satir' },
+                          { key: 'sku', label: 'SKU' },
+                          { key: 'category_before', label: 'Kategori once' },
+                          { key: 'category_after', label: 'Kategori sonra' },
+                          { key: 'brand_before', label: 'Marka once' },
+                          { key: 'brand_after', label: 'Marka sonra' },
+                        ]}
+                      />
+                    )}
+
+                    {simulationTab === 'price' && (
+                      <DataTable
+                        rows={previewPriceRows}
+                        emptyTitle="Fiyat degisimi yok"
+                        emptyText="Mevcut preview orneginde fiyat kurali etkisi yok."
+                        columns={[
+                          { key: 'row_number', label: 'Satir' },
+                          { key: 'sku', label: 'SKU' },
+                          { key: 'price_before', label: 'Once' },
+                          { key: 'price_after', label: 'Sonra' },
+                          { key: 'multiplier', label: 'Carpan' },
+                          { key: 'profit_rate', label: 'Kar %' },
+                          { key: 'rounding_mode', label: 'Yuvarlama' },
+                        ]}
+                      />
+                    )}
+
+                    {simulationTab === 'readiness' && (
+                      <DataTable
+                        rows={previewReadinessRows}
+                        emptyTitle="Readiness eksigi yok"
+                        emptyText="Mevcut preview orneginde lightweight readiness eksigi bulunmuyor."
+                        columns={[
+                          { key: 'row_number', label: 'Satir' },
+                          { key: 'sku', label: 'SKU' },
+                          { key: 'score', label: 'Skor', render: (row) => `${row.score || 0}%` },
+                          { key: 'missing_fields', label: 'Eksikler', render: (row) => asArray(row.missing_fields).join(', ') || '-' },
+                        ]}
+                      />
+                    )}
+
+                    {simulationTab === 'stock' && (
+                      <div className="preview-stock-simulation">
+                        <div className="queue-summary">
+                          <div><span>Strateji</span><strong>{stockStrategyPreview.strategy || 'none'}</strong></div>
+                          <div><span>Etkilenecek urun</span><strong>{stockStrategyPreview.affected_count || 0}</strong></div>
+                        </div>
+                        <DataTable
+                          rows={previewStockRows}
+                          emptyTitle="Stok stratejisi etkisi yok"
+                          emptyText="Preview ornegine gore pasife alinacak veya stok sifirlanacak urun bulunmuyor."
+                          columns={[
+                            { key: 'sku', label: 'SKU' },
+                            { key: 'action', label: 'Aksiyon', render: (row) => <StatusPill tone={row.action === 'zero_stock' ? 'running' : 'blocked'} label={stockActionLabel(row.action)} /> },
+                            { key: 'previous_stock', label: 'Onceki stok' },
+                            { key: 'new_stock', label: 'Yeni stok' },
+                          ]}
+                        />
+                      </div>
+                    )}
                   </div>
-                </div>
+                </>
               )}
             </>
           )}
