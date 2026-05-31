@@ -7,10 +7,10 @@ use App\Models\CategoryMapping;
 use App\Models\MarketplaceAccount;
 use App\Models\Order;
 use App\Models\Product;
+use App\Services\Products\ProductVariantPayloadResolver;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 
 class HepsiburadaService extends AbstractMarketplaceService
 {
@@ -67,7 +67,7 @@ class HepsiburadaService extends AbstractMarketplaceService
     {
         $this->assertAccount($account);
         $products = $account->company->products()
-            ->with('images')
+            ->with(['images', 'parent.images'])
             ->where('status', 'active')
             ->where(fn ($query) => $query->whereNull('product_type')->orWhere('product_type', '!=', 'parent'))
             ->get();
@@ -254,37 +254,41 @@ class HepsiburadaService extends AbstractMarketplaceService
 
     private function productPayload(MarketplaceAccount $account, Product $product): array
     {
+        $resolver = new ProductVariantPayloadResolver();
+
         if (! $product->barcode) {
             throw new MarketplaceApiException("{$product->sku} SKU urunu icin barkod zorunludur.");
         }
 
+        $category = $resolver->value($product, 'category');
         $mapping = CategoryMapping::where('company_id', $account->company_id)
             ->where('marketplace_code', 'hepsiburada')
-            ->where('local_category', $product->category)
+            ->where('local_category', $category)
             ->first();
+        $fallbackCategoryId = $resolver->value($product, 'hepsiburada_category_id') ?: $resolver->value($product, 'trendyol_category_id');
 
-        if (! $mapping && ! $product->trendyol_category_id) {
+        if (! $mapping && ! $fallbackCategoryId) {
             throw new MarketplaceApiException("{$product->sku} SKU urunu icin Hepsiburada kategori eslestirmesi zorunludur.");
         }
 
-        $images = $this->imageUrls($product);
-        $categoryId = $mapping?->external_category_id ?? (string) $product->trendyol_category_id;
+        $images = $this->imageUrls($product, $resolver);
+        $categoryId = $mapping?->external_category_id ?? (string) $fallbackCategoryId;
         $merchantSku = strtoupper(str_replace(' ', '', $product->sku));
 
         return [
             'categoryId' => is_numeric($categoryId) ? (int) $categoryId : $categoryId,
             'merchant' => $account->merchant_id,
-            'attributes' => array_merge($mapping?->attributes ?? [], $product->trendyol_attributes ?? []),
+            'attributes' => array_merge($mapping?->attributes ?? [], $resolver->marketplaceAttributes($product, 'hepsiburada')),
             'merchantSku' => $merchantSku,
-            'VaryantGroupID' => $merchantSku,
-            'UrunAdi' => $product->name,
-            'UrunAciklamasi' => $product->description ?: $product->name,
+            'VaryantGroupID' => $resolver->isVariantChild($product) ? $resolver->variantGroupId($product) : $merchantSku,
+            'UrunAdi' => $resolver->value($product, 'name'),
+            'UrunAciklamasi' => $resolver->value($product, 'description') ?: $resolver->value($product, 'name'),
             'Barcode' => $product->barcode,
-            'Marka' => $product->brand,
+            'Marka' => $resolver->value($product, 'brand'),
             'price' => number_format((float) $product->price, 2, ',', ''),
             'stock' => (string) $product->stock,
-            'kdv' => (string) $product->vat_rate,
-            'desi' => (string) ($product->dimensional_weight ?: 1),
+            'kdv' => (string) ($resolver->value($product, 'vat_rate') ?: 20),
+            'desi' => (string) ($resolver->value($product, 'dimensional_weight') ?: 1),
             'Image1' => $images[0] ?? null,
             'Image2' => $images[1] ?? null,
             'Image3' => $images[2] ?? null,
@@ -293,11 +297,11 @@ class HepsiburadaService extends AbstractMarketplaceService
         ];
     }
 
-    private function imageUrls(Product $product): array
+    private function imageUrls(Product $product, ?ProductVariantPayloadResolver $resolver = null): array
     {
-        return $product->images
-            ->map(fn ($image) => str_starts_with($image->path, 'http') ? $image->path : Storage::disk('public')->url($image->path))
-            ->filter(fn ($url) => str_starts_with($url, 'https://'))
+        $resolver ??= new ProductVariantPayloadResolver();
+
+        return collect($resolver->images($product))
             ->take(5)
             ->values()
             ->all();

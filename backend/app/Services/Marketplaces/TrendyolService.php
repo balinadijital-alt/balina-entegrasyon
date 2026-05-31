@@ -6,11 +6,11 @@ use App\Exceptions\MarketplaceApiException;
 use App\Models\MarketplaceAccount;
 use App\Models\Order;
 use App\Models\Product;
+use App\Services\Products\ProductVariantPayloadResolver;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class TrendyolService extends AbstractMarketplaceService
@@ -110,7 +110,7 @@ class TrendyolService extends AbstractMarketplaceService
         $this->assertTrendyolAccount($account);
 
         $products = $account->company->products()
-            ->with('images')
+            ->with(['images', 'parent.images'])
             ->where('status', 'active')
             ->where(fn ($query) => $query->whereNull('product_type')->orWhere('product_type', '!=', 'parent'))
             ->get();
@@ -454,11 +454,15 @@ class TrendyolService extends AbstractMarketplaceService
 
     private function productPayload(Product $product): array
     {
-        if (! $product->barcode || ! $product->trendyol_brand_id || ! $product->trendyol_category_id) {
+        $resolver = new ProductVariantPayloadResolver();
+        $brandId = $resolver->value($product, 'trendyol_brand_id');
+        $categoryId = $resolver->value($product, 'trendyol_category_id');
+
+        if (! $product->barcode || ! $brandId || ! $categoryId) {
             throw new MarketplaceApiException("{$product->sku} SKU urunu icin barkod, Trendyol marka ID ve kategori ID zorunludur.");
         }
 
-        $images = $this->imagePayload($product);
+        $images = $this->imagePayload($product, $resolver);
 
         if ($images === []) {
             throw new MarketplaceApiException("{$product->sku} SKU urunu icin en az bir HTTPS gorsel URL'i zorunludur.");
@@ -466,40 +470,27 @@ class TrendyolService extends AbstractMarketplaceService
 
         return [
             'barcode' => $product->barcode,
-            'title' => $product->name,
-            'productMainId' => $product->sku,
-            'brandId' => (int) $product->trendyol_brand_id,
-            'categoryId' => (int) $product->trendyol_category_id,
+            'title' => $resolver->value($product, 'name'),
+            'productMainId' => $resolver->variantGroupId($product),
+            'brandId' => (int) $brandId,
+            'categoryId' => (int) $categoryId,
             'quantity' => (int) $product->stock,
             'stockCode' => $product->sku,
-            'dimensionalWeight' => (float) ($product->dimensional_weight ?: 1),
-            'description' => $product->description ?: $product->name,
+            'dimensionalWeight' => (float) ($resolver->value($product, 'dimensional_weight') ?: 1),
+            'description' => $resolver->value($product, 'description') ?: $resolver->value($product, 'name'),
             'listPrice' => (float) ($product->list_price ?: $product->price),
             'salePrice' => (float) $product->price,
-            'vatRate' => (int) $product->vat_rate,
+            'vatRate' => (int) ($resolver->value($product, 'vat_rate') ?: 20),
             'images' => $images,
-            'attributes' => $product->trendyol_attributes ?: [],
+            'attributes' => $resolver->marketplaceAttributes($product, 'trendyol'),
         ];
     }
 
-    private function imagePayload(Product $product): array
+    private function imagePayload(Product $product, ?ProductVariantPayloadResolver $resolver = null): array
     {
-        $manualImages = collect(array_merge(
-            [$product->main_image_url],
-            is_array($product->gallery_images) ? $product->gallery_images : []
-        ));
+        $resolver ??= new ProductVariantPayloadResolver();
 
-        $uploadedImages = $product->images
-            ->map(function ($image) {
-                $url = str_starts_with($image->path, 'http') ? $image->path : Storage::disk('public')->url($image->path);
-
-                return $url;
-            });
-
-        return $manualImages
-            ->merge($uploadedImages)
-            ->filter(fn ($url) => is_string($url) && str_starts_with($url, 'https://'))
-            ->unique()
+        return collect($resolver->images($product))
             ->map(fn ($url) => ['url' => $url])
             ->filter()
             ->take(8)

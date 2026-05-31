@@ -6,6 +6,7 @@ use App\Models\MarketplaceAccount;
 use App\Models\MarketplacePublishDraft;
 use App\Models\Product;
 use App\Services\Products\ProductReadinessService;
+use App\Services\Products\ProductVariantPayloadResolver;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -18,7 +19,7 @@ class MarketplacePublishService
     public function createDraft(MarketplaceAccount $marketplace, array $productIds, array $payload, ?int $userId = null): MarketplacePublishDraft
     {
         $products = Product::query()
-            ->with(['company:id,name', 'images', 'marketplaceStatuses'])
+            ->with(['company:id,name', 'images', 'parent.images', 'marketplaceStatuses'])
             ->where('company_id', $marketplace->company_id)
             ->whereIn('id', $productIds)
             ->where(fn ($query) => $query->whereNull('product_type')->orWhere('product_type', '!=', 'parent'))
@@ -86,19 +87,22 @@ class MarketplacePublishService
 
     private function previewPayload(Collection $products, string $marketplace, array $payload): array
     {
-        return $products->mapWithKeys(function (Product $product) use ($marketplace, $payload) {
+        $resolver = new ProductVariantPayloadResolver();
+
+        return $products->mapWithKeys(function (Product $product) use ($marketplace, $payload, $resolver) {
             return [
                 $product->id => [
                     'marketplace' => $marketplace,
+                    'variant_group_id' => $resolver->variantGroupId($product),
                     'sku' => $product->sku,
                     'barcode' => $product->barcode,
-                    'name' => $product->name,
-                    'brand' => $product->brand,
-                    'category_id' => $marketplace === 'trendyol' ? $product->trendyol_category_id : $product->hepsiburada_category_id,
+                    'name' => $resolver->value($product, 'name'),
+                    'brand' => $resolver->value($product, 'brand'),
+                    'category_id' => $marketplace === 'trendyol' ? $resolver->value($product, 'trendyol_category_id') : $resolver->value($product, 'hepsiburada_category_id'),
                     'price' => (float) $product->price,
                     'stock' => (int) $product->stock,
-                    'vat_rate' => (int) $product->vat_rate,
-                    'attributes' => $marketplace === 'trendyol' ? $product->trendyol_attributes : $product->hepsiburada_attributes,
+                    'vat_rate' => (int) ($resolver->value($product, 'vat_rate') ?: 20),
+                    'attributes' => $resolver->marketplaceAttributes($product, $marketplace),
                     'mappings' => $payload['mappings'][$product->id] ?? [],
                 ],
             ];

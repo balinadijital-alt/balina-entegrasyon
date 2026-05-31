@@ -4,7 +4,6 @@ namespace App\Services\Products;
 
 use App\Models\CategoryMapping;
 use App\Models\Product;
-use Illuminate\Support\Arr;
 
 class ProductReadinessService
 {
@@ -44,32 +43,45 @@ class ProductReadinessService
 
     private function marketplaceReport(Product $product, string $marketplace): array
     {
+        if ($product->product_type === 'parent') {
+            return [
+                'marketplace' => $marketplace,
+                'ready' => false,
+                'score' => 0,
+                'missing_fields' => ['provider_candidate'],
+                'checks' => ['provider_candidate' => false],
+                'checked_at' => now()->toISOString(),
+            ];
+        }
+
+        $resolver = new ProductVariantPayloadResolver();
+
         $checks = [
-            'name' => filled($product->name),
-            'brand' => filled($product->brand),
-            'category' => filled($product->category),
+            'name' => filled($resolver->value($product, 'name')),
+            'brand' => filled($resolver->value($product, 'brand')),
+            'category' => filled($resolver->value($product, 'category')),
             'barcode' => filled($product->barcode),
             'sku' => filled($product->sku),
             'price' => (float) $product->price > 0,
             'stock' => $product->stock !== null && (int) $product->stock >= 0,
-            'attributes' => count(Arr::wrap($product->attributes)) > 0,
-            'vat_rate' => $product->vat_rate !== null,
-            'description' => filled($product->description) || filled($product->short_description),
-            'seo' => filled($product->seo_title) && filled($product->seo_description),
-            'image' => $this->hasImage($product),
-            'cargo' => filled($product->shipping_type) || (float) $product->dimensional_weight > 0 || (float) $product->weight > 0,
+            'attributes' => count($resolver->marketplaceAttributes($product)) > 0,
+            'vat_rate' => $resolver->value($product, 'vat_rate') !== null,
+            'description' => filled($resolver->value($product, 'description')) || filled($resolver->value($product, 'short_description')),
+            'seo' => filled($resolver->value($product, 'seo_title')) && filled($resolver->value($product, 'seo_description')),
+            'image' => $this->hasImage($product, $resolver),
+            'cargo' => filled($resolver->value($product, 'shipping_type')) || (float) $resolver->value($product, 'dimensional_weight') > 0 || (float) $resolver->value($product, 'weight') > 0,
         ];
 
         if ($marketplace === 'trendyol') {
-            $checks['marketplace_category'] = filled($product->trendyol_category_id);
-            $checks['category_mapping'] = $this->hasCategoryMapping($product, $marketplace);
-            $checks['required_attributes'] = count(Arr::wrap($product->trendyol_attributes)) > 0;
+            $checks['marketplace_category'] = filled($resolver->value($product, 'trendyol_category_id'));
+            $checks['category_mapping'] = $this->hasCategoryMapping($product, $marketplace, $resolver);
+            $checks['required_attributes'] = count($resolver->marketplaceAttributes($product, 'trendyol')) > 0;
         }
 
         if ($marketplace === 'hepsiburada') {
-            $checks['marketplace_category'] = filled($product->hepsiburada_category_id);
-            $checks['category_mapping'] = $this->hasCategoryMapping($product, $marketplace);
-            $checks['required_attributes'] = count(Arr::wrap($product->hepsiburada_attributes)) > 0;
+            $checks['marketplace_category'] = filled($resolver->value($product, 'hepsiburada_category_id'));
+            $checks['category_mapping'] = $this->hasCategoryMapping($product, $marketplace, $resolver);
+            $checks['required_attributes'] = count($resolver->marketplaceAttributes($product, 'hepsiburada')) > 0;
         }
 
         $missing = collect($checks)
@@ -90,23 +102,23 @@ class ProductReadinessService
         ];
     }
 
-    private function hasImage(Product $product): bool
+    private function hasImage(Product $product, ProductVariantPayloadResolver $resolver): bool
     {
-        return filled($product->main_image_url)
-            || count(Arr::wrap($product->gallery_images)) > 0
-            || $product->images->isNotEmpty();
+        return $resolver->images($product) !== [];
     }
 
-    private function hasCategoryMapping(Product $product, string $marketplace): bool
+    private function hasCategoryMapping(Product $product, string $marketplace, ProductVariantPayloadResolver $resolver): bool
     {
-        if (! filled($product->category)) {
+        $category = $resolver->value($product, 'category');
+
+        if (! filled($category)) {
             return false;
         }
 
         return CategoryMapping::query()
             ->where('company_id', $product->company_id)
             ->where('marketplace_code', $marketplace)
-            ->where('local_category', $product->category)
+            ->where('local_category', $category)
             ->exists();
     }
 }
