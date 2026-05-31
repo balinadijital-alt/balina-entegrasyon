@@ -14,6 +14,8 @@ class Product extends Model
     protected $fillable = [
         'company_id',
         'supplier_name',
+        'xml_source_id',
+        'source_product_code',
         'sku',
         'barcode',
         'name',
@@ -52,6 +54,7 @@ class Product extends Model
         'last_trendyol_sync_at',
         'last_import_run_id',
         'last_imported_at',
+        'last_xml_sync_at',
         'status',
     ];
 
@@ -76,12 +79,18 @@ class Product extends Model
             'marketplace_ready' => 'boolean',
             'last_trendyol_sync_at' => 'datetime',
             'last_imported_at' => 'datetime',
+            'last_xml_sync_at' => 'datetime',
         ];
     }
 
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function xmlSource(): BelongsTo
+    {
+        return $this->belongsTo(XmlSource::class);
     }
 
     public function images(): HasMany

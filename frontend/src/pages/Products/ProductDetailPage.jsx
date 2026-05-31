@@ -42,6 +42,11 @@ function missingText(fields = []) {
   return fields.map((field) => missingLabels[field] || field).join(', ');
 }
 
+function formatDateTime(value) {
+  if (!value) return '-';
+  return new Intl.DateTimeFormat('tr-TR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
+}
+
 export function ProductDetailPage() {
   const { id } = useParams();
   const { notify } = useApp();
@@ -154,6 +159,17 @@ export function ProductDetailPage() {
             <div className="detail-card"><span>KDV</span><strong>%{product.vat_rate}</strong></div>
             <div className="detail-card"><span>Desi</span><strong>{product.dimensional_weight || '-'}</strong></div>
             <div className="detail-card"><span>Durum</span><strong>{product.status}</strong></div>
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'general' && (
+        <section className="panel">
+          <h2>Urun Kaynagi</h2>
+          <div className="detail-grid">
+            <div className="detail-card"><span>XML Source</span><strong>{product.xml_source?.name || '-'}</strong></div>
+            <div className="detail-card"><span>Source product code</span><strong>{product.source_product_code || '-'}</strong></div>
+            <div className="detail-card"><span>Last XML sync</span><strong>{formatDateTime(product.last_xml_sync_at)}</strong></div>
           </div>
         </section>
       )}

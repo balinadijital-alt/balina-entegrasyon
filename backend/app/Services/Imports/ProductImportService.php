@@ -77,7 +77,8 @@ class ProductImportService
             $parsed['rows'],
             $mapping ?: ($source->field_mapping ?? []),
             $this->defaultOptions($options ?: ($source->options ?? [])),
-            $source->supplier_name
+            $source->supplier_name,
+            $source->id
         );
     }
 
@@ -172,12 +173,16 @@ class ProductImportService
                 'mapped_brand' => 0,
                 'unmapped_category' => 0,
                 'unmapped_brand' => 0,
+                'conflict' => 0,
+                'claimed_existing' => 0,
             ];
             $reportDetails = [
                 'filtered_rows' => [],
                 'mapped_rows' => [],
                 'price_changed_rows' => [],
                 'stock_strategy_rows' => [],
+                'conflict_rows' => [],
+                'claimed_existing_rows' => [],
                 'error_breakdown' => [],
             ];
 
@@ -235,9 +240,21 @@ class ProductImportService
                     return;
                 }
 
-                $result = $this->upsertProduct($run, $payload);
-                $stats[$result]++;
-                if ($result !== 'skipped') {
+                $result = $this->upsertProduct($run, $payload, $rowNumber);
+                $stats[$result['status']]++;
+                if ($result['status'] === 'conflict') {
+                    $stats['skipped']++;
+                    $this->appendReportDetail($reportDetails['conflict_rows'], $result['detail']);
+                    $this->tick($run, $index + 1, $total, $stats);
+                    return;
+                }
+
+                if (! empty($result['claimed'])) {
+                    $stats['claimed_existing']++;
+                    $this->appendReportDetail($reportDetails['claimed_existing_rows'], $result['claim_detail']);
+                }
+
+                if ($result['status'] !== 'skipped') {
                     $stats['success']++;
                 }
 
@@ -264,10 +281,14 @@ class ProductImportService
                 'mapped_brand_count' => $stats['mapped_brand'],
                 'unmapped_category_count' => $stats['unmapped_category'],
                 'unmapped_brand_count' => $stats['unmapped_brand'],
+                'conflict_count' => $stats['conflict'],
+                'claimed_existing_count' => $stats['claimed_existing'],
                 'filtered_rows' => $reportDetails['filtered_rows'],
                 'mapped_rows' => $reportDetails['mapped_rows'],
                 'price_changed_rows' => $reportDetails['price_changed_rows'],
                 'stock_strategy_rows' => $missingResult['rows'],
+                'conflict_rows' => $reportDetails['conflict_rows'],
+                'claimed_existing_rows' => $reportDetails['claimed_existing_rows'],
                 'error_breakdown' => $reportDetails['error_breakdown'],
             ];
 
@@ -298,7 +319,7 @@ class ProductImportService
         }
     }
 
-    private function previewRows(int $companyId, string $sourceType, array $headers, array $rows, array $mapping, array $options = [], ?string $supplierName = null): array
+    private function previewRows(int $companyId, string $sourceType, array $headers, array $rows, array $mapping, array $options = [], ?string $supplierName = null, ?int $xmlSourceId = null): array
     {
         $mapping = $mapping ?: $this->suggestMapping($headers);
         $valid = [];
@@ -320,17 +341,18 @@ class ProductImportService
             'invalid_rows' => $invalid,
             'sample_rows' => array_slice($rows, 0, 10),
             'total_previewed' => min(count($rows), 25),
-            ...$this->simulatePreviewRows($companyId, $sourceType, $rows, $mapping, $options ?: $this->defaultOptions([]), $supplierName),
+            ...$this->simulatePreviewRows($companyId, $sourceType, $rows, $mapping, $options ?: $this->defaultOptions([]), $supplierName, $xmlSourceId),
         ];
     }
 
-    private function simulatePreviewRows(int $companyId, string $sourceType, array $rows, array $mapping, array $options, ?string $supplierName = null): array
+    private function simulatePreviewRows(int $companyId, string $sourceType, array $rows, array $mapping, array $options, ?string $supplierName = null, ?int $xmlSourceId = null): array
     {
         $simulationRows = [];
         $filteredRows = [];
         $mappedRows = [];
         $priceChangedRows = [];
         $readinessRows = [];
+        $conflictRows = [];
         $seen = collect();
 
         foreach (array_slice($rows, 0, 25) as $index => $raw) {
@@ -349,8 +371,9 @@ class ProductImportService
 
             $validation = $filterDecision['skip'] ? null : $this->validatePayload($pricedPayload, $options);
             $readiness = $this->lightweightReadiness($pricedPayload);
+            $conflict = $filterDecision['skip'] ? null : $this->previewOwnershipConflict($companyId, $sourceType, $xmlSourceId, $pricedPayload, $options, $rowNumber);
 
-            if (! empty($pricedPayload['sku']) && ($filterDecision['skip'] || $validation === null)) {
+            if (! empty($pricedPayload['sku']) && ($filterDecision['skip'] || ($validation === null && $conflict === null))) {
                 $seen->push((string) $pricedPayload['sku']);
             }
 
@@ -374,9 +397,11 @@ class ProductImportService
                 ]);
             }
 
+            $this->appendReportDetail($conflictRows, $conflict);
+
             $simulationRows[] = [
                 'row' => $rowNumber,
-                'status' => $validation !== null ? 'invalid' : ($filterDecision['skip'] ? 'filtered' : 'importable'),
+                'status' => $validation !== null ? 'invalid' : ($filterDecision['skip'] ? 'filtered' : ($conflict !== null ? 'conflict' : 'importable')),
                 'reason' => $filterDecision['reason'],
                 'message' => $validation,
                 'raw' => $raw,
@@ -385,10 +410,11 @@ class ProductImportService
                 'mapping' => $mappingDetail,
                 'price_change' => $priceDetail,
                 'readiness' => $readiness,
+                'ownership_conflict' => $conflict,
             ];
         }
 
-        $stockPreview = $this->stockStrategyPreview($companyId, $sourceType, $supplierName, $seen, $options);
+        $stockPreview = $this->stockStrategyPreview($companyId, $sourceType, $supplierName, $seen, $options, $xmlSourceId);
 
         return [
             'simulation_summary' => [
@@ -396,6 +422,7 @@ class ProductImportService
                 'importable_count' => collect($simulationRows)->where('status', 'importable')->count(),
                 'filtered_count' => count($filteredRows),
                 'invalid_count' => collect($simulationRows)->where('status', 'invalid')->count(),
+                'conflict_count' => count($conflictRows),
                 'mapped_count' => count($mappedRows),
                 'price_changed_count' => count($priceChangedRows),
                 'readiness_issue_count' => count($readinessRows),
@@ -405,6 +432,7 @@ class ProductImportService
             'mapped_rows' => $mappedRows,
             'price_changed_rows' => $priceChangedRows,
             'readiness_rows' => $readinessRows,
+            'ownership_conflict_rows' => $conflictRows,
             'stock_strategy_preview' => $stockPreview,
         ];
     }
@@ -548,20 +576,34 @@ class ProductImportService
         return null;
     }
 
-    private function upsertProduct(ProductImportRun $run, array $payload): string
+    private function upsertProduct(ProductImportRun $run, array $payload, int $rowNumber): array
     {
         $options = $run->options ?? [];
         $matchBy = $options['match_by'] ?? 'sku';
         $query = Product::where('company_id', $run->company_id);
         $identifier = $matchBy === 'barcode' && ! empty($payload['barcode']) ? 'barcode' : 'sku';
         $product = $query->where($identifier, (string) $payload[$identifier])->first();
+        $sourceProductCode = $this->sourceProductCode($payload);
+
+        if ($product && $this->hasXmlSourceConflict($product, $run)) {
+            return [
+                'status' => 'conflict',
+                'claimed' => false,
+                'detail' => $this->buildOwnershipConflictDetail($rowNumber, $product, $payload, $identifier, $run, $sourceProductCode),
+            ];
+        }
+
+        $willClaim = $product
+            && $run->source_type === 'xml'
+            && $run->xml_source_id !== null
+            && $product->xml_source_id === null;
 
         if ($product && empty($options['update_existing'])) {
-            return 'skipped';
+            return ['status' => 'skipped', 'claimed' => false, 'detail' => null];
         }
 
         if (! $product && ! empty($options['update_stock_price_only'])) {
-            return 'skipped';
+            return ['status' => 'skipped', 'claimed' => false, 'detail' => null];
         }
 
         $data = $this->productData($run, $payload, (bool) ($options['update_stock_price_only'] ?? false));
@@ -573,7 +615,12 @@ class ProductImportService
             $this->syncImages($product, $payload['image_urls'] ?? '', (int) data_get($options, 'image_strategy.max_image_count', 8));
         }
 
-        return $product->wasRecentlyCreated ? 'created' : 'updated';
+        return [
+            'status' => $product->wasRecentlyCreated ? 'created' : 'updated',
+            'claimed' => $willClaim,
+            'detail' => null,
+            'claim_detail' => $willClaim ? $this->buildClaimedExistingDetail($rowNumber, $product, $payload, $identifier, $run, $sourceProductCode) : null,
+        ];
     }
 
     private function productData(ProductImportRun $run, array $payload, bool $stockPriceOnly): array
@@ -584,6 +631,14 @@ class ProductImportService
             'last_import_run_id' => $run->id,
             'last_imported_at' => now(),
         ];
+
+        if ($run->source_type === 'xml' && $run->xml_source_id !== null) {
+            $base += [
+                'xml_source_id' => $run->xml_source_id,
+                'source_product_code' => $this->sourceProductCode($payload),
+                'last_xml_sync_at' => now(),
+            ];
+        }
 
         if ($stockPriceOnly) {
             return $base;
@@ -866,6 +921,52 @@ class ProductImportService
         return ['value' => $value, 'mapped' => false, 'unmapped' => true, 'mapping_type' => null];
     }
 
+    private function sourceProductCode(array $payload): ?string
+    {
+        $code = $payload['sku'] ?? $payload['barcode'] ?? null;
+        $code = trim((string) $code);
+
+        return $code === '' ? null : $code;
+    }
+
+    private function hasXmlSourceConflict(Product $product, ProductImportRun $run): bool
+    {
+        return $run->source_type === 'xml'
+            && $run->xml_source_id !== null
+            && $product->xml_source_id !== null
+            && (int) $product->xml_source_id !== (int) $run->xml_source_id;
+    }
+
+    private function buildOwnershipConflictDetail(int $rowNumber, Product $product, array $payload, string $identifier, ProductImportRun $run, ?string $sourceProductCode): array
+    {
+        return [
+            'row_number' => $rowNumber,
+            'sku' => $payload['sku'] ?? null,
+            'barcode' => $payload['barcode'] ?? null,
+            'identifier' => $identifier,
+            'identifier_value' => $payload[$identifier] ?? null,
+            'product_id' => $product->id,
+            'existing_xml_source_id' => $product->xml_source_id,
+            'current_xml_source_id' => $run->xml_source_id,
+            'source_product_code' => $sourceProductCode,
+            'reason' => 'xml_source_conflict',
+        ];
+    }
+
+    private function buildClaimedExistingDetail(int $rowNumber, Product $product, array $payload, string $identifier, ProductImportRun $run, ?string $sourceProductCode): array
+    {
+        return [
+            'row_number' => $rowNumber,
+            'sku' => $payload['sku'] ?? null,
+            'barcode' => $payload['barcode'] ?? null,
+            'identifier' => $identifier,
+            'identifier_value' => $payload[$identifier] ?? null,
+            'product_id' => $product->id,
+            'xml_source_id' => $run->xml_source_id,
+            'source_product_code' => $sourceProductCode,
+        ];
+    }
+
     private function applyMissingStrategy(ProductImportRun $run, Collection $seen): array
     {
         $action = $this->resolveMissingStrategy($run->options ?? []);
@@ -875,7 +976,18 @@ class ProductImportService
         }
 
         $query = Product::where('company_id', $run->company_id)
-            ->when($run->supplier_name, fn ($query) => $query->where('supplier_name', $run->supplier_name))
+            ->when(
+                $run->source_type === 'xml' && $run->xml_source_id !== null,
+                fn ($query) => $query->where(function ($inner) use ($run) {
+                    $inner->where('xml_source_id', $run->xml_source_id)
+                        ->orWhere(fn ($legacy) => $legacy
+                            ->whereNull('xml_source_id')
+                            ->when($run->supplier_name, fn ($legacySupplier) => $legacySupplier->where('supplier_name', $run->supplier_name)));
+                }),
+                fn ($query) => $query
+                    ->when($run->supplier_name, fn ($inner) => $inner->where('supplier_name', $run->supplier_name))
+                    ->whereNull('xml_source_id')
+            )
             ->whereNotIn('sku', $seen->unique()->values()->all());
 
         if ($action === 'zero_stock_missing') {
@@ -981,24 +1093,73 @@ class ProductImportService
         ];
     }
 
-    private function stockStrategyPreview(int $companyId, string $sourceType, ?string $supplierName, Collection $seen, array $options): array
+    private function previewOwnershipConflict(int $companyId, string $sourceType, ?int $xmlSourceId, array $payload, array $options, int $rowNumber): ?array
+    {
+        if ($sourceType !== 'xml' || $xmlSourceId === null) {
+            return null;
+        }
+
+        $matchBy = $options['match_by'] ?? 'sku';
+        $identifier = $matchBy === 'barcode' && ! empty($payload['barcode']) ? 'barcode' : 'sku';
+        if (empty($payload[$identifier])) {
+            return null;
+        }
+
+        $product = Product::where('company_id', $companyId)
+            ->where($identifier, (string) $payload[$identifier])
+            ->first();
+
+        if (! $product || $product->xml_source_id === null || (int) $product->xml_source_id === (int) $xmlSourceId) {
+            return null;
+        }
+
+        return [
+            'row_number' => $rowNumber,
+            'sku' => $payload['sku'] ?? null,
+            'barcode' => $payload['barcode'] ?? null,
+            'identifier' => $identifier,
+            'identifier_value' => $payload[$identifier] ?? null,
+            'product_id' => $product->id,
+            'existing_xml_source_id' => $product->xml_source_id,
+            'current_xml_source_id' => $xmlSourceId,
+            'source_product_code' => $this->sourceProductCode($payload),
+            'reason' => 'xml_source_conflict',
+        ];
+    }
+
+    private function stockStrategyPreview(int $companyId, string $sourceType, ?string $supplierName, Collection $seen, array $options, ?int $xmlSourceId = null): array
     {
         $action = $this->resolveMissingStrategy($options);
 
         if ($sourceType !== 'xml' || $action === 'none' || $seen->isEmpty()) {
             return [
                 'strategy' => $action,
+                'scope' => $xmlSourceId !== null ? 'xml_source_with_legacy_supplier' : 'legacy_supplier',
+                'xml_source_id' => $xmlSourceId,
                 'affected_count' => 0,
                 'affected_products' => [],
             ];
         }
 
         $query = Product::where('company_id', $companyId)
-            ->when($supplierName, fn ($query) => $query->where('supplier_name', $supplierName))
+            ->when(
+                $xmlSourceId !== null,
+                fn ($query) => $query->where(function ($inner) use ($xmlSourceId, $supplierName) {
+                    $inner->where('xml_source_id', $xmlSourceId)
+                        ->orWhere(fn ($legacy) => $legacy
+                            ->whereNull('xml_source_id')
+                            ->when($supplierName, fn ($legacySupplier) => $legacySupplier->where('supplier_name', $supplierName)));
+                }),
+                fn ($query) => $query
+                    ->when($supplierName, fn ($inner) => $inner->where('supplier_name', $supplierName))
+                    ->whereNull('xml_source_id')
+            )
             ->whereNotIn('sku', $seen->unique()->values()->all());
 
         return [
             'strategy' => $action,
+            'scope' => $xmlSourceId !== null ? 'xml_source_with_legacy_supplier' : 'legacy_supplier',
+            'xml_source_id' => $xmlSourceId,
             'affected_count' => (clone $query)->count(),
             'affected_products' => (clone $query)
                 ->select(['sku', 'stock', 'status'])

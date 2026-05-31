@@ -13,7 +13,7 @@ class ProductController extends Controller
     public function index(Request $request): JsonResponse
     {
         $products = Product::query()
-            ->with(['company:id,name', 'images', 'marketplaceStatuses'])
+            ->with(['company:id,name', 'xmlSource:id,name', 'images', 'marketplaceStatuses'])
             ->when($this->tenantCompanyId($request), fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->when($request->filled('company_id'), fn ($query) => $query->where('company_id', $request->integer('company_id')))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
@@ -42,7 +42,7 @@ class ProductController extends Controller
     {
         $this->abortIfNotTenant(request(), $product);
 
-        return response()->json($product->load('company', 'images', 'marketplaceStatuses'));
+        return response()->json($product->load('company', 'xmlSource:id,name', 'images', 'marketplaceStatuses'));
     }
 
     public function update(Request $request, Product $product, ProductReadinessService $readiness): JsonResponse
@@ -52,7 +52,7 @@ class ProductController extends Controller
         $product->update($this->validated($request, $product->id));
         $readiness->check($product);
 
-        return response()->json($product->load('company', 'images', 'marketplaceStatuses'));
+        return response()->json($product->load('company', 'xmlSource:id,name', 'images', 'marketplaceStatuses'));
     }
 
     public function destroy(Product $product): JsonResponse

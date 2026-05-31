@@ -265,6 +265,7 @@ function simulationStatusLabel(status) {
     importable: 'Import edilecek',
     filtered: 'Filtrelenecek',
     invalid: 'Hatali',
+    conflict: 'Source conflict',
   }[status] || status || '-';
 }
 
@@ -273,6 +274,7 @@ function simulationStatusTone(status) {
     importable: 'ready',
     filtered: 'running',
     invalid: 'blocked',
+    conflict: 'blocked',
   }[status] || 'blocked';
 }
 
@@ -383,6 +385,7 @@ export function ImportCenterPage() {
   const previewMappedRows = withRowIds(preview?.mapped_rows, 'preview-mapped');
   const previewPriceRows = withRowIds(preview?.price_changed_rows, 'preview-price');
   const previewReadinessRows = withRowIds(preview?.readiness_rows, 'preview-readiness');
+  const previewOwnershipConflictRows = withRowIds(preview?.ownership_conflict_rows, 'preview-ownership-conflict');
   const stockStrategyPreview = asObject(preview?.stock_strategy_preview);
   const previewStockRows = withRowIds(stockStrategyPreview.affected_products, 'preview-stock');
   const previewCategories = useMemo(() => uniqueMappedValues(previewRows, 'category'), [validRows, invalidRows]);
@@ -672,6 +675,8 @@ export function ImportCenterPage() {
   const selectedMappedRows = withRowIds(selectedReport.mapped_rows, 'mapped');
   const selectedPriceRows = withRowIds(selectedReport.price_changed_rows, 'price');
   const selectedStockRows = withRowIds(selectedReport.stock_strategy_rows, 'stock');
+  const selectedConflictRows = withRowIds(selectedReport.conflict_rows, 'conflict');
+  const selectedClaimedRows = withRowIds(selectedReport.claimed_existing_rows, 'claimed');
   const selectedErrorBreakdown = Object.entries(asObject(selectedReport.error_breakdown)).map(([message, count]) => ({ id: message, message, count }));
   const selectedXmlSource = xmlSources.find((source) => Number(source.id) === Number(selectedXmlSourceId)) || xmlSources[0] || null;
   const selectedSourceRuns = selectedXmlSource ? getSourceRuns(selectedXmlSource, runs).slice(0, 10) : [];
@@ -864,6 +869,7 @@ export function ImportCenterPage() {
                       <div><span>Import edilecek</span><strong>{simulationSummary.importable_count || 0}</strong></div>
                       <div><span>Filtrelenecek</span><strong>{simulationSummary.filtered_count || 0}</strong></div>
                       <div><span>Hatali</span><strong>{simulationSummary.invalid_count || 0}</strong></div>
+                      <div><span>Source conflict</span><strong>{simulationSummary.conflict_count || 0}</strong></div>
                       <div><span>Mapping uygulanacak</span><strong>{simulationSummary.mapped_count || 0}</strong></div>
                       <div><span>Fiyatı değişecek</span><strong>{simulationSummary.price_changed_count || 0}</strong></div>
                       <div><span>Readiness eksikli</span><strong>{simulationSummary.readiness_issue_count || 0}</strong></div>
@@ -873,6 +879,7 @@ export function ImportCenterPage() {
                         ['summary', 'Simülasyon Özeti'],
                         ['importable', 'Import Edilecek'],
                         ['filtered', 'Filtrelenen'],
+                        ['conflict', 'Ownership Conflict'],
                         ['mapping', 'Mapping'],
                         ['price', 'Fiyat'],
                         ['readiness', 'Readiness'],
@@ -944,6 +951,23 @@ export function ImportCenterPage() {
                       />
                     )}
 
+                    {simulationTab === 'conflict' && (
+                      <DataTable
+                        rows={previewOwnershipConflictRows}
+                        emptyTitle="Ownership conflict yok"
+                        emptyText="Mevcut preview orneginde farkli XML kaynagina ait urunle cakisma bulunmuyor."
+                        columns={[
+                          { key: 'row_number', label: 'Satir' },
+                          { key: 'sku', label: 'SKU' },
+                          { key: 'barcode', label: 'Barkod' },
+                          { key: 'product_id', label: 'Urun ID' },
+                          { key: 'existing_xml_source_id', label: 'Mevcut source' },
+                          { key: 'current_xml_source_id', label: 'Bu source' },
+                          { key: 'reason', label: 'Sebep', render: (row) => <StatusPill tone="blocked" label={row.reason || '-'} /> },
+                        ]}
+                      />
+                    )}
+
                     {simulationTab === 'price' && (
                       <DataTable
                         rows={previewPriceRows}
@@ -979,8 +1003,10 @@ export function ImportCenterPage() {
                       <div className="preview-stock-simulation">
                         <div className="queue-summary">
                           <div><span>Strateji</span><strong>{stockStrategyPreview.strategy || 'none'}</strong></div>
+                          <div><span>Kapsam</span><strong>{stockStrategyPreview.scope === 'xml_source_with_legacy_supplier' ? 'Bu XML kaynagi + legacy' : 'Legacy tedarikci'}</strong></div>
                           <div><span>Etkilenecek urun</span><strong>{stockStrategyPreview.affected_count || 0}</strong></div>
                         </div>
+                        <p className="muted-text">Missing strategy farkli XML kaynagina ait urunleri etkilemez; sadece bu XML kaynagi ve source sahibi olmayan legacy tedarikci urunleri kapsama girer.</p>
                         <DataTable
                           rows={previewStockRows}
                           emptyTitle="Stok stratejisi etkisi yok"
@@ -1357,6 +1383,8 @@ export function ImportCenterPage() {
             <div><span>Marka map</span><strong>{selectedReport.mapped_brand_count || 0}</strong></div>
             <div><span>Kategori eslesmeyen</span><strong>{selectedReport.unmapped_category_count || 0}</strong></div>
             <div><span>Marka eslesmeyen</span><strong>{selectedReport.unmapped_brand_count || 0}</strong></div>
+            <div><span>Source conflict</span><strong>{selectedReport.conflict_count || 0}</strong></div>
+            <div><span>Claim edilen</span><strong>{selectedReport.claimed_existing_count || 0}</strong></div>
             <div><span>Stok sifirlanan</span><strong>{selectedReport.zero_stocked_count || selectedReport.zero_stocked || 0}</strong></div>
             <div><span>Pasife alinan</span><strong>{selectedReport.deactivated_count || selectedReport.deactivated || 0}</strong></div>
           </div>
@@ -1367,6 +1395,8 @@ export function ImportCenterPage() {
               ['filtered', 'Filtrelenen'],
               ['mapping', 'Mapping'],
               ['price', 'Fiyat'],
+              ['conflict', 'Ownership Conflict'],
+              ['claimed', 'Claim Edilen'],
               ['stock', 'Stok Stratejisi'],
             ].map(([key, label]) => (
               <button type="button" key={key} className={runDetailTab === key ? 'tab active' : 'tab'} onClick={() => setRunDetailTab(key)}>{label}</button>
@@ -1378,6 +1408,8 @@ export function ImportCenterPage() {
               <SoftEmpty><strong>{selectedFilteredRows.length}</strong><span>Detayli filtre kaydi</span></SoftEmpty>
               <SoftEmpty><strong>{selectedMappedRows.length}</strong><span>Mapping uygulanan satir</span></SoftEmpty>
               <SoftEmpty><strong>{selectedPriceRows.length}</strong><span>Fiyat kurali uygulanan satir</span></SoftEmpty>
+              <SoftEmpty><strong>{selectedConflictRows.length}</strong><span>Source conflict satiri</span></SoftEmpty>
+              <SoftEmpty><strong>{selectedClaimedRows.length}</strong><span>Claim edilen mevcut urun</span></SoftEmpty>
               <SoftEmpty><strong>{selectedStockRows.length}</strong><span>Stok stratejisi kaydi</span></SoftEmpty>
               <div className="import-error-breakdown">
                 <h3>Hata kirilimi</h3>
@@ -1451,6 +1483,40 @@ export function ImportCenterPage() {
                 { key: 'multiplier', label: 'Carpan' },
                 { key: 'profit_rate', label: 'Kar %' },
                 { key: 'rounding_mode', label: 'Yuvarlama' },
+              ]}
+            />
+          )}
+
+          {runDetailTab === 'conflict' && (
+            <DataTable
+              rows={selectedConflictRows}
+              emptyTitle="Ownership conflict yok"
+              emptyText="Bu import run icinde farkli XML kaynagina ait urunle cakisan satir bulunmuyor."
+              columns={[
+                { key: 'row_number', label: 'Satir' },
+                { key: 'sku', label: 'SKU' },
+                { key: 'barcode', label: 'Barkod' },
+                { key: 'product_id', label: 'Urun ID' },
+                { key: 'existing_xml_source_id', label: 'Mevcut source' },
+                { key: 'current_xml_source_id', label: 'Bu source' },
+                { key: 'source_product_code', label: 'Source kodu' },
+                { key: 'reason', label: 'Sebep', render: (row) => <StatusPill tone="blocked" label={row.reason || '-'} /> },
+              ]}
+            />
+          )}
+
+          {runDetailTab === 'claimed' && (
+            <DataTable
+              rows={selectedClaimedRows}
+              emptyTitle="Claim edilen urun yok"
+              emptyText="Bu import run icinde daha once XML source sahibi olmayan mevcut urun claim edilmedi."
+              columns={[
+                { key: 'row_number', label: 'Satir' },
+                { key: 'sku', label: 'SKU' },
+                { key: 'barcode', label: 'Barkod' },
+                { key: 'product_id', label: 'Urun ID' },
+                { key: 'xml_source_id', label: 'XML source' },
+                { key: 'source_product_code', label: 'Source kodu' },
               ]}
             />
           )}
