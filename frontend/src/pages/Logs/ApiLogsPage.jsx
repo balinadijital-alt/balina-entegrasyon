@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Eye, FileWarning, RefreshCcw, Search, ShieldAlert, Timer } from 'lucide-react';
 import { api, asArray, asObject } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
@@ -126,14 +126,16 @@ function formatDate(value) {
 }
 
 export function ApiLogsPage() {
+  const [searchParams] = useSearchParams();
   const { loading, error, run } = useAsync();
+  const initialSearch = searchParams.get('search') || '';
   const [activeTab, setActiveTab] = useState('api');
   const [logs, setLogs] = useState([]);
   const [inboundWebhooks, setInboundWebhooks] = useState([]);
   const [selectedLog, setSelectedLog] = useState(null);
   const [selectedInbound, setSelectedInbound] = useState(null);
   const [filters, setFilters] = useState({
-    search: '',
+    search: initialSearch,
     service: '',
     marketplace: '',
     status: '',
@@ -173,7 +175,7 @@ export function ApiLogsPage() {
     const query = filters.search.trim().toLowerCase();
     const status = Number(log.status_code || 0);
     const date = log.created_at ? new Date(log.created_at) : null;
-    const matchesSearch = !query || [log.marketplace_code, log.method, log.endpoint, log.status_code, log.error_message, JSON.stringify(log.response_payload || {})].some((value) => String(value || '').toLowerCase().includes(query));
+    const matchesSearch = !query || [log.marketplace_code, log.method, log.endpoint, log.status_code, log.error_message, JSON.stringify(log.request_payload || {}), JSON.stringify(log.response_payload || {})].some((value) => String(value || '').toLowerCase().includes(query));
     const matchesService = !filters.service || serviceType(log) === filters.service;
     const matchesMarketplace = !filters.marketplace || String(log.marketplace_code || '').toLowerCase() === filters.marketplace;
     const matchesStatus = !filters.status || String(status).startsWith(filters.status);

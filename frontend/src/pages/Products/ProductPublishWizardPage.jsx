@@ -61,14 +61,14 @@ function productReadinessSummary(product, marketplaceCode) {
     const marketplace = product.variant_readiness_rollup.marketplaces?.[marketplaceCode] || product.variant_readiness_rollup;
     return {
       score: marketplace.readiness_score || 0,
-      reason: `${marketplace.ready_children || 0}/${marketplace.total_children || 0} varyant hazir`,
+      reason: `Parent urun / ${marketplace.ready_children || 0}/${marketplace.total_children || 0} varyant hazir`,
       selectable: false,
     };
   }
 
   return {
     score: readinessScore(product, marketplaceCode),
-    reason: product.parent ? `${product.parent.name || product.parent.sku} / ${product.variant_group_key || '-'}` : publishBlockReason(product, marketplaceCode),
+    reason: product.parent ? `${product.parent.name || product.parent.sku} / ${product.variant_group_key || '-'} / ${missingTextFromFields(missingFields(product, marketplaceCode)) || 'Eksik yok'}` : publishBlockReason(product, marketplaceCode),
     selectable: true,
   };
 }
@@ -260,12 +260,12 @@ export function ProductPublishWizardPage() {
                 emptyTitle="Aktarima hazirlanacak urun yok"
                 emptyText="Once urun ekleme sihirbazi ile urun olusturun veya filtreleri temizleyin."
                 columns={[
-                  { key: 'select', label: '', render: (row) => <input type="checkbox" title={row.product_type === 'parent' ? 'Parent urun dogrudan gonderilmez.' : undefined} disabled={row.product_type === 'parent'} checked={selectedProducts.includes(row.id)} onChange={() => toggleProduct(row.id)} /> },
-                  { key: 'name', label: 'Urun', render: (row) => <div className="table-product-title"><strong>{row.name}</strong><span>{row.sku}</span>{row.product_type === 'parent' ? <small className="variant-badge parent">Parent</small> : null}{row.parent ? <small>{row.parent.name || row.parent.sku} / {row.variant_group_key || '-'}</small> : null}</div> },
+                  { key: 'select', label: '', render: (row) => <input type="checkbox" title={row.product_type === 'parent' ? 'Parent urun gonderilmez; gonderim child varyantlar uzerinden yapilir.' : undefined} disabled={row.product_type === 'parent'} checked={selectedProducts.includes(row.id)} onChange={() => toggleProduct(row.id)} /> },
+                  { key: 'name', label: 'Urun', render: (row) => <div className="table-product-title"><strong>{row.name}</strong><span>{row.sku}</span>{row.product_type === 'parent' ? <small className="variant-badge parent">Parent urun</small> : null}{row.product_type === 'parent' ? <small>Gonderim icin child varyantlari secin.</small> : null}{row.parent ? <small>{row.parent.name || row.parent.sku} / {row.variant_group_key || '-'}</small> : null}</div> },
                   { key: 'score', label: 'Hazirlik', render: (row) => { const summary = productReadinessSummary(row, marketplaceCode); return <div className="score-cell"><strong>{summary.score}%</strong><span>{summary.reason}</span></div>; } },
                   { key: 'status', label: 'Durum', render: (row) => row.product_type === 'parent' ? <span className="status-pill blocked">Parent</span> : <span className={isMarketplaceReady(row, marketplaceCode) ? 'status-pill ready' : 'status-pill blocked'}>{isMarketplaceReady(row, marketplaceCode) ? 'Hazir' : 'Eksik'}</span> },
                   { key: 'missing', label: 'Eksikler', render: (row) => missingTextFromFields(missingFields(row, marketplaceCode)) || '-' },
-                  { key: 'edit', label: 'Islem', render: (row) => <Link className="table-action-link" to={`/products/${row.id}/edit`}><Edit3 size={14} /> Duzenle</Link> },
+                  { key: 'edit', label: 'Islem', render: (row) => row.product_type === 'parent' ? <Link className="table-action-link" to={`/products/${row.id}`}>Varyantlari goster</Link> : <Link className="table-action-link" to={`/products/${row.id}/edit`}><Edit3 size={14} /> Duzenle</Link> },
                 ]}
               />
             </>

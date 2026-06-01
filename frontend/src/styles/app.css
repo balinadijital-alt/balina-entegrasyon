@@ -1636,6 +1636,123 @@ a {
   color: #1d4ed8;
 }
 
+.problem-card-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.problem-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 26px rgb(15 23 42 / 6%);
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.problem-card-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.problem-card-header div {
+  display: grid;
+  gap: 4px;
+}
+
+.problem-card-header span,
+.problem-card p {
+  color: #64748b;
+  font-size: 13px;
+  margin: 0;
+}
+
+.severity-badge {
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 5px 9px;
+  text-transform: uppercase;
+}
+
+.severity-badge.failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.severity-badge.rejected {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.problem-meta-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.problem-meta-grid div {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  display: grid;
+  gap: 3px;
+  padding: 9px;
+}
+
+.problem-meta-grid span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.problem-meta-grid strong {
+  color: #0f172a;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.problem-suggestion {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  color: #1e40af;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 10px;
+}
+
+.problem-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.problem-action-row a {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: #334155;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 900;
+  min-height: 30px;
+  padding: 0 10px;
+  text-decoration: none;
+}
+
+.problem-action-row a:hover {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #3730a3;
+}
+
 .result-summary-grid {
   display: grid;
   gap: 10px;

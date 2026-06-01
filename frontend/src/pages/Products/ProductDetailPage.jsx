@@ -71,6 +71,30 @@ function childMarketplaceStatus(product, code) {
   return status?.status || status?.readiness_status || '-';
 }
 
+function getVariantProblemSuggestion(problem) {
+  const text = [
+    problem?.error_message,
+    problem?.status,
+    ...(problem?.readiness_missing_fields || []),
+  ].join(' ').toLocaleLowerCase('tr-TR');
+
+  if (text.includes('barcode') || text.includes('barkod')) return 'Barkod alanini kontrol edin.';
+  if (text.includes('category') || text.includes('kategori')) return 'Kategori eslestirme ve marketplace kategori mapping kontrol edilmeli.';
+  if (text.includes('brand') || text.includes('marka')) return 'Marka bilgisi ve pazaryeri marka karsiligi kontrol edilmeli.';
+  if (text.includes('price') || text.includes('fiyat')) return 'Fiyat ve minimum fiyat kurallari kontrol edilmeli.';
+  if (text.includes('stock') || text.includes('stok')) return 'Stok degeri ve XML kaynak stok stratejisi kontrol edilmeli.';
+  if (text.includes('image') || text.includes('gorsel')) return 'Urun gorseli veya parent gorsel fallback kontrol edilmeli.';
+  if (text.includes('attribute') || text.includes('ozellik') || text.includes('nitelik')) return 'Zorunlu kategori ozellikleri tamamlanmali.';
+
+  return 'API log ve urun readiness detayini kontrol edin.';
+}
+
+function marketplacePath(code) {
+  if (code === 'trendyol') return '/marketplaces/trendyol';
+  if (code === 'hepsiburada') return '/marketplaces/hepsiburada';
+  return '/marketplaces';
+}
+
 export function ProductDetailPage() {
   const { id } = useParams();
   const { notify } = useApp();
@@ -247,21 +271,47 @@ export function ProductDetailPage() {
               { key: 'last_checked_at', label: 'Son Kontrol', render: (row) => formatDateTime(row.last_checked_at) },
             ]}
           />
-          <h3>Problemli Varyantlar</h3>
-          <DataTable
-            rows={problemChildren}
-            emptyTitle="Problemli varyant yok"
-            emptyText="Child varyantlarda hata veya red durumu bulunmuyor."
-            columns={[
-              { key: 'sku', label: 'SKU' },
-              { key: 'barcode', label: 'Barkod', render: (row) => row.barcode || '-' },
-              { key: 'marketplace_code', label: 'Marketplace' },
-              { key: 'status', label: 'Status', render: (row) => rollupStatusLabel(row.status) },
-              { key: 'error_message', label: 'Hata', render: (row) => row.error_message || '-' },
-              { key: 'batch_request_id', label: 'Batch ID', render: (row) => row.batch_request_id || '-' },
-              { key: 'last_checked_at', label: 'Son Kontrol', render: (row) => formatDateTime(row.last_checked_at) },
-            ]}
-          />
+          <div className="panel-heading">
+            <div>
+              <h3>Problem Cozum Merkezi</h3>
+              <span>Gercek retry veya provider gonderimi yapmadan dogru duzeltme ekranina gecin.</span>
+            </div>
+            <Link className="button-link secondary-link" to="/products/publish-queue">Publish Queue</Link>
+          </div>
+          {problemChildren.length === 0 ? (
+            <div className="soft-empty">Child varyantlarda hata veya red durumu bulunmuyor.</div>
+          ) : (
+            <div className="problem-card-grid">
+              {problemChildren.map((problem) => (
+                <article className="problem-card" key={`${problem.marketplace_code}-${problem.product_id}-${problem.batch_request_id || problem.status}`}>
+                  <div className="problem-card-header">
+                    <div>
+                      <strong>{problem.name || problem.sku || `Varyant #${problem.product_id}`}</strong>
+                      <span>{problem.sku || '-'} / {problem.barcode || '-'}</span>
+                    </div>
+                    <span className={`severity-badge ${problem.status === 'rejected' ? 'rejected' : 'failed'}`}>{rollupStatusLabel(problem.status)}</span>
+                  </div>
+                  <div className="problem-meta-grid">
+                    <div><span>Marketplace</span><strong>{problem.marketplace_code || '-'}</strong></div>
+                    <div><span>Batch ID</span><strong>{problem.batch_request_id || '-'}</strong></div>
+                    <div><span>Son kontrol</span><strong>{formatDateTime(problem.last_checked_at)}</strong></div>
+                    <div><span>Parent / Grup</span><strong>{problem.parent_product_id || '-'} / {problem.variant_group_key || '-'}</strong></div>
+                    <div><span>Readiness</span><strong>{problem.readiness_score || 0}%</strong></div>
+                    <div><span>Eksikler</span><strong>{missingText(problem.readiness_missing_fields || []) || '-'}</strong></div>
+                  </div>
+                  <p>{problem.error_message || 'Provider hata mesaji yok.'}</p>
+                  <div className="problem-suggestion">{getVariantProblemSuggestion(problem)}</div>
+                  <div className="problem-action-row">
+                    <Link to={`/products/${problem.product_id}`}>Varyant detay</Link>
+                    <Link to={`/products/${problem.product_id}/edit`}>Varyanti duzenle</Link>
+                    <Link to={`/api-logs?search=${encodeURIComponent(problem.sku || problem.barcode || problem.batch_request_id || '')}`}>API loglarda ara</Link>
+                    <Link to="/products/publish-queue">Publish Queue</Link>
+                    <Link to={marketplacePath(problem.marketplace_code)}>Pazaryeri ekrani</Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       )}
 

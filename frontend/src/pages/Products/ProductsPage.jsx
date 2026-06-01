@@ -95,6 +95,14 @@ function parentMarketplaceSummary(product, code) {
   return { rollup, problemCount, batchId };
 }
 
+function criticalMarketplace(product) {
+  const entries = ['trendyol', 'hepsiburada']
+    .map((code) => ({ code, summary: parentMarketplaceSummary(product, code) }))
+    .filter((item) => item.summary);
+
+  return entries.sort((a, b) => b.summary.problemCount - a.summary.problemCount)[0];
+}
+
 export function ProductsPage() {
   const { notify } = useApp();
   const { loading, error, run } = useAsync();
@@ -390,7 +398,7 @@ export function ProductsPage() {
           emptyTitle="Urun bulunamadi"
           emptyText="Filtreleri temizleyin, yeni urun ekleyin veya Excel/XML ile toplu yukleme baslatin."
           columns={[
-            { key: 'select', label: '', render: (row) => <input type="checkbox" title={row.product_type === 'parent' ? 'Parent urun dogrudan gonderilmez.' : undefined} disabled={row.product_type === 'parent'} checked={selected.includes(row.id)} onChange={() => toggleSelected(row.id)} /> },
+            { key: 'select', label: '', render: (row) => <input type="checkbox" title={row.product_type === 'parent' ? 'Parent urun gonderilmez; gonderim child varyantlar uzerinden yapilir.' : undefined} disabled={row.product_type === 'parent'} checked={selected.includes(row.id)} onChange={() => toggleSelected(row.id)} /> },
             { key: 'image', label: 'Gorsel', render: (row) => productImage(row) ? <img className="table-product-image" src={productImage(row)} alt={row.name} /> : <span className="table-product-placeholder"><PackagePlus size={16} /></span> },
             { key: 'name', label: 'Urun', render: (row) => <div className="table-product-title"><strong>{row.name}</strong><span>{row.sku}</span>{variantBadge(row) ? <small className={`variant-badge ${row.product_type === 'parent' ? 'parent' : 'child'}`}>{variantBadge(row)}</small> : null}</div> },
             { key: 'xml_source', label: 'XML Kaynak', render: (row) => <div className="table-product-title"><strong>{row.xml_source?.name || '-'}</strong><span>{row.source_product_code || row.supplier_name || '-'}</span><small>{formatDateTime(row.last_xml_sync_at)}</small></div> },
@@ -420,6 +428,7 @@ export function ProductsPage() {
                   const hepsiburada = parentMarketplaceSummary(row, 'hepsiburada');
                   const problemCount = Number(trendyol?.problemCount || 0) + Number(hepsiburada?.problemCount || 0);
                   const batchId = trendyol?.batchId || hepsiburada?.batchId;
+                  const critical = criticalMarketplace(row);
 
                   return (
                     <div className="table-product-title">
@@ -427,8 +436,10 @@ export function ProductsPage() {
                         <span className={`badge ${rollupStatusClass(trendyol?.rollup.rollup_status)}`}>TY {rollupStatusLabel(trendyol?.rollup.rollup_status)}</span>
                         <span className={`badge ${rollupStatusClass(hepsiburada?.rollup.rollup_status)}`}>HB {rollupStatusLabel(hepsiburada?.rollup.rollup_status)}</span>
                       </div>
+                      <span>{problemCount > 0 ? `${problemCount} problemli varyant` : 'Problemli varyant yok'}{critical?.summary.problemCount > 0 ? ` / kritik: ${critical.code}` : ''}</span>
                       <span>{batchId ? `Son batch ${batchId}` : 'Batch yok'}</span>
-                      <small>{problemCount > 0 ? `${problemCount} problemli varyant` : 'Problemli varyant yok'}</small>
+                      <small>Parent urun gonderilmez; child varyantlari kontrol edin.</small>
+                      <Link className="table-action-link" to={`/products/${row.id}`}>{problemCount > 0 ? 'Problem coz' : 'Detayi ac'}</Link>
                     </div>
                   );
                 }

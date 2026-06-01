@@ -159,13 +159,18 @@ class ProductVariantRollupService
                 ->take(self::PROBLEM_CHILDREN_LIMIT)
                 ->map(fn ($status) => [
                     'product_id' => $status->product_id,
+                    'name' => $status->product?->name,
                     'sku' => $status->product?->sku,
                     'barcode' => $status->product?->barcode,
+                    'parent_product_id' => $status->product?->parent_product_id,
+                    'variant_group_key' => $status->product?->variant_group_key,
                     'marketplace_code' => $status->marketplace_code,
                     'status' => in_array($status->status, $knownStatuses, true) ? $status->status : 'mixed',
                     'error_message' => $status->error_message,
                     'batch_request_id' => $status->batch_request_id,
                     'last_checked_at' => $status->last_checked_at,
+                    'readiness_missing_fields' => $this->readinessMissingFields($status->product, $marketplace),
+                    'readiness_score' => $this->readinessScore($status->product, $marketplace),
                 ])
                 ->values()
                 ->all(),
@@ -229,6 +234,20 @@ class ProductVariantRollupService
         }
 
         return 0;
+    }
+
+    private function readinessMissingFields(?Product $product, string $marketplace): array
+    {
+        $report = $product?->marketplace_readiness[$marketplace] ?? null;
+
+        return is_array($report) ? ($report['missing_fields'] ?? []) : [];
+    }
+
+    private function readinessScore(?Product $product, string $marketplace): int
+    {
+        $report = $product?->marketplace_readiness[$marketplace] ?? null;
+
+        return is_array($report) ? (int) ($report['score'] ?? 0) : 0;
     }
 
     private function children(Product $product): Collection

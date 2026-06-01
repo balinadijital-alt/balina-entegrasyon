@@ -44,7 +44,7 @@ function productReadinessSummary(product, marketplaceCode) {
     const marketplace = product.variant_readiness_rollup.marketplaces?.[marketplaceCode] || product.variant_readiness_rollup;
     return {
       score: marketplace.readiness_score || 0,
-      reason: `${marketplace.ready_children || 0}/${marketplace.total_children || 0} varyant hazir`,
+      reason: `Parent aggregate / ${marketplace.ready_children || 0}/${marketplace.total_children || 0} varyant hazir`,
     };
   }
 
@@ -52,6 +52,29 @@ function productReadinessSummary(product, marketplaceCode) {
     score: readinessScore(product, marketplaceCode),
     reason: product.parent ? `${product.parent.name || product.parent.sku} / ${product.variant_group_key || '-'}` : publishBlockReason(product, marketplaceCode),
   };
+}
+
+function fixTarget(product, missing = [], marketplaceCode = '') {
+  if (missing.includes('category_mapping') || missing.includes('marketplace_category')) {
+    return { href: `/products/category-mapping?category=${encodeURIComponent(product?.category || '')}`, label: 'Kategori esle' };
+  }
+  if (missing.includes('brand')) {
+    return { href: '/catalog/brands', label: 'Marka katalogu' };
+  }
+  if (missing.includes('attributes') || missing.includes('required_attributes')) {
+    return { href: '/catalog/attributes', label: 'Nitelik tamamla' };
+  }
+  if (missing.includes('image')) {
+    return { href: `/products/${product?.id}/edit`, label: 'Gorsel duzenle' };
+  }
+  if (missing.includes('price') || missing.includes('stock')) {
+    return { href: `/products/${product?.id}/edit`, label: 'Fiyat/stok duzenle' };
+  }
+  if (marketplaceCode === 'trendyol' || marketplaceCode === 'hepsiburada') {
+    return { href: `/marketplaces/${marketplaceCode}`, label: 'Provider ekrani' };
+  }
+
+  return { href: '/api-logs', label: 'API loglari' };
 }
 
 export function PublishQueuePage() {
@@ -174,13 +197,13 @@ export function PublishQueuePage() {
             emptyTitle="Urun yok"
             emptyText="Aktarim listesine almak icin once urun ekleyin."
             columns={[
-              { key: 'select', label: '', render: (row) => <input type="checkbox" title={row.product_type === 'parent' ? 'Parent urun dogrudan gonderilmez.' : undefined} disabled={row.product_type === 'parent'} checked={selectedProducts.includes(row.id)} onChange={() => toggleProduct(row.id)} /> },
-              { key: 'name', label: 'Urun', render: (row) => <div className="table-product-title"><strong>{row.name}</strong>{row.product_type === 'parent' ? <small className="variant-badge parent">Parent</small> : null}{row.parent ? <span>{row.parent.name || row.parent.sku} / {row.variant_group_key || '-'}</span> : null}</div> },
+              { key: 'select', label: '', render: (row) => <input type="checkbox" title={row.product_type === 'parent' ? 'Parent urun dogrudan hazirlanamaz; child varyantlari secin.' : undefined} disabled={row.product_type === 'parent'} checked={selectedProducts.includes(row.id)} onChange={() => toggleProduct(row.id)} /> },
+              { key: 'name', label: 'Urun', render: (row) => <div className="table-product-title"><strong>{row.name}</strong>{row.product_type === 'parent' ? <small className="variant-badge parent">Parent aggregate</small> : null}{row.product_type === 'parent' ? <span>Dogrudan hazirlanamaz; child varyantlari secin.</span> : null}{row.parent ? <span>{row.parent.name || row.parent.sku} / {row.variant_group_key || '-'}</span> : null}</div> },
               { key: 'sku', label: 'SKU' },
               { key: 'category', label: 'Kategori' },
               { key: 'score', label: 'Hazirlik', render: (row) => { const summary = productReadinessSummary(row, selectedMarketplaceCode); return <div className="score-cell"><strong>{summary.score}%</strong><span>{summary.reason}</span></div>; } },
               { key: 'status', label: 'Durum', render: (row) => row.product_type === 'parent' ? <span className="status-pill blocked">Parent</span> : <span className={isMarketplaceReady(row, selectedMarketplaceCode) ? 'status-pill ready' : 'status-pill blocked'}>{isMarketplaceReady(row, selectedMarketplaceCode) ? 'Hazir' : 'Eksik'}</span> },
-              { key: 'edit', label: 'Islem', render: (row) => <Link className="table-action-link" to={`/products/${row.id}/edit`}><Edit3 size={14} /> Duzenle</Link> },
+              { key: 'edit', label: 'Islem', render: (row) => row.product_type === 'parent' ? <Link className="table-action-link" to={`/products/${row.id}`}>Varyantlari gor</Link> : <Link className="table-action-link" to={`/products/${row.id}/edit`}><Edit3 size={14} /> Duzenle</Link> },
             ]}
           />
         </section>
@@ -254,10 +277,8 @@ export function PublishQueuePage() {
                 const product = firstDraftProduct(row);
                 const missing = draftMissingFields(row);
                 if (!product || missing.length === 0) return '-';
-                if (missing.includes('category_mapping') || missing.includes('marketplace_category')) {
-                  return <Link className="table-action-link" to={`/products/category-mapping?category=${encodeURIComponent(product.category || '')}`}>Kategori esle</Link>;
-                }
-                return <Link className="table-action-link" to={`/products/${product.id}/edit`}>Urunu duzenle</Link>;
+                const target = fixTarget(product, missing, row.marketplace_code);
+                return <Link className="table-action-link" to={target.href}>{target.label}</Link>;
               },
             },
             {

@@ -93,13 +93,18 @@ class ProductVariantBatchAggregationTest extends TestCase
         $rollup = app(ProductVariantRollupService::class)->marketplaceStatuses($parent->fresh('variants.marketplaceStatuses'));
 
         $this->assertCount(20, $rollup['trendyol']['problem_children']);
+        $this->assertSame('PROBLEM-01', $rollup['trendyol']['problem_children'][0]['name']);
         $this->assertSame('PROBLEM-01', $rollup['trendyol']['problem_children'][0]['sku']);
         $this->assertSame('869PROBLEM-01', $rollup['trendyol']['problem_children'][0]['barcode']);
+        $this->assertSame($parent->id, $rollup['trendyol']['problem_children'][0]['parent_product_id']);
+        $this->assertSame('batch-group', $rollup['trendyol']['problem_children'][0]['variant_group_key']);
         $this->assertSame('trendyol', $rollup['trendyol']['problem_children'][0]['marketplace_code']);
         $this->assertSame('failed', $rollup['trendyol']['problem_children'][0]['status']);
         $this->assertSame('Problem 1', $rollup['trendyol']['problem_children'][0]['error_message']);
         $this->assertSame('batch-1', $rollup['trendyol']['problem_children'][0]['batch_request_id']);
         $this->assertNotNull($rollup['trendyol']['problem_children'][0]['last_checked_at']);
+        $this->assertSame(['barcode', 'image'], $rollup['trendyol']['problem_children'][0]['readiness_missing_fields']);
+        $this->assertSame(60, $rollup['trendyol']['problem_children'][0]['readiness_score']);
     }
 
     public function test_product_controller_returns_extended_parent_batch_rollup(): void
@@ -120,7 +125,9 @@ class ProductVariantBatchAggregationTest extends TestCase
             ->assertJsonPath('variant_marketplace_status_rollup.trendyol.rollup_status', 'failed')
             ->assertJsonPath('variant_marketplace_status_rollup.trendyol.failed_children', 1)
             ->assertJsonPath('variant_marketplace_status_rollup.trendyol.last_batch_request_id', 'api-batch')
+            ->assertJsonPath('variant_marketplace_status_rollup.trendyol.problem_children.0.name', 'API-BATCH')
             ->assertJsonPath('variant_marketplace_status_rollup.trendyol.problem_children.0.sku', 'API-BATCH')
+            ->assertJsonPath('variant_marketplace_status_rollup.trendyol.problem_children.0.variant_group_key', 'batch-group')
             ->assertJsonPath('variant_marketplace_status_rollup.trendyol.problem_children.0.error_message', 'API error');
     }
 
@@ -168,6 +175,13 @@ class ProductVariantBatchAggregationTest extends TestCase
             'price' => 100,
             'stock' => 5,
             'status' => 'active',
+            'marketplace_readiness' => [
+                'trendyol' => [
+                    'ready' => false,
+                    'score' => 60,
+                    'missing_fields' => ['barcode', 'image'],
+                ],
+            ],
         ]);
     }
 
