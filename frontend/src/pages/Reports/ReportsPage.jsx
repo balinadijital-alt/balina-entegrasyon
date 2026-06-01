@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, BarChart3, Clock, DatabaseZap, PackageCheck, RefreshCcw, ShieldAlert, ShoppingCart, Truck, WalletCards, Webhook } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api } from '../../api/client.js';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
@@ -105,6 +106,12 @@ function healthLabel(tone) {
   return 'Saglikli';
 }
 
+function marketplaceLabel(code) {
+  if (code === 'trendyol') return 'Trendyol';
+  if (code === 'hepsiburada') return 'Hepsiburada';
+  return code || 'Platform';
+}
+
 function alertMessage(alert) {
   const messages = {
     failed_imports: 'XML import run hatalarini kontrol edin.',
@@ -186,6 +193,12 @@ function InsightList({ title, items, emptyText, renderItem }) {
       )}
     </section>
   );
+}
+
+function ActionLink({ to, children }) {
+  if (!to) return null;
+
+  return <Link className="analytics-action-link" to={to}>{children}</Link>;
 }
 
 export function ReportsPage() {
@@ -403,6 +416,82 @@ export function ReportsPage() {
     ];
   }, [report]);
 
+  const marketplaceKpis = useMemo(() => {
+    if (!report?.marketplace_intelligence) return [];
+    const intelligence = report.marketplace_intelligence;
+    const trendyol = intelligence.marketplaces?.trendyol || {};
+    const hepsiburada = intelligence.marketplaces?.hepsiburada || {};
+    const rejectedFailed = Number(intelligence.rejected_products?.total || 0) + Number(intelligence.failed_products?.total || 0);
+
+    return [
+      intelligence.marketplaces?.trendyol ? {
+        icon: ShoppingCart,
+        label: 'Trendyol Health',
+        value: healthLabel(trendyol.health),
+        detail: `${formatNumber(trendyol.approved)} approved, ${formatNumber(trendyol.rejected)} rejected`,
+        tone: trendyol.health === 'critical' ? 'critical' : trendyol.health === 'warning' ? 'warning' : 'success',
+      } : null,
+      intelligence.marketplaces?.hepsiburada ? {
+        icon: ShoppingCart,
+        label: 'Hepsiburada Health',
+        value: healthLabel(hepsiburada.health),
+        detail: `${formatNumber(hepsiburada.approved)} approved, ${formatNumber(hepsiburada.failed)} failed`,
+        tone: hepsiburada.health === 'critical' ? 'critical' : hepsiburada.health === 'warning' ? 'warning' : 'success',
+      } : null,
+      {
+        icon: Activity,
+        label: 'Batch Success',
+        value: formatPercent(intelligence.batch_success?.batch_success_rate),
+        detail: `${formatNumber(intelligence.batch_success?.products_with_batch)} batch urunu`,
+        tone: Number(intelligence.batch_success?.failed_products || 0) + Number(intelligence.batch_success?.rejected_products || 0) > 0 ? 'warning' : 'success',
+      },
+      {
+        icon: ShieldAlert,
+        label: 'Rejected / Failed',
+        value: formatNumber(rejectedFailed),
+        detail: `${formatNumber(intelligence.variant_problems?.problem_children_count)} problemli varyant`,
+        tone: rejectedFailed > 0 ? 'critical' : 'success',
+      },
+    ].filter(Boolean);
+  }, [report]);
+
+  const operationsKpis = useMemo(() => {
+    if (!report?.operations_intelligence) return [];
+    const operations = report.operations_intelligence;
+    const webhookRate = Math.round(((Number(operations.webhooks?.inbound_success_rate || 0) + Number(operations.webhooks?.outbound_success_rate || 0)) / 2) * 10) / 10;
+
+    return [
+      {
+        icon: Clock,
+        label: 'Queue Health',
+        value: healthLabel(operations.queue?.queue_risk),
+        detail: `${formatNumber(operations.queue?.failed_jobs)} failed, ${formatNumber(operations.queue?.retry_jobs)} retry`,
+        tone: operations.queue?.queue_risk === 'critical' ? 'critical' : operations.queue?.queue_risk === 'warning' ? 'warning' : 'success',
+      },
+      {
+        icon: AlertTriangle,
+        label: 'API Error Rate',
+        value: formatPercent(operations.api?.error_rate),
+        detail: `${formatNumber(operations.api?.status_5xx)} 5xx, ${formatNumber(operations.api?.slow_requests)} slow`,
+        tone: operations.api?.status_5xx > 0 || operations.api?.error_rate >= 10 ? 'critical' : operations.api?.api_errors > 0 ? 'warning' : 'success',
+      },
+      {
+        icon: Webhook,
+        label: 'Webhook Reliability',
+        value: formatPercent(webhookRate),
+        detail: `${formatNumber(Number(operations.webhooks?.inbound_failed || 0) + Number(operations.webhooks?.outbound_failed || 0))} failed delivery`,
+        tone: Number(operations.webhooks?.inbound_failed || 0) + Number(operations.webhooks?.outbound_failed || 0) > 0 ? 'warning' : 'success',
+      },
+      {
+        icon: ShieldAlert,
+        label: 'Risk Score',
+        value: formatNumber(operations.risk_score?.score),
+        detail: `${formatNumber(operations.risk_score?.factors?.length)} risk faktoru`,
+        tone: operations.risk_score?.health === 'critical' ? 'critical' : operations.risk_score?.health === 'warning' ? 'warning' : 'success',
+      },
+    ];
+  }, [report]);
+
   return (
     <>
       <PageHeader
@@ -589,6 +678,222 @@ export function ReportsPage() {
                       <span>Aksiyon gerektirebilir</span>
                     </div>
                     <small>{formatNumber(item.value)}</small>
+                  </article>
+                )}
+              />
+            </div>
+          </IntelligenceSection>
+
+          <IntelligenceSection
+            title="Marketplace Intelligence"
+            description="Trendyol ve Hepsiburada hesap sagligi, batch basari oranlari, rejected/failed urunler ve varyant problemleri."
+          >
+            <section className="analytics-kpi-grid">
+              {marketplaceKpis.map((kpi) => <KpiCard key={kpi.label} {...kpi} />)}
+            </section>
+            <div className="analytics-three-column">
+              <InsightList
+                title="Problemli marketplace hesaplari"
+                items={Object.entries(report.marketplace_intelligence?.marketplaces || {})
+                  .map(([code, row]) => ({ code, ...row }))
+                  .filter((row) => row.health !== 'healthy' || Number(row.failed_accounts || 0) > 0 || row.last_error)
+                  .slice(0, 6)}
+                emptyText="Marketplace hesaplarinda kritik sinyal yok."
+                renderItem={(marketplace) => (
+                  <article className={`analytics-insight-row ${marketplace.health}`} key={marketplace.code}>
+                    <div>
+                      <strong>{marketplaceLabel(marketplace.code)}</strong>
+                      <span>{formatNumber(marketplace.failed_accounts)} failed account · {formatNumber(marketplace.api_errors)} API hata</span>
+                    </div>
+                    <small>{marketplace.last_error || healthLabel(marketplace.health)}</small>
+                    <ActionLink to={`/marketplaces/${marketplace.code}`}>Yonet</ActionLink>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Son batch problemleri"
+                items={(report.marketplace_intelligence?.batch_success?.problem_batches || []).slice(0, 6)}
+                emptyText="Problemli batch grubu bulunmuyor."
+                renderItem={(batch) => (
+                  <article className="analytics-insight-row critical" key={`${batch.marketplace_code}-${batch.batch_request_id}`}>
+                    <div>
+                      <strong>{batch.batch_request_id || 'Batch yok'}</strong>
+                      <span>{marketplaceLabel(batch.marketplace_code)} · {formatNumber(batch.failed_count)} failed / {formatNumber(batch.rejected_count)} rejected</span>
+                    </div>
+                    <small>{formatNumber(batch.problem_count)} problem</small>
+                    <ActionLink to="/products/publish-queue">Queue</ActionLink>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Rejected product listesi"
+                items={(report.marketplace_intelligence?.rejected_products?.latest || []).slice(0, 6)}
+                emptyText="Rejected urun kaydi yok."
+                renderItem={(product) => (
+                  <article className="analytics-insight-row warning" key={`rejected-${product.product_id}-${product.marketplace_code}`}>
+                    <div>
+                      <strong>{product.name || product.sku}</strong>
+                      <span>{marketplaceLabel(product.marketplace_code)} · {product.error_message || product.status}</span>
+                    </div>
+                    <small>{product.batch_request_id || product.last_checked_at || 'batch yok'}</small>
+                    <ActionLink to={`/products/${product.product_id}`}>Detay</ActionLink>
+                  </article>
+                )}
+              />
+            </div>
+            <div className="analytics-three-column">
+              <InsightList
+                title="Failed product listesi"
+                items={(report.marketplace_intelligence?.failed_products?.latest || []).slice(0, 6)}
+                emptyText="Failed/problematic urun kaydi yok."
+                renderItem={(product) => (
+                  <article className="analytics-insight-row critical" key={`failed-${product.product_id}-${product.marketplace_code}`}>
+                    <div>
+                      <strong>{product.name || product.sku}</strong>
+                      <span>{marketplaceLabel(product.marketplace_code)} · {product.error_message || product.status}</span>
+                    </div>
+                    <small>{product.batch_request_id || product.last_checked_at || 'batch yok'}</small>
+                    <ActionLink to={`/api-logs?search=${encodeURIComponent(product.sku || product.barcode || product.batch_request_id || '')}`}>Log</ActionLink>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Variant problem listesi"
+                items={(report.marketplace_intelligence?.variant_problems?.latest_problem_children || []).slice(0, 6)}
+                emptyText="Problemli child varyant gorunmuyor."
+                renderItem={(child, index) => (
+                  <article className="analytics-insight-row warning" key={`variant-problem-${child.product_id || index}-${child.marketplace_code}`}>
+                    <div>
+                      <strong>{child.sku || child.barcode || 'Varyant'}</strong>
+                      <span>{marketplaceLabel(child.marketplace_code)} · {child.error_message || child.status}</span>
+                    </div>
+                    <small>{child.batch_request_id || child.last_checked_at || 'batch yok'}</small>
+                    <ActionLink to={`/products/${child.product_id}`}>Coz</ActionLink>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Marketplace success oranlari"
+                items={Object.entries(report.marketplace_intelligence?.marketplaces || {}).map(([code, row]) => ({ code, ...row }))}
+                emptyText="Marketplace performans verisi yok."
+                renderItem={(marketplace) => (
+                  <article className={`analytics-insight-row ${marketplace.health}`} key={`success-${marketplace.code}`}>
+                    <div>
+                      <strong>{marketplaceLabel(marketplace.code)}</strong>
+                      <span>Success {formatPercent(marketplace.success_rate)} · Readiness {formatPercent(marketplace.readiness_rate)}</span>
+                    </div>
+                    <small>{formatNumber(marketplace.approved)} approved</small>
+                  </article>
+                )}
+              />
+            </div>
+          </IntelligenceSection>
+
+          <IntelligenceSection
+            title="Operations Intelligence"
+            description="Queue, API hata trendleri, webhook guvenilirligi, operasyonel risk skoru ve aksiyon uyarilari."
+          >
+            <section className="analytics-kpi-grid">
+              {operationsKpis.map((kpi) => <KpiCard key={kpi.label} {...kpi} />)}
+            </section>
+            {report.operations_intelligence?.risk_score?.factors?.length > 0 && (
+              <section className={`analytics-risk-banner ${report.operations_intelligence.risk_score.health}`}>
+                <div>
+                  <span>Operational Risk</span>
+                  <strong>{formatNumber(report.operations_intelligence.risk_score.score)} / 100</strong>
+                </div>
+                <p>{report.operations_intelligence.risk_score.factors.map((factor) => factor.label).join(' · ')}</p>
+              </section>
+            )}
+            <div className="analytics-three-column">
+              <InsightList
+                title="Failed queue jobs"
+                items={(report.operations_intelligence?.queue?.recent_failed_sync_runs || []).slice(0, 6)}
+                emptyText="Failed sync run gorunmuyor."
+                renderItem={(run) => (
+                  <article className="analytics-insight-row critical" key={`queue-${run.id}`}>
+                    <div>
+                      <strong>{run.type || 'sync'}</strong>
+                      <span>{marketplaceLabel(run.marketplace_code)} · {run.error_message || run.status}</span>
+                    </div>
+                    <small>{formatNumber(run.attempts)} attempt</small>
+                    <ActionLink to="/queue">Queue</ActionLink>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Top API error endpoints"
+                items={(report.operations_intelligence?.api?.top_error_endpoints || []).slice(0, 6)}
+                emptyText="API hata endpointi yok."
+                renderItem={(endpoint) => (
+                  <article className="analytics-insight-row warning" key={endpoint.endpoint}>
+                    <div>
+                      <strong>{endpoint.endpoint}</strong>
+                      <span>Provider hata merkezi</span>
+                    </div>
+                    <small>{formatNumber(endpoint.count)} hata</small>
+                    <ActionLink to={`/api-logs?search=${encodeURIComponent(endpoint.endpoint || '')}`}>Log</ActionLink>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Slow / latest API errors"
+                items={(report.operations_intelligence?.api?.latest_errors || []).slice(0, 6)}
+                emptyText="Yavas veya hatali API kaydi yok."
+                renderItem={(log) => (
+                  <article className={log.status_code >= 500 ? 'analytics-insight-row critical' : 'analytics-insight-row warning'} key={`api-${log.id}`}>
+                    <div>
+                      <strong>{log.method} {log.endpoint}</strong>
+                      <span>{marketplaceLabel(log.marketplace_code)} · {log.error_message || log.status_code}</span>
+                    </div>
+                    <small>{formatNumber(log.duration_ms)}ms</small>
+                    <ActionLink to={`/api-logs?search=${encodeURIComponent(log.endpoint || '')}`}>Incele</ActionLink>
+                  </article>
+                )}
+              />
+            </div>
+            <div className="analytics-three-column">
+              <InsightList
+                title="Failed webhooks"
+                items={(report.operations_intelligence?.webhooks?.latest_failed_webhooks || []).slice(0, 6)}
+                emptyText="Webhook teslimat problemi yok."
+                renderItem={(webhook) => (
+                  <article className="analytics-insight-row warning" key={`${webhook.direction}-${webhook.id}`}>
+                    <div>
+                      <strong>{webhook.event || webhook.direction}</strong>
+                      <span>{webhook.direction} · {webhook.error_message || webhook.status}</span>
+                    </div>
+                    <small>{marketplaceLabel(webhook.marketplace_code)}</small>
+                    <ActionLink to="/api-logs">Loglar</ActionLink>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Operational alerts"
+                items={(report.operations_intelligence?.alerts || []).slice(0, 8)}
+                emptyText="Operasyonel alert yok."
+                renderItem={(alert) => (
+                  <article className={`analytics-insight-row ${alert.tone}`} key={`${alert.key}-${alert.marketplace_code || 'global'}`}>
+                    <div>
+                      <strong>{alert.label}</strong>
+                      <span>{alert.action_hint}</span>
+                    </div>
+                    <small>{formatNumber(alert.value)}</small>
+                    <ActionLink to={alert.target_path}>Aksiyon</ActionLink>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Risk faktorleri"
+                items={(report.operations_intelligence?.risk_score?.factors || []).slice(0, 6)}
+                emptyText="Risk skoru saglikli aralikta."
+                renderItem={(factor) => (
+                  <article className="analytics-insight-row warning" key={factor.key}>
+                    <div>
+                      <strong>{factor.label}</strong>
+                      <span>Risk agirligi {formatNumber(factor.weight)}</span>
+                    </div>
+                    <small>{formatNumber(factor.value)}</small>
                   </article>
                 )}
               />

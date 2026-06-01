@@ -3169,7 +3169,7 @@ tbody td:last-child .row-actions:focus-within {
   border-radius: 12px;
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   padding: 12px;
 }
 
@@ -3215,6 +3215,76 @@ tbody td:last-child .row-actions:focus-within {
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.analytics-action-link {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  color: #0f172a;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 900;
+  min-height: 28px;
+  padding: 0 10px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.analytics-action-link:hover {
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+
+.analytics-risk-banner {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #94a3b8;
+  border-radius: 14px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(160px, 0.3fr) minmax(0, 1fr);
+  padding: 16px;
+}
+
+.analytics-risk-banner.warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+  border-left-color: #f59e0b;
+}
+
+.analytics-risk-banner.critical {
+  background: #fef2f2;
+  border-color: #fecaca;
+  border-left-color: #ef4444;
+}
+
+.analytics-risk-banner span,
+.analytics-risk-banner strong,
+.analytics-risk-banner p {
+  display: block;
+  margin: 0;
+}
+
+.analytics-risk-banner span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.analytics-risk-banner strong {
+  color: var(--text);
+  font-size: 24px;
+  margin-top: 4px;
+}
+
+.analytics-risk-banner p {
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .onboarding-grid {
