@@ -59,6 +59,31 @@ function variantBadge(product) {
   return null;
 }
 
+function rollupStatusLabel(status) {
+  return {
+    not_ready: 'Eksik',
+    ready: 'Hazir',
+    queued: 'Kuyrukta',
+    partial: 'Kismi',
+    failed: 'Hatali',
+    approved: 'Onayli',
+    mixed: 'Karma',
+  }[status] || status || '-';
+}
+
+function rollupStatusClass(status) {
+  if (status === 'ready' || status === 'approved') return 'active';
+  if (status === 'queued' || status === 'partial') return 'running';
+  if (status === 'failed') return 'failed';
+  return 'draft';
+}
+
+function parentReadinessText(product) {
+  const rollup = product.variant_readiness_rollup;
+  if (!rollup) return null;
+  return `${rollup.ready_children || 0}/${rollup.total_children || 0} hazir`;
+}
+
 export function ProductsPage() {
   const { notify } = useApp();
   const { loading, error, run } = useAsync();
@@ -113,6 +138,8 @@ export function ProductsPage() {
   }, []);
 
   const toggleSelected = (id) => {
+    const product = products.find((item) => item.id === id);
+    if (product?.product_type === 'parent') return;
     setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   };
 
@@ -352,7 +379,7 @@ export function ProductsPage() {
           emptyTitle="Urun bulunamadi"
           emptyText="Filtreleri temizleyin, yeni urun ekleyin veya Excel/XML ile toplu yukleme baslatin."
           columns={[
-            { key: 'select', label: '', render: (row) => <input type="checkbox" checked={selected.includes(row.id)} onChange={() => toggleSelected(row.id)} /> },
+            { key: 'select', label: '', render: (row) => <input type="checkbox" title={row.product_type === 'parent' ? 'Parent urun dogrudan gonderilmez.' : undefined} disabled={row.product_type === 'parent'} checked={selected.includes(row.id)} onChange={() => toggleSelected(row.id)} /> },
             { key: 'image', label: 'Gorsel', render: (row) => productImage(row) ? <img className="table-product-image" src={productImage(row)} alt={row.name} /> : <span className="table-product-placeholder"><PackagePlus size={16} /></span> },
             { key: 'name', label: 'Urun', render: (row) => <div className="table-product-title"><strong>{row.name}</strong><span>{row.sku}</span>{variantBadge(row) ? <small className={`variant-badge ${row.product_type === 'parent' ? 'parent' : 'child'}`}>{variantBadge(row)}</small> : null}</div> },
             { key: 'xml_source', label: 'XML Kaynak', render: (row) => <div className="table-product-title"><strong>{row.xml_source?.name || '-'}</strong><span>{row.source_product_code || row.supplier_name || '-'}</span><small>{formatDateTime(row.last_xml_sync_at)}</small></div> },
@@ -372,8 +399,8 @@ export function ProductsPage() {
             },
             { key: 'stock', label: 'Stok', render: (row) => quickEditId === row.id ? <input type="number" value={quickEdit.stock} onChange={(event) => setQuickEdit({ ...quickEdit, stock: event.target.value })} /> : <span className={Number(row.stock || 0) <= Number(row.critical_stock || 0) ? 'badge running' : 'badge active'}>{row.stock}</span> },
             { key: 'price', label: 'Fiyat', render: (row) => quickEditId === row.id ? <input type="number" value={quickEdit.price} onChange={(event) => setQuickEdit({ ...quickEdit, price: event.target.value })} /> : formatPrice(row.price) },
-            { key: 'score', label: 'Hazirlik Durumu', render: (row) => <div className="score-cell"><strong>{readinessScore(row)}%</strong><span>{publishBlockReason(row)}</span></div> },
-            { key: 'marketplace', label: 'Pazaryeri Durumu', render: (row) => <div className="marketplace-badges"><span className="badge created">TY {marketplaceLabel(row, 'trendyol')}</span><span className="badge created">HB {marketplaceLabel(row, 'hepsiburada')}</span></div> },
+            { key: 'score', label: 'Hazirlik Durumu', render: (row) => row.product_type === 'parent' && row.variant_readiness_rollup ? <div className="score-cell"><strong>{row.variant_readiness_rollup.readiness_score || 0}%</strong><span>{parentReadinessText(row)}</span></div> : <div className="score-cell"><strong>{readinessScore(row)}%</strong><span>{publishBlockReason(row)}</span></div> },
+            { key: 'marketplace', label: 'Pazaryeri Durumu', render: (row) => row.product_type === 'parent' && row.variant_marketplace_status_rollup ? <div className="marketplace-badges"><span className={`badge ${rollupStatusClass(row.variant_marketplace_status_rollup.trendyol?.rollup_status)}`}>TY {rollupStatusLabel(row.variant_marketplace_status_rollup.trendyol?.rollup_status)}</span><span className={`badge ${rollupStatusClass(row.variant_marketplace_status_rollup.hepsiburada?.rollup_status)}`}>HB {rollupStatusLabel(row.variant_marketplace_status_rollup.hepsiburada?.rollup_status)}</span></div> : <div className="marketplace-badges"><span className="badge created">TY {marketplaceLabel(row, 'trendyol')}</span><span className="badge created">HB {marketplaceLabel(row, 'hepsiburada')}</span></div> },
             {
               key: 'actions',
               label: 'Islem',

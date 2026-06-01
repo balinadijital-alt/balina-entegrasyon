@@ -51,6 +51,25 @@ function formatPrice(value) {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(Number(value || 0));
 }
 
+function rollupStatusLabel(status) {
+  return {
+    not_ready: 'Eksik',
+    ready: 'Hazir',
+    queued: 'Kuyrukta',
+    partial: 'Kismi',
+    failed: 'Hatali',
+    approved: 'Onayli',
+    mixed: 'Karma',
+  }[status] || status || '-';
+}
+
+function childMarketplaceStatus(product, code) {
+  const status = product.marketplace_statuses?.find((item) => item.marketplace_code === code)
+    || product.marketplaceStatuses?.find((item) => item.marketplace_code === code);
+
+  return status?.status || status?.readiness_status || '-';
+}
+
 export function ProductDetailPage() {
   const { id } = useParams();
   const { notify } = useApp();
@@ -109,6 +128,8 @@ export function ProductDetailPage() {
   const missing = missingFields(product);
   const childVariants = Array.isArray(product.variants) ? product.variants : [];
   const legacyVariants = Array.isArray(product.variant_options) ? product.variant_options : [];
+  const readinessRollup = product.variant_readiness_rollup;
+  const statusRollup = product.variant_marketplace_status_rollup || {};
 
   return (
     <>
@@ -182,6 +203,24 @@ export function ProductDetailPage() {
         </section>
       )}
 
+      {activeTab === 'general' && product.product_type === 'parent' && readinessRollup && (
+        <section className="panel">
+          <h2>Varyant Hazirlik Ozeti</h2>
+          <div className="detail-grid">
+            <div className="detail-card"><span>Child toplam</span><strong>{readinessRollup.total_children || 0}</strong></div>
+            <div className="detail-card"><span>Hazir child</span><strong>{readinessRollup.ready_children || 0}</strong></div>
+            <div className="detail-card"><span>Eksik child</span><strong>{readinessRollup.blocked_children || 0}</strong></div>
+            <div className="detail-card"><span>Ortalama skor</span><strong>{readinessRollup.readiness_score || 0}%</strong></div>
+            <div className="detail-card"><span>Trendyol</span><strong>{rollupStatusLabel(statusRollup.trendyol?.rollup_status)}</strong></div>
+            <div className="detail-card"><span>Hepsiburada</span><strong>{rollupStatusLabel(statusRollup.hepsiburada?.rollup_status)}</strong></div>
+          </div>
+          <div className="soft-empty">
+            <strong>Eksik alan ozeti</strong>
+            <span>{Object.entries(readinessRollup.missing_fields_summary || {}).map(([field, count]) => `${missingLabels[field] || field}: ${count}`).join(', ') || 'Eksik yok'}</span>
+          </div>
+        </section>
+      )}
+
       {activeTab === 'variants' && (
         <section className="panel">
           <h2>Varyantlar</h2>
@@ -201,6 +240,8 @@ export function ProductDetailPage() {
                 { key: 'name', label: 'Urun' },
                 { key: 'stock', label: 'Stok' },
                 { key: 'price', label: 'Fiyat', render: (row) => formatPrice(row.price) },
+                { key: 'readiness', label: 'Hazirlik', render: (row) => `${readinessScore(row)}%` },
+                { key: 'marketplace', label: 'Pazaryeri', render: (row) => `TY ${childMarketplaceStatus(row, 'trendyol')} / HB ${childMarketplaceStatus(row, 'hepsiburada')}` },
                 { key: 'variant_attributes', label: 'Nitelikler', render: (row) => Object.entries(row.variant_attributes || {}).map(([key, value]) => `${key}: ${value}`).join(', ') || '-' },
                 { key: 'status', label: 'Durum' },
               ]}

@@ -39,6 +39,21 @@ function draftStatusLabel(draft) {
   return draft.status;
 }
 
+function productReadinessSummary(product, marketplaceCode) {
+  if (product.product_type === 'parent' && product.variant_readiness_rollup) {
+    const marketplace = product.variant_readiness_rollup.marketplaces?.[marketplaceCode] || product.variant_readiness_rollup;
+    return {
+      score: marketplace.readiness_score || 0,
+      reason: `${marketplace.ready_children || 0}/${marketplace.total_children || 0} varyant hazir`,
+    };
+  }
+
+  return {
+    score: readinessScore(product, marketplaceCode),
+    reason: product.parent ? `${product.parent.name || product.parent.sku} / ${product.variant_group_key || '-'}` : publishBlockReason(product, marketplaceCode),
+  };
+}
+
 export function PublishQueuePage() {
   const { notify } = useApp();
   const { loading, error, run } = useAsync();
@@ -78,6 +93,8 @@ export function PublishQueuePage() {
   }, []);
 
   const toggleProduct = (id) => {
+    const product = products.find((item) => item.id === id);
+    if (product?.product_type === 'parent') return;
     setSelectedProducts((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   };
 
@@ -157,12 +174,12 @@ export function PublishQueuePage() {
             emptyTitle="Urun yok"
             emptyText="Aktarim listesine almak icin once urun ekleyin."
             columns={[
-              { key: 'select', label: '', render: (row) => <input type="checkbox" checked={selectedProducts.includes(row.id)} onChange={() => toggleProduct(row.id)} /> },
-              { key: 'name', label: 'Urun' },
+              { key: 'select', label: '', render: (row) => <input type="checkbox" title={row.product_type === 'parent' ? 'Parent urun dogrudan gonderilmez.' : undefined} disabled={row.product_type === 'parent'} checked={selectedProducts.includes(row.id)} onChange={() => toggleProduct(row.id)} /> },
+              { key: 'name', label: 'Urun', render: (row) => <div className="table-product-title"><strong>{row.name}</strong>{row.product_type === 'parent' ? <small className="variant-badge parent">Parent</small> : null}{row.parent ? <span>{row.parent.name || row.parent.sku} / {row.variant_group_key || '-'}</span> : null}</div> },
               { key: 'sku', label: 'SKU' },
               { key: 'category', label: 'Kategori' },
-              { key: 'score', label: 'Hazirlik', render: (row) => <div className="score-cell"><strong>{readinessScore(row, selectedMarketplaceCode)}%</strong><span>{publishBlockReason(row, selectedMarketplaceCode)}</span></div> },
-              { key: 'status', label: 'Durum', render: (row) => <span className={isMarketplaceReady(row, selectedMarketplaceCode) ? 'status-pill ready' : 'status-pill blocked'}>{isMarketplaceReady(row, selectedMarketplaceCode) ? 'Hazir' : 'Eksik'}</span> },
+              { key: 'score', label: 'Hazirlik', render: (row) => { const summary = productReadinessSummary(row, selectedMarketplaceCode); return <div className="score-cell"><strong>{summary.score}%</strong><span>{summary.reason}</span></div>; } },
+              { key: 'status', label: 'Durum', render: (row) => row.product_type === 'parent' ? <span className="status-pill blocked">Parent</span> : <span className={isMarketplaceReady(row, selectedMarketplaceCode) ? 'status-pill ready' : 'status-pill blocked'}>{isMarketplaceReady(row, selectedMarketplaceCode) ? 'Hazir' : 'Eksik'}</span> },
               { key: 'edit', label: 'Islem', render: (row) => <Link className="table-action-link" to={`/products/${row.id}/edit`}><Edit3 size={14} /> Duzenle</Link> },
             ]}
           />

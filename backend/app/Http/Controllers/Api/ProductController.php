@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Services\Products\ProductReadinessService;
+use App\Services\Products\ProductVariantRollupService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -17,7 +18,8 @@ class ProductController extends Controller
                 'company:id,name',
                 'xmlSource:id,name',
                 'parent:id,name,sku,product_type',
-                'variants:id,parent_product_id,sku,name,stock,price,barcode,variant_attributes,status',
+                'variants:id,parent_product_id,sku,name,stock,price,barcode,variant_group_key,variant_attributes,marketplace_readiness,marketplace_ready,status',
+                'variants.marketplaceStatuses:id,product_id,marketplace_code,status,readiness_status,missing_fields,error_message,last_sent_at,last_checked_at',
                 'images',
                 'marketplaceStatuses',
             ])
@@ -35,6 +37,8 @@ class ProductController extends Controller
             ->latest()
             ->paginate(20);
 
+        $this->attachVariantRollups($products->getCollection());
+
         return response()->json($products);
     }
 
@@ -43,14 +47,20 @@ class ProductController extends Controller
         $product = Product::create($this->validated($request));
         $readiness->check($product);
 
-        return response()->json($product->load('company', 'parent:id,name,sku,product_type', 'variants', 'images', 'marketplaceStatuses'), 201);
+        $product->load('company', 'parent:id,name,sku,product_type', 'variants.marketplaceStatuses', 'images', 'marketplaceStatuses');
+        $this->attachVariantRollup($product);
+
+        return response()->json($product, 201);
     }
 
     public function show(Product $product): JsonResponse
     {
         $this->abortIfNotTenant(request(), $product);
 
-        return response()->json($product->load('company', 'xmlSource:id,name', 'parent:id,name,sku,product_type', 'variants', 'images', 'marketplaceStatuses'));
+        $product->load('company', 'xmlSource:id,name', 'parent:id,name,sku,product_type', 'variants.marketplaceStatuses', 'images', 'marketplaceStatuses');
+        $this->attachVariantRollup($product);
+
+        return response()->json($product);
     }
 
     public function update(Request $request, Product $product, ProductReadinessService $readiness): JsonResponse
@@ -60,7 +70,10 @@ class ProductController extends Controller
         $product->update($this->validated($request, $product->id));
         $readiness->check($product);
 
-        return response()->json($product->load('company', 'xmlSource:id,name', 'parent:id,name,sku,product_type', 'variants', 'images', 'marketplaceStatuses'));
+        $product->load('company', 'xmlSource:id,name', 'parent:id,name,sku,product_type', 'variants.marketplaceStatuses', 'images', 'marketplaceStatuses');
+        $this->attachVariantRollup($product);
+
+        return response()->json($product);
     }
 
     public function destroy(Product $product): JsonResponse
@@ -113,5 +126,21 @@ class ProductController extends Controller
             'attributes' => ['nullable', 'array'],
             'status' => ['required', 'in:draft,active,passive'],
         ]);
+    }
+
+    private function attachVariantRollups($products): void
+    {
+        $products->each(fn (Product $product) => $this->attachVariantRollup($product));
+    }
+
+    private function attachVariantRollup(Product $product): void
+    {
+        if ($product->product_type !== 'parent') {
+            return;
+        }
+
+        $rollup = new ProductVariantRollupService();
+        $product->setAttribute('variant_readiness_rollup', $rollup->readiness($product));
+        $product->setAttribute('variant_marketplace_status_rollup', $rollup->marketplaceStatuses($product));
     }
 }

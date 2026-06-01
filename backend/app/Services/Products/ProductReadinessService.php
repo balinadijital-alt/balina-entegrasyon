@@ -14,18 +14,21 @@ class ProductReadinessService
         $product->loadMissing('images');
         $marketplaces = $marketplace ? [$marketplace] : self::MARKETPLACES;
         $reports = [];
+        $isParent = $product->product_type === 'parent';
 
         foreach ($marketplaces as $code) {
             $reports[$code] = $this->marketplaceReport($product, $code);
 
-            $product->marketplaceStatuses()->updateOrCreate(
-                ['marketplace_code' => $code],
-                [
-                    'readiness_status' => $reports[$code]['ready'] ? 'ready' : 'not_ready',
-                    'missing_fields' => $reports[$code]['missing_fields'],
-                    'last_checked_at' => now(),
-                ]
-            );
+            if (! $isParent) {
+                $product->marketplaceStatuses()->updateOrCreate(
+                    ['marketplace_code' => $code],
+                    [
+                        'readiness_status' => $reports[$code]['ready'] ? 'ready' : 'not_ready',
+                        'missing_fields' => $reports[$code]['missing_fields'],
+                        'last_checked_at' => now(),
+                    ]
+                );
+            }
         }
 
         $ready = collect($reports)->every(fn (array $report) => $report['ready']);
@@ -34,11 +37,19 @@ class ProductReadinessService
             'marketplace_ready' => $ready,
         ])->save();
 
-        return [
+        $response = [
             'ready' => $ready,
             'score' => (int) round(collect($reports)->avg('score') ?? 0),
             'marketplaces' => $reports,
         ];
+
+        if ($isParent) {
+            $rollup = new ProductVariantRollupService();
+            $response['variant_readiness_rollup'] = $rollup->readiness($product);
+            $response['variant_marketplace_status_rollup'] = $rollup->marketplaceStatuses($product);
+        }
+
+        return $response;
     }
 
     private function marketplaceReport(Product $product, string $marketplace): array
