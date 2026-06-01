@@ -58,6 +58,7 @@ function rollupStatusLabel(status) {
     queued: 'Kuyrukta',
     partial: 'Kismi',
     failed: 'Hatali',
+    rejected: 'Reddedildi',
     approved: 'Onayli',
     mixed: 'Karma',
   }[status] || status || '-';
@@ -130,6 +131,12 @@ export function ProductDetailPage() {
   const legacyVariants = Array.isArray(product.variant_options) ? product.variant_options : [];
   const readinessRollup = product.variant_readiness_rollup;
   const statusRollup = product.variant_marketplace_status_rollup || {};
+  const batchRows = ['trendyol', 'hepsiburada'].map((code) => ({
+    id: code,
+    marketplace: code === 'trendyol' ? 'Trendyol' : 'Hepsiburada',
+    ...(statusRollup[code] || {}),
+  }));
+  const problemChildren = batchRows.flatMap((row) => row.problem_children || []);
 
   return (
     <>
@@ -218,6 +225,43 @@ export function ProductDetailPage() {
             <strong>Eksik alan ozeti</strong>
             <span>{Object.entries(readinessRollup.missing_fields_summary || {}).map(([field, count]) => `${missingLabels[field] || field}: ${count}`).join(', ') || 'Eksik yok'}</span>
           </div>
+        </section>
+      )}
+
+      {activeTab === 'general' && product.product_type === 'parent' && (
+        <section className="panel">
+          <h2>Batch / Gonderim Ozeti</h2>
+          <DataTable
+            rows={batchRows}
+            emptyTitle="Batch ozeti yok"
+            emptyText="Child varyantlar icin pazaryeri batch bilgisi bulunmuyor."
+            columns={[
+              { key: 'marketplace', label: 'Pazaryeri' },
+              { key: 'rollup_status', label: 'Durum', render: (row) => rollupStatusLabel(row.rollup_status) },
+              { key: 'approved_children', label: 'Onayli', render: (row) => row.approved_children || 0 },
+              { key: 'queued_children', label: 'Kuyrukta', render: (row) => row.queued_children || 0 },
+              { key: 'failed_children', label: 'Hatali', render: (row) => row.failed_children || 0 },
+              { key: 'rejected_children', label: 'Reddedildi', render: (row) => row.rejected_children || 0 },
+              { key: 'last_batch_request_id', label: 'Son Batch ID', render: (row) => row.last_batch_request_id || '-' },
+              { key: 'last_sent_at', label: 'Son Gonderim', render: (row) => formatDateTime(row.last_sent_at) },
+              { key: 'last_checked_at', label: 'Son Kontrol', render: (row) => formatDateTime(row.last_checked_at) },
+            ]}
+          />
+          <h3>Problemli Varyantlar</h3>
+          <DataTable
+            rows={problemChildren}
+            emptyTitle="Problemli varyant yok"
+            emptyText="Child varyantlarda hata veya red durumu bulunmuyor."
+            columns={[
+              { key: 'sku', label: 'SKU' },
+              { key: 'barcode', label: 'Barkod', render: (row) => row.barcode || '-' },
+              { key: 'marketplace_code', label: 'Marketplace' },
+              { key: 'status', label: 'Status', render: (row) => rollupStatusLabel(row.status) },
+              { key: 'error_message', label: 'Hata', render: (row) => row.error_message || '-' },
+              { key: 'batch_request_id', label: 'Batch ID', render: (row) => row.batch_request_id || '-' },
+              { key: 'last_checked_at', label: 'Son Kontrol', render: (row) => formatDateTime(row.last_checked_at) },
+            ]}
+          />
         </section>
       )}
 

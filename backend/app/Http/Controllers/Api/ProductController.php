@@ -19,7 +19,7 @@ class ProductController extends Controller
                 'xmlSource:id,name',
                 'parent:id,name,sku,product_type',
                 'variants:id,parent_product_id,sku,name,stock,price,barcode,variant_group_key,variant_attributes,marketplace_readiness,marketplace_ready,status',
-                'variants.marketplaceStatuses:id,product_id,marketplace_code,status,readiness_status,missing_fields,error_message,last_sent_at,last_checked_at',
+                'variants.marketplaceStatuses:id,product_id,marketplace_code,status,readiness_status,missing_fields,error_message,batch_request_id,last_sent_at,last_checked_at,updated_at,created_at',
                 'images',
                 'marketplaceStatuses',
             ])

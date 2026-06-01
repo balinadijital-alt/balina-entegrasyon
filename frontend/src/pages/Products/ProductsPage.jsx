@@ -66,6 +66,7 @@ function rollupStatusLabel(status) {
     queued: 'Kuyrukta',
     partial: 'Kismi',
     failed: 'Hatali',
+    rejected: 'Reddedildi',
     approved: 'Onayli',
     mixed: 'Karma',
   }[status] || status || '-';
@@ -74,7 +75,7 @@ function rollupStatusLabel(status) {
 function rollupStatusClass(status) {
   if (status === 'ready' || status === 'approved') return 'active';
   if (status === 'queued' || status === 'partial') return 'running';
-  if (status === 'failed') return 'failed';
+  if (status === 'failed' || status === 'rejected') return 'failed';
   return 'draft';
 }
 
@@ -82,6 +83,16 @@ function parentReadinessText(product) {
   const rollup = product.variant_readiness_rollup;
   if (!rollup) return null;
   return `${rollup.ready_children || 0}/${rollup.total_children || 0} hazir`;
+}
+
+function parentMarketplaceSummary(product, code) {
+  const rollup = product.variant_marketplace_status_rollup?.[code];
+  if (!rollup) return null;
+
+  const problemCount = Number(rollup.failed_children || 0) + Number(rollup.rejected_children || 0);
+  const batchId = rollup.last_batch_request_id ? String(rollup.last_batch_request_id).slice(0, 12) : null;
+
+  return { rollup, problemCount, batchId };
 }
 
 export function ProductsPage() {
@@ -400,7 +411,31 @@ export function ProductsPage() {
             { key: 'stock', label: 'Stok', render: (row) => quickEditId === row.id ? <input type="number" value={quickEdit.stock} onChange={(event) => setQuickEdit({ ...quickEdit, stock: event.target.value })} /> : <span className={Number(row.stock || 0) <= Number(row.critical_stock || 0) ? 'badge running' : 'badge active'}>{row.stock}</span> },
             { key: 'price', label: 'Fiyat', render: (row) => quickEditId === row.id ? <input type="number" value={quickEdit.price} onChange={(event) => setQuickEdit({ ...quickEdit, price: event.target.value })} /> : formatPrice(row.price) },
             { key: 'score', label: 'Hazirlik Durumu', render: (row) => row.product_type === 'parent' && row.variant_readiness_rollup ? <div className="score-cell"><strong>{row.variant_readiness_rollup.readiness_score || 0}%</strong><span>{parentReadinessText(row)}</span></div> : <div className="score-cell"><strong>{readinessScore(row)}%</strong><span>{publishBlockReason(row)}</span></div> },
-            { key: 'marketplace', label: 'Pazaryeri Durumu', render: (row) => row.product_type === 'parent' && row.variant_marketplace_status_rollup ? <div className="marketplace-badges"><span className={`badge ${rollupStatusClass(row.variant_marketplace_status_rollup.trendyol?.rollup_status)}`}>TY {rollupStatusLabel(row.variant_marketplace_status_rollup.trendyol?.rollup_status)}</span><span className={`badge ${rollupStatusClass(row.variant_marketplace_status_rollup.hepsiburada?.rollup_status)}`}>HB {rollupStatusLabel(row.variant_marketplace_status_rollup.hepsiburada?.rollup_status)}</span></div> : <div className="marketplace-badges"><span className="badge created">TY {marketplaceLabel(row, 'trendyol')}</span><span className="badge created">HB {marketplaceLabel(row, 'hepsiburada')}</span></div> },
+            {
+              key: 'marketplace',
+              label: 'Pazaryeri Durumu',
+              render: (row) => {
+                if (row.product_type === 'parent' && row.variant_marketplace_status_rollup) {
+                  const trendyol = parentMarketplaceSummary(row, 'trendyol');
+                  const hepsiburada = parentMarketplaceSummary(row, 'hepsiburada');
+                  const problemCount = Number(trendyol?.problemCount || 0) + Number(hepsiburada?.problemCount || 0);
+                  const batchId = trendyol?.batchId || hepsiburada?.batchId;
+
+                  return (
+                    <div className="table-product-title">
+                      <div className="marketplace-badges">
+                        <span className={`badge ${rollupStatusClass(trendyol?.rollup.rollup_status)}`}>TY {rollupStatusLabel(trendyol?.rollup.rollup_status)}</span>
+                        <span className={`badge ${rollupStatusClass(hepsiburada?.rollup.rollup_status)}`}>HB {rollupStatusLabel(hepsiburada?.rollup.rollup_status)}</span>
+                      </div>
+                      <span>{batchId ? `Son batch ${batchId}` : 'Batch yok'}</span>
+                      <small>{problemCount > 0 ? `${problemCount} problemli varyant` : 'Problemli varyant yok'}</small>
+                    </div>
+                  );
+                }
+
+                return <div className="marketplace-badges"><span className="badge created">TY {marketplaceLabel(row, 'trendyol')}</span><span className="badge created">HB {marketplaceLabel(row, 'hepsiburada')}</span></div>;
+              },
+            },
             {
               key: 'actions',
               label: 'Islem',
