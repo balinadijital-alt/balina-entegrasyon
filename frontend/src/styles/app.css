@@ -3103,6 +3103,120 @@ tbody td:last-child .row-actions:focus-within {
   color: var(--text);
 }
 
+.analytics-empty-state.compact {
+  padding: 18px 14px;
+}
+
+.analytics-intelligence-section {
+  display: grid;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.analytics-section-heading {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+}
+
+.analytics-section-heading span,
+.analytics-insight-panel .panel-heading span {
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.analytics-section-heading h2,
+.analytics-section-heading p {
+  margin: 0;
+}
+
+.analytics-section-heading h2 {
+  color: var(--text);
+  font-size: 22px;
+  margin-top: 4px;
+}
+
+.analytics-section-heading p {
+  color: #64748b;
+  line-height: 1.5;
+  margin-top: 6px;
+  max-width: 760px;
+}
+
+.analytics-three-column {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.analytics-insight-panel {
+  min-height: 280px;
+}
+
+.analytics-insight-list {
+  display: grid;
+  gap: 10px;
+}
+
+.analytics-insight-row {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #94a3b8;
+  border-radius: 12px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 12px;
+}
+
+.analytics-insight-row.healthy {
+  border-left-color: #22c55e;
+}
+
+.analytics-insight-row.warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+  border-left-color: #f59e0b;
+}
+
+.analytics-insight-row.critical {
+  background: #fef2f2;
+  border-color: #fecaca;
+  border-left-color: #ef4444;
+}
+
+.analytics-insight-row strong,
+.analytics-insight-row span,
+.analytics-insight-row small {
+  display: block;
+}
+
+.analytics-insight-row strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.analytics-insight-row span {
+  color: #64748b;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.analytics-insight-row small {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+  max-width: 180px;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .onboarding-grid {
   display: grid;
   gap: 18px;
@@ -7470,7 +7584,8 @@ tbody td:last-child .row-actions:focus-within {
   .detail-grid.two,
   .page-toolbar,
   .analytics-filter-bar,
-  .analytics-overview-grid {
+  .analytics-overview-grid,
+  .analytics-three-column {
     grid-template-columns: 1fr;
   }
 

@@ -91,6 +91,10 @@ function formatMoney(value) {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(Number(value || 0));
 }
 
+function formatPercent(value) {
+  return `%${Number(value || 0).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}`;
+}
+
 function sumValues(items = []) {
   return items.reduce((total, value) => total + Number(value || 0), 0);
 }
@@ -143,6 +147,44 @@ function HealthCard({ title, tone, description, metrics }) {
         ))}
       </div>
     </article>
+  );
+}
+
+function IntelligenceSection({ title, description, children }) {
+  return (
+    <section className="analytics-intelligence-section">
+      <div className="analytics-section-heading">
+        <div>
+          <span>Intelligence</span>
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function InsightList({ title, items, emptyText, renderItem }) {
+  return (
+    <section className="panel analytics-insight-panel">
+      <div className="panel-heading">
+        <div>
+          <span>Insight</span>
+          <h2>{title}</h2>
+        </div>
+      </div>
+      {items?.length > 0 ? (
+        <div className="analytics-insight-list">
+          {items.map((item, index) => renderItem(item, index))}
+        </div>
+      ) : (
+        <div className="analytics-empty-state compact">
+          <strong>Temiz gorunuyor</strong>
+          <span>{emptyText}</span>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -287,6 +329,80 @@ export function ReportsPage() {
     ];
   }, [report]);
 
+  const xmlKpis = useMemo(() => {
+    if (!report?.xml_intelligence) return [];
+    const xml = report.xml_intelligence;
+
+    return [
+      {
+        icon: DatabaseZap,
+        label: 'Source Health',
+        value: `${formatNumber(xml.health_summary?.healthy_sources)} / ${formatNumber(xml.health_summary?.total_sources)}`,
+        detail: `${formatNumber(xml.health_summary?.critical_sources)} kritik, ${formatNumber(xml.health_summary?.warning_sources)} dikkat`,
+        tone: xml.health_summary?.critical_sources > 0 ? 'critical' : xml.health_summary?.warning_sources > 0 ? 'warning' : 'success',
+      },
+      {
+        icon: Activity,
+        label: 'Mapping Success',
+        value: formatPercent(xml.mapping?.category_mapping_success_rate),
+        detail: `Kategori ${formatPercent(xml.mapping?.category_mapping_success_rate)}, marka ${formatPercent(xml.mapping?.brand_mapping_success_rate)}`,
+        tone: xml.mapping?.unmapped_category_count > 0 || xml.mapping?.unmapped_brand_count > 0 ? 'warning' : 'success',
+      },
+      {
+        icon: ShieldAlert,
+        label: 'Conflict Rate',
+        value: formatPercent(xml.conflicts?.conflict_rate),
+        detail: `${formatNumber(xml.conflicts?.total_conflicts)} ownership conflict`,
+        tone: xml.conflicts?.total_conflicts > 0 ? 'critical' : 'success',
+      },
+      {
+        icon: AlertTriangle,
+        label: 'Filter Rate',
+        value: formatPercent(xml.filters?.filter_rate),
+        detail: `${formatNumber(xml.filters?.filtered_count)} filtrelenen satir`,
+        tone: xml.filters?.filtered_count > 0 ? 'warning' : 'neutral',
+      },
+    ];
+  }, [report]);
+
+  const productKpis = useMemo(() => {
+    if (!report?.product_intelligence) return [];
+    const product = report.product_intelligence;
+    const ty = product.marketplace_readiness?.trendyol || {};
+    const hb = product.marketplace_readiness?.hepsiburada || {};
+
+    return [
+      {
+        icon: PackageCheck,
+        label: 'Readiness Health',
+        value: formatPercent(product.readiness?.readiness_rate),
+        detail: `${formatNumber(product.readiness?.ready_products)} hazir, ${formatNumber(product.readiness?.blocked_products)} blokeli`,
+        tone: product.readiness?.blocked_products > 0 ? 'warning' : 'success',
+      },
+      {
+        icon: DatabaseZap,
+        label: 'Ownership Coverage',
+        value: formatPercent(product.ownership?.source_product_code_coverage),
+        detail: `${formatNumber(product.ownership?.xml_owned_products)} XML owned, ${formatNumber(product.ownership?.products_without_owner)} owner yok`,
+        tone: product.ownership?.products_without_owner > 0 ? 'warning' : 'success',
+      },
+      {
+        icon: BarChart3,
+        label: 'Variant Health',
+        value: `${formatNumber(product.variants?.ready_variant_children)} / ${formatNumber(product.variants?.child_count)}`,
+        detail: `${formatNumber(product.variants?.parents_with_problem_children)} problemli parent`,
+        tone: product.variants?.parents_with_problem_children > 0 ? 'critical' : 'success',
+      },
+      {
+        icon: Activity,
+        label: 'Marketplace Readiness',
+        value: formatNumber(Number(ty.ready || 0) + Number(hb.ready || 0)),
+        detail: `TY ${formatNumber(ty.ready)} hazir, HB ${formatNumber(hb.ready)} hazir`,
+        tone: (ty.blocked || 0) + (hb.blocked || 0) > 0 ? 'warning' : 'success',
+      },
+    ];
+  }, [report]);
+
   return (
     <>
       <PageHeader
@@ -368,6 +484,116 @@ export function ReportsPage() {
               )}
             </section>
           </div>
+
+          <IntelligenceSection
+            title="XML Intelligence"
+            description="XML kaynak sagligi, import performansi, mapping basarisi, filtre ve ownership conflict sinyalleri."
+          >
+            <section className="analytics-kpi-grid">
+              {xmlKpis.map((kpi) => <KpiCard key={kpi.label} {...kpi} />)}
+            </section>
+            <div className="analytics-three-column">
+              <InsightList
+                title="Problemli kaynaklar"
+                items={(report.xml_intelligence?.sources || []).filter((source) => source.health !== 'healthy').slice(0, 6)}
+                emptyText="Kritik veya dikkat gerektiren XML kaynagi yok."
+                renderItem={(source) => (
+                  <article className={`analytics-insight-row ${source.health}`} key={source.source_id}>
+                    <div>
+                      <strong>{source.source_name}</strong>
+                      <span>{source.supplier_name || 'Tedarikci yok'} · {source.last_status || 'durum yok'}</span>
+                    </div>
+                    <small>{source.last_error || source.last_import_at || 'Son import yok'}</small>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Conflict kaynaklari"
+                items={(report.xml_intelligence?.conflicts?.conflict_sources || []).slice(0, 6)}
+                emptyText="Secili aralikta ownership conflict gorunmuyor."
+                renderItem={(source) => (
+                  <article className="analytics-insight-row critical" key={`${source.xml_source_id}-${source.source_name}`}>
+                    <div>
+                      <strong>{source.source_name || 'Bilinmeyen kaynak'}</strong>
+                      <span>{source.supplier_name || 'Tedarikci yok'}</span>
+                    </div>
+                    <small>{formatNumber(source.conflict_count)} conflict</small>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Son XML aktiviteleri"
+                items={(report.xml_intelligence?.sources || []).slice(0, 6)}
+                emptyText="XML aktivitesi bulunamadi."
+                renderItem={(source) => (
+                  <article className={`analytics-insight-row ${source.health}`} key={`activity-${source.source_id}`}>
+                    <div>
+                      <strong>{source.source_name}</strong>
+                      <span>{source.last_import_at || 'Import bekleniyor'}</span>
+                    </div>
+                    <small>{healthLabel(source.health)}</small>
+                  </article>
+                )}
+              />
+            </div>
+          </IntelligenceSection>
+
+          <IntelligenceSection
+            title="Product Intelligence"
+            description="Urun readiness, XML ownership, varyant parent-child sagligi ve marketplace hazirlik sinyalleri."
+          >
+            <section className="analytics-kpi-grid">
+              {productKpis.map((kpi) => <KpiCard key={kpi.label} {...kpi} />)}
+            </section>
+            <div className="analytics-three-column">
+              <InsightList
+                title="Problemli parent urunler"
+                items={(report.product_intelligence?.parent_child?.problem_parents || []).slice(0, 6)}
+                emptyText="Problemli parent/child rollup bulunmuyor."
+                renderItem={(parent) => (
+                  <article className={`analytics-insight-row ${parent.health}`} key={parent.product_id}>
+                    <div>
+                      <strong>{parent.name || parent.sku}</strong>
+                      <span>{parent.ready_children}/{parent.total_children} varyant hazir · {parent.variant_group_key || 'group yok'}</span>
+                    </div>
+                    <small>{formatNumber(parent.problem_children)} problem</small>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Readiness eksikleri"
+                items={(report.product_intelligence?.missing_field_heatmap || []).filter((field) => field.count > 0).slice(0, 8)}
+                emptyText="Secili kapsamda eksik readiness alani yok."
+                renderItem={(field) => (
+                  <article className="analytics-insight-row warning" key={field.field}>
+                    <div>
+                      <strong>{labels[field.field] || field.field}</strong>
+                      <span>Marketplace readiness kontrolu</span>
+                    </div>
+                    <small>{formatNumber(field.count)} urun</small>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Ownership eksikleri"
+                items={[
+                  { key: 'ownerless', label: 'Owner olmayan urunler', value: report.product_intelligence?.ownership?.products_without_owner },
+                  { key: 'stale', label: 'Eski XML sync', value: report.product_intelligence?.ownership?.stale_xml_products },
+                  { key: 'orphan', label: 'Orphan varyant', value: report.product_intelligence?.variants?.orphan_variants },
+                ].filter((item) => Number(item.value || 0) > 0)}
+                emptyText="Ownership ve varyant baglantilari temiz gorunuyor."
+                renderItem={(item) => (
+                  <article className="analytics-insight-row warning" key={item.key}>
+                    <div>
+                      <strong>{item.label}</strong>
+                      <span>Aksiyon gerektirebilir</span>
+                    </div>
+                    <small>{formatNumber(item.value)}</small>
+                  </article>
+                )}
+              />
+            </div>
+          </IntelligenceSection>
         </>
       )}
     </>
