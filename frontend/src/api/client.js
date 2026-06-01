@@ -71,6 +71,9 @@ export const api = {
   dashboard: {
     report: () => http.get('/dashboard').then((response) => response.data),
   },
+  analytics: {
+    overview: (params) => http.get('/analytics/overview', { params }).then((response) => response.data),
+  },
   settings: {
     show: () => http.get('/settings').then((response) => asObject(response.data)),
     update: (payload) => http.put('/settings', payload).then((response) => asObject(response.data)),

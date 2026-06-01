@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\ApiLogController;
 use App\Http\Controllers\Api\AccountingAccountController;
 use App\Http\Controllers\Api\AccountingIntegrationController;
+use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\B2BModuleController;
 use App\Http\Controllers\Api\CategoryMappingController;
@@ -52,6 +53,7 @@ Route::get('/health', HealthController::class);
 
 Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(function () {
     Route::get('/dashboard', DashboardController::class);
+    Route::get('/analytics/overview', [AnalyticsController::class, 'overview']);
     Route::get('/settings', [CompanySettingsController::class, 'show']);
     Route::put('/settings', [CompanySettingsController::class, 'update']);
     Route::post('/settings/webhook-test', [CompanySettingsController::class, 'testWebhook']);

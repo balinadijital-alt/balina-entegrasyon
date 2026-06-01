@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { RefreshCcw } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Clock, DatabaseZap, PackageCheck, RefreshCcw, ShieldAlert, ShoppingCart, Truck, WalletCards, Webhook } from 'lucide-react';
 import { api } from '../../api/client.js';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
-import { DashboardPage } from '../Dashboard/DashboardPage.jsx';
 
 const labels = {
   new: 'Yeni',
@@ -68,8 +67,311 @@ function Breakdown({ title, items }) {
   );
 }
 
+function formatDate(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function defaultFilters() {
+  const to = new Date();
+  const from = new Date();
+  from.setDate(to.getDate() - 29);
+
+  return {
+    from: formatDate(from),
+    to: formatDate(to),
+    marketplace_code: '',
+  };
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat('tr-TR').format(Number(value || 0));
+}
+
+function formatMoney(value) {
+  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(Number(value || 0));
+}
+
+function sumValues(items = []) {
+  return items.reduce((total, value) => total + Number(value || 0), 0);
+}
+
+function healthLabel(tone) {
+  if (tone === 'critical') return 'Kritik';
+  if (tone === 'warning') return 'Dikkat';
+  return 'Saglikli';
+}
+
+function alertMessage(alert) {
+  const messages = {
+    failed_imports: 'XML import run hatalarini kontrol edin.',
+    failed_queue_jobs: 'Queue retry veya job log incelemesi gerekir.',
+    rejected_variants: 'Varyant batch problemleri urun detayindan cozulebilir.',
+    failed_webhooks: 'Inbound/outbound webhook teslimatlarini inceleyin.',
+    expiring_subscriptions: 'Yakinda bitecek abonelikler icin aksiyon alin.',
+  };
+
+  return messages[alert.key] || 'Operasyon ekibi tarafindan kontrol edilmeli.';
+}
+
+function KpiCard({ icon: Icon, label, value, detail, tone = 'neutral' }) {
+  return (
+    <article className={`analytics-kpi-card ${tone}`}>
+      <div className="analytics-kpi-icon"><Icon size={18} /></div>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+        <small>{detail}</small>
+      </div>
+    </article>
+  );
+}
+
+function HealthCard({ title, tone, description, metrics }) {
+  return (
+    <article className={`domain-health-card ${tone}`}>
+      <div className="domain-health-heading">
+        <span>{title}</span>
+        <strong>{healthLabel(tone)}</strong>
+      </div>
+      <p>{description}</p>
+      <div className="domain-health-metrics">
+        {metrics.map((metric) => (
+          <div key={metric.label}>
+            <strong>{metric.value}</strong>
+            <span>{metric.label}</span>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
 export function ReportsPage() {
-  return <DashboardPage title="Raporlar" />;
+  const { loading, error, run } = useAsync();
+  const [filters, setFilters] = useState(defaultFilters);
+  const [report, setReport] = useState(null);
+
+  const load = async () => {
+    await run(async () => {
+      const params = {
+        from: filters.from || undefined,
+        to: filters.to || undefined,
+        marketplace_code: filters.marketplace_code || undefined,
+      };
+      setReport(await api.analytics.overview(params));
+    });
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const kpis = useMemo(() => {
+    if (!report) return [];
+
+    return [
+      {
+        icon: BarChart3,
+        label: 'Satis',
+        value: formatMoney(report.sales?.total_sales),
+        detail: `${formatNumber(report.sales?.order_count)} siparis / ${formatMoney(report.sales?.avg_order_value)} ort.`,
+        tone: 'success',
+      },
+      {
+        icon: ShoppingCart,
+        label: 'Siparis',
+        value: formatNumber(sumValues([report.orders?.pending, report.orders?.preparing, report.orders?.shipped, report.orders?.delivered, report.orders?.cancelled])),
+        detail: `${formatNumber(report.orders?.pending)} bekliyor, ${formatNumber(report.orders?.delivered)} teslim`,
+      },
+      {
+        icon: WalletCards,
+        label: 'Odeme',
+        value: formatNumber(report.payments?.paid),
+        detail: `${formatNumber(report.payments?.failed)} hatali, ${formatNumber(report.payments?.refunded)} iade`,
+        tone: report.payments?.failed > 0 ? 'warning' : 'success',
+      },
+      {
+        icon: Truck,
+        label: 'Kargo',
+        value: formatNumber(report.shipping?.delivered),
+        detail: `${formatNumber(report.shipping?.pending)} bekliyor, ${formatNumber(report.shipping?.failed)} problemli`,
+        tone: report.shipping?.failed > 0 ? 'critical' : 'neutral',
+      },
+      {
+        icon: DatabaseZap,
+        label: 'XML',
+        value: formatNumber(report.imports?.successful_runs),
+        detail: `${formatNumber(report.imports?.failed_runs)} hatali run, ${formatNumber(report.imports?.conflict_rows)} conflict`,
+        tone: report.imports?.failed_runs > 0 || report.imports?.conflict_rows > 0 ? 'warning' : 'success',
+      },
+      {
+        icon: Clock,
+        label: 'Queue',
+        value: formatNumber(report.queue?.pending_jobs),
+        detail: `${formatNumber(report.queue?.failed_jobs)} failed, ${formatNumber(report.queue?.retry_jobs)} retry`,
+        tone: report.queue?.failed_jobs > 0 ? 'critical' : 'neutral',
+      },
+      {
+        icon: Webhook,
+        label: 'Webhook',
+        value: formatNumber(sumValues([report.webhooks?.inbound_success, report.webhooks?.outbound_success])),
+        detail: `${formatNumber(sumValues([report.webhooks?.inbound_failed, report.webhooks?.outbound_failed]))} hatali teslimat`,
+        tone: sumValues([report.webhooks?.inbound_failed, report.webhooks?.outbound_failed]) > 0 ? 'warning' : 'success',
+      },
+      {
+        icon: PackageCheck,
+        label: 'SaaS',
+        value: formatNumber(report.saas?.active_subscriptions),
+        detail: `${formatNumber(report.saas?.expiring_subscriptions)} bitecek, ${formatNumber(report.saas?.limit_risk_companies)} limit riski`,
+        tone: report.saas?.limit_risk_companies > 0 ? 'warning' : 'neutral',
+      },
+    ];
+  }, [report]);
+
+  const healthCards = useMemo(() => {
+    if (!report) return [];
+
+    const xmlTone = report.imports?.failed_runs > 0 || report.imports?.conflict_rows > 0 ? 'critical' : report.imports?.filtered_rows > 0 ? 'warning' : 'healthy';
+    const queueTone = report.queue?.failed_jobs > 0 ? 'critical' : report.queue?.pending_jobs > 0 || report.queue?.retry_jobs > 0 ? 'warning' : 'healthy';
+    const apiTone = report.api?.api_errors > 0 ? 'critical' : report.api?.slow_requests > 0 ? 'warning' : 'healthy';
+    const webhookFailures = sumValues([report.webhooks?.inbound_failed, report.webhooks?.outbound_failed]);
+    const webhookTone = webhookFailures > 0 ? 'critical' : 'healthy';
+    const marketplaceTone = report.marketplaces?.failed_accounts > 0 ? 'critical' : report.marketplaces?.active_accounts === 0 ? 'warning' : 'healthy';
+
+    return [
+      {
+        title: 'XML Health',
+        tone: xmlTone,
+        description: 'Import run, filtre ve ownership conflict riskleri.',
+        metrics: [
+          { label: 'Basarili', value: formatNumber(report.imports?.successful_runs) },
+          { label: 'Conflict', value: formatNumber(report.imports?.conflict_rows) },
+        ],
+      },
+      {
+        title: 'Queue Health',
+        tone: queueTone,
+        description: 'Bekleyen, failed ve retry operasyon kuyruklari.',
+        metrics: [
+          { label: 'Pending', value: formatNumber(report.queue?.pending_jobs) },
+          { label: 'Failed', value: formatNumber(report.queue?.failed_jobs) },
+        ],
+      },
+      {
+        title: 'API Health',
+        tone: apiTone,
+        description: 'Provider API hata ve yavas istek sinyalleri.',
+        metrics: [
+          { label: 'Errors', value: formatNumber(report.api?.api_errors) },
+          { label: 'Slow', value: formatNumber(report.api?.slow_requests) },
+        ],
+      },
+      {
+        title: 'Webhook Health',
+        tone: webhookTone,
+        description: 'Inbound ve outbound teslimat basari durumu.',
+        metrics: [
+          { label: 'Success', value: formatNumber(sumValues([report.webhooks?.inbound_success, report.webhooks?.outbound_success])) },
+          { label: 'Failed', value: formatNumber(webhookFailures) },
+        ],
+      },
+      {
+        title: 'Marketplace Health',
+        tone: marketplaceTone,
+        description: 'Aktif hesaplar ve baglanti durumlari.',
+        metrics: [
+          { label: 'Aktif', value: formatNumber(report.marketplaces?.active_accounts) },
+          { label: 'Hatali', value: formatNumber(report.marketplaces?.failed_accounts) },
+        ],
+      },
+    ];
+  }, [report]);
+
+  return (
+    <>
+      <PageHeader
+        title="Analytics Center"
+        description="Satis, operasyon, XML, queue, API, webhook ve SaaS sagligini tek merkezde izleyin."
+        actions={<button type="button" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
+      />
+
+      <section className="analytics-filter-bar">
+        <label>
+          <span>Tarih baslangic</span>
+          <input type="date" value={filters.from} onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))} />
+        </label>
+        <label>
+          <span>Tarih bitis</span>
+          <input type="date" value={filters.to} onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))} />
+        </label>
+        <label>
+          <span>Marketplace</span>
+          <select value={filters.marketplace_code} onChange={(event) => setFilters((current) => ({ ...current, marketplace_code: event.target.value }))}>
+            <option value="">Tum marketplace</option>
+            <option value="trendyol">Trendyol</option>
+            <option value="hepsiburada">Hepsiburada</option>
+          </select>
+        </label>
+        <button type="button" className="secondary" onClick={load} disabled={loading}><Activity size={16} /> Uygula</button>
+      </section>
+
+      {error && <ErrorState message={error} onRetry={load} />}
+      {loading && !report ? <LoadingState /> : null}
+
+      {report && (
+        <>
+          <section className="analytics-kpi-grid">
+            {kpis.map((kpi) => <KpiCard key={kpi.label} {...kpi} />)}
+          </section>
+
+          <section className="domain-health-grid">
+            {healthCards.map((card) => <HealthCard key={card.title} {...card} />)}
+          </section>
+
+          <div className="analytics-overview-grid">
+            <section className="panel analytics-chart-panel">
+              <div className="panel-heading">
+                <div>
+                  <span>Trend</span>
+                  <h2>Satis ve siparis hareketi</h2>
+                </div>
+              </div>
+              <TrendBars series={report.sales?.trend || []} />
+            </section>
+
+            <section className="panel analytics-alert-panel">
+              <div className="panel-heading">
+                <div>
+                  <span>Aksiyon</span>
+                  <h2>Actionable Alerts</h2>
+                </div>
+              </div>
+              {report.alerts?.length > 0 ? (
+                <div className="analytics-alert-list">
+                  {report.alerts.map((alert) => (
+                    <article className={`analytics-alert-card ${alert.tone}`} key={alert.key}>
+                      <ShieldAlert size={18} />
+                      <div>
+                        <strong>{alert.label}</strong>
+                        <span>{formatNumber(alert.value)} kayit</span>
+                        <small>{alertMessage(alert)}</small>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="analytics-empty-state">
+                  <AlertTriangle size={20} />
+                  <strong>Kritik aksiyon yok</strong>
+                  <span>Secili aralikta failed import, queue, webhook veya subscription riski gorunmuyor.</span>
+                </div>
+              )}
+            </section>
+          </div>
+        </>
+      )}
+    </>
+  );
 }
 
 export function CustomerReportsPage() {
