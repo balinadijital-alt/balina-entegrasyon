@@ -124,7 +124,7 @@ function alertMessage(alert) {
   return messages[alert.key] || 'Operasyon ekibi tarafindan kontrol edilmeli.';
 }
 
-function KpiCard({ icon: Icon, label, value, detail, tone = 'neutral' }) {
+function KpiCard({ icon: Icon, label, value, detail, tone = 'neutral', action }) {
   return (
     <article className={`analytics-kpi-card ${tone}`}>
       <div className="analytics-kpi-icon"><Icon size={18} /></div>
@@ -132,6 +132,7 @@ function KpiCard({ icon: Icon, label, value, detail, tone = 'neutral' }) {
         <span>{label}</span>
         <strong>{value}</strong>
         <small>{detail}</small>
+        {action && <button type="button" className="analytics-card-action" onClick={action.onClick}>{action.label}</button>}
       </div>
     </article>
   );
@@ -201,10 +202,202 @@ function ActionLink({ to, children }) {
   return <Link className="analytics-action-link" to={to}>{children}</Link>;
 }
 
+function SeverityBadge({ severity }) {
+  return <span className={`analytics-severity-badge ${severity || 'info'}`}>{severity || 'info'}</span>;
+}
+
+function DrilldownList({ title, items, emptyText, renderItem }) {
+  return (
+    <section className="analytics-drilldown-section">
+      <h3>{title}</h3>
+      {items?.length > 0 ? (
+        <div className="analytics-drilldown-list">
+          {items.map((item, index) => renderItem(item, index))}
+        </div>
+      ) : (
+        <div className="analytics-empty-state compact">
+          <strong>Temiz</strong>
+          <span>{emptyText}</span>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function MarketplaceDrilldownDrawer({ data, loading, error, onClose }) {
+  const marketplace = data?.marketplace || {};
+  const summary = data?.summary || {};
+  const risk = data?.risk_score || {};
+
+  return (
+    <div className="analytics-drawer-backdrop" role="presentation">
+      <aside className="analytics-drawer" role="dialog" aria-modal="true" aria-label="Marketplace drilldown">
+        <div className="analytics-drawer-header">
+          <div>
+            <span>Marketplace Drilldown</span>
+            <h2>{marketplace.label || 'Marketplace'}</h2>
+            <p>{marketplace.health ? `${healthLabel(marketplace.health)} durum · Risk skoru ${formatNumber(risk.score)} / 100` : 'Drilldown verisi yukleniyor.'}</p>
+          </div>
+          <button type="button" className="secondary" onClick={onClose}>Kapat</button>
+        </div>
+
+        {loading && <LoadingState />}
+        {error && <ErrorState message={error} onRetry={() => {}} />}
+
+        {data && !loading && (
+          <>
+            <section className="analytics-drilldown-summary">
+              {[
+                ['Failed batch', summary.failed_batches],
+                ['Rejected', summary.rejected_products],
+                ['Failed product', summary.failed_products],
+                ['API error', summary.api_errors],
+                ['Queue failure', summary.queue_failures],
+                ['Webhook failure', summary.webhook_failures],
+                ['Variant problem', summary.variant_problem_children],
+                ['Stale sync', summary.stale_sync ? 1 : 0],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <strong>{formatNumber(value)}</strong>
+                  <span>{label}</span>
+                </div>
+              ))}
+            </section>
+
+            <section className="analytics-action-strip">
+              {(data.action_links || []).map((link) => (
+                <Link key={link.target} className="analytics-action-link" to={link.target}>{link.label}</Link>
+              ))}
+            </section>
+
+            <section className="analytics-drilldown-section">
+              <h3>Root Cause</h3>
+              {(data.incidents || []).length > 0 ? (
+                <div className="analytics-incident-grid">
+                  {data.incidents.map((incident) => (
+                    <article className={`analytics-incident-card ${incident.severity}`} key={incident.key}>
+                      <div className="analytics-incident-heading">
+                        <SeverityBadge severity={incident.severity} />
+                        <strong>{incident.title}</strong>
+                        <small>{formatNumber(incident.value)}</small>
+                      </div>
+                      <p>{incident.summary}</p>
+                      <span>{incident.root_cause}</span>
+                      <footer>
+                        <small>{incident.action_hint}</small>
+                        <Link to={incident.target_path}>Aksiyon</Link>
+                      </footer>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="analytics-empty-state compact">
+                  <strong>Incident yok</strong>
+                  <span>Secili aralikta marketplace icin aksiyon gerektiren kok neden bulunmadi.</span>
+                </div>
+              )}
+            </section>
+
+            <div className="analytics-drilldown-grid">
+              <DrilldownList
+                title="Failed Products"
+                items={data.failed_products || []}
+                emptyText="Failed/problematic urun yok."
+                renderItem={(product) => (
+                  <article className="analytics-drilldown-row critical" key={`failed-${product.product_id}-${product.marketplace_code}`}>
+                    <div><strong>{product.name || product.sku}</strong><span>{product.error_message || product.status}</span></div>
+                    <small>{product.batch_request_id || product.last_checked_at || '-'}</small>
+                    <ActionLink to={`/products/${product.product_id}`}>Urun</ActionLink>
+                  </article>
+                )}
+              />
+              <DrilldownList
+                title="Rejected Products"
+                items={data.rejected_products || []}
+                emptyText="Rejected urun yok."
+                renderItem={(product) => (
+                  <article className="analytics-drilldown-row warning" key={`rejected-${product.product_id}-${product.marketplace_code}`}>
+                    <div><strong>{product.name || product.sku}</strong><span>{product.error_message || product.status}</span></div>
+                    <small>{product.batch_request_id || product.last_checked_at || '-'}</small>
+                    <ActionLink to={`/api-logs?search=${encodeURIComponent(product.sku || product.barcode || product.batch_request_id || '')}`}>Log</ActionLink>
+                  </article>
+                )}
+              />
+              <DrilldownList
+                title="Batch Problems"
+                items={data.batch_problems || []}
+                emptyText="Problemli batch yok."
+                renderItem={(batch) => (
+                  <article className="analytics-drilldown-row critical" key={`${batch.marketplace_code}-${batch.batch_request_id}`}>
+                    <div><strong>{batch.batch_request_id || 'Batch yok'}</strong><span>{formatNumber(batch.failed_count)} failed · {formatNumber(batch.rejected_count)} rejected</span></div>
+                    <small>{formatNumber(batch.problem_count)} problem</small>
+                    <ActionLink to="/products/publish-queue">Queue</ActionLink>
+                  </article>
+                )}
+              />
+              <DrilldownList
+                title="API Errors"
+                items={data.api_errors || []}
+                emptyText="API hatasi yok."
+                renderItem={(log) => (
+                  <article className={log.status_code >= 500 ? 'analytics-drilldown-row critical' : 'analytics-drilldown-row warning'} key={`api-${log.id}`}>
+                    <div><strong>{log.method} {log.endpoint}</strong><span>{log.error_message || `HTTP ${log.status_code}`}</span></div>
+                    <small>{formatNumber(log.duration_ms)}ms</small>
+                    <ActionLink to={`/api-logs?search=${encodeURIComponent(log.endpoint || '')}`}>Log</ActionLink>
+                  </article>
+                )}
+              />
+              <DrilldownList
+                title="Queue Failures"
+                items={data.queue_failures || []}
+                emptyText="Queue failure yok."
+                renderItem={(run) => (
+                  <article className="analytics-drilldown-row critical" key={`queue-${run.id}`}>
+                    <div><strong>{run.type || 'sync'}</strong><span>{run.error_message || run.status}</span></div>
+                    <small>{formatNumber(run.attempts)} attempt</small>
+                    <ActionLink to="/queue">Queue</ActionLink>
+                  </article>
+                )}
+              />
+              <DrilldownList
+                title="Webhook Failures"
+                items={data.webhook_failures || []}
+                emptyText="Webhook failure yok."
+                renderItem={(webhook) => (
+                  <article className="analytics-drilldown-row warning" key={`webhook-${webhook.id}`}>
+                    <div><strong>{webhook.event || webhook.direction}</strong><span>{webhook.error_message || webhook.status}</span></div>
+                    <small>{webhook.status}</small>
+                    <ActionLink to="/api-logs">Log</ActionLink>
+                  </article>
+                )}
+              />
+              <DrilldownList
+                title="Variant Problems"
+                items={data.variant_problems?.latest_problem_children || []}
+                emptyText="Problemli varyant yok."
+                renderItem={(child, index) => (
+                  <article className="analytics-drilldown-row warning" key={`variant-${child.product_id || index}`}>
+                    <div><strong>{child.sku || child.barcode || 'Varyant'}</strong><span>{child.error_message || child.status}</span></div>
+                    <small>{child.batch_request_id || child.last_checked_at || '-'}</small>
+                    <ActionLink to={`/products/${child.product_id}`}>Coz</ActionLink>
+                  </article>
+                )}
+              />
+            </div>
+          </>
+        )}
+      </aside>
+    </div>
+  );
+}
+
 export function ReportsPage() {
   const { loading, error, run } = useAsync();
   const [filters, setFilters] = useState(defaultFilters);
   const [report, setReport] = useState(null);
+  const [drilldown, setDrilldown] = useState(null);
+  const [drilldownLoading, setDrilldownLoading] = useState(false);
+  const [drilldownError, setDrilldownError] = useState('');
 
   const load = async () => {
     await run(async () => {
@@ -215,6 +408,22 @@ export function ReportsPage() {
       };
       setReport(await api.analytics.overview(params));
     });
+  };
+
+  const openDrilldown = async (marketplace) => {
+    setDrilldownLoading(true);
+    setDrilldownError('');
+    setDrilldown(null);
+    try {
+      setDrilldown(await api.analytics.marketplaceDrilldown(marketplace, {
+        from: filters.from || undefined,
+        to: filters.to || undefined,
+      }));
+    } catch (requestError) {
+      setDrilldownError(requestError.response?.data?.message || requestError.message || 'Drilldown verisi alinamadi.');
+    } finally {
+      setDrilldownLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -430,6 +639,7 @@ export function ReportsPage() {
         value: healthLabel(trendyol.health),
         detail: `${formatNumber(trendyol.approved)} approved, ${formatNumber(trendyol.rejected)} rejected`,
         tone: trendyol.health === 'critical' ? 'critical' : trendyol.health === 'warning' ? 'warning' : 'success',
+        action: { label: `Neden ${healthLabel(trendyol.health)}?`, onClick: () => openDrilldown('trendyol') },
       } : null,
       intelligence.marketplaces?.hepsiburada ? {
         icon: ShoppingCart,
@@ -437,6 +647,7 @@ export function ReportsPage() {
         value: healthLabel(hepsiburada.health),
         detail: `${formatNumber(hepsiburada.approved)} approved, ${formatNumber(hepsiburada.failed)} failed`,
         tone: hepsiburada.health === 'critical' ? 'critical' : hepsiburada.health === 'warning' ? 'warning' : 'success',
+        action: { label: `Neden ${healthLabel(hepsiburada.health)}?`, onClick: () => openDrilldown('hepsiburada') },
       } : null,
       {
         icon: Activity,
@@ -453,7 +664,7 @@ export function ReportsPage() {
         tone: rejectedFailed > 0 ? 'critical' : 'success',
       },
     ].filter(Boolean);
-  }, [report]);
+  }, [report, filters.from, filters.to]);
 
   const operationsKpis = useMemo(() => {
     if (!report?.operations_intelligence) return [];
@@ -900,6 +1111,18 @@ export function ReportsPage() {
             </div>
           </IntelligenceSection>
         </>
+      )}
+
+      {(drilldown || drilldownLoading || drilldownError) && (
+        <MarketplaceDrilldownDrawer
+          data={drilldown}
+          loading={drilldownLoading}
+          error={drilldownError}
+          onClose={() => {
+            setDrilldown(null);
+            setDrilldownError('');
+          }}
+        />
       )}
     </>
   );

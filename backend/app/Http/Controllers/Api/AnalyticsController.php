@@ -28,4 +28,20 @@ class AnalyticsController extends Controller
 
         return response()->json($analytics->overview($data));
     }
+
+    public function marketplaceDrilldown(Request $request, AnalyticsService $analytics, string $marketplace): JsonResponse
+    {
+        $data = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+        ]);
+
+        $tenantCompanyId = $this->tenantCompanyId($request);
+
+        if ($tenantCompanyId) {
+            $data['company_id'] = $tenantCompanyId;
+        }
+
+        return response()->json($analytics->marketplaceDrilldown($marketplace, $data));
+    }
 }

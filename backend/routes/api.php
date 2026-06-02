@@ -54,6 +54,7 @@ Route::get('/health', HealthController::class);
 Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(function () {
     Route::get('/dashboard', DashboardController::class);
     Route::get('/analytics/overview', [AnalyticsController::class, 'overview']);
+    Route::get('/analytics/marketplaces/{marketplace}/drilldown', [AnalyticsController::class, 'marketplaceDrilldown']);
     Route::get('/settings', [CompanySettingsController::class, 'show']);
     Route::put('/settings', [CompanySettingsController::class, 'update']);
     Route::post('/settings/webhook-test', [CompanySettingsController::class, 'testWebhook']);

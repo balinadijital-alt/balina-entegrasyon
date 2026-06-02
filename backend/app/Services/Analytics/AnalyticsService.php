@@ -24,6 +24,8 @@ use Illuminate\Support\Facades\DB;
 
 class AnalyticsService
 {
+    private const MARKETPLACES = ['trendyol', 'hepsiburada'];
+
     public function overview(array $filters = []): array
     {
         $from = $this->date($filters['from'] ?? null, CarbonImmutable::today()->subDays(29))->startOfDay();
@@ -77,6 +79,99 @@ class AnalyticsService
             ),
             'alerts' => $this->alerts($from, $to, $companyId, $marketplaceCode),
         ]);
+    }
+
+    public function marketplaceDrilldown(string $marketplaceCode, array $filters = []): array
+    {
+        $marketplaceCode = strtolower($marketplaceCode);
+        $from = $this->date($filters['from'] ?? null, CarbonImmutable::today()->subDays(29))->startOfDay();
+        $to = $this->date($filters['to'] ?? null, CarbonImmutable::today())->endOfDay();
+        $companyId = $filters['company_id'] ?? null;
+
+        return Cache::remember(
+            "analytics:marketplace-drilldown:".($companyId ?: 'all').":{$marketplaceCode}:{$from->timestamp}:{$to->timestamp}",
+            now()->addMinutes(3),
+            function () use ($from, $to, $companyId, $marketplaceCode) {
+                $marketplace = $this->marketplacePerformance($from, $to, $companyId, $marketplaceCode);
+                $batch = $this->batchSuccessAnalytics($from, $to, $companyId, $marketplaceCode);
+                $rejectedProducts = $this->marketplaceProductStatusRows($from, $to, $companyId, $marketplaceCode, ['rejected'], 50);
+                $failedProducts = $this->marketplaceProductStatusRows($from, $to, $companyId, $marketplaceCode, ['failed', 'problematic', 'blocked'], 50);
+                $api = $this->apiErrorIntelligence($from, $to, $companyId, $marketplaceCode);
+                $apiErrors = $this->apiErrorRows($from, $to, $companyId, $marketplaceCode, 50);
+                $queue = $this->queueFailures($from, $to, $companyId, $marketplaceCode, 20);
+                $webhooks = $this->webhookFailures($from, $to, $companyId, $marketplaceCode, 20);
+                $variantProblems = $this->variantProblemAnalytics($companyId, $marketplaceCode);
+                $staleSync = $this->staleSync($marketplaceCode, $companyId);
+                $risk = $this->operationalRiskScore(
+                    [
+                        'marketplaces' => [$marketplaceCode => $marketplace],
+                        'batch_success' => $batch,
+                        'variant_problems' => $variantProblems,
+                    ],
+                    [
+                        'failed_jobs' => count($queue),
+                    ],
+                    $api,
+                    [
+                        'inbound_total' => max(1, count($webhooks)),
+                        'inbound_failed' => count($webhooks),
+                        'outbound_total' => 0,
+                        'outbound_failed' => 0,
+                    ]
+                );
+                $summary = [
+                    'failed_batches' => count($batch['problem_batches'] ?? []),
+                    'rejected_products' => count($rejectedProducts),
+                    'failed_products' => count($failedProducts),
+                    'api_errors' => (int) ($api['api_errors'] ?? 0),
+                    'slow_requests' => (int) ($api['slow_requests'] ?? 0),
+                    'queue_failures' => count($queue),
+                    'webhook_failures' => count($webhooks),
+                    'variant_problem_children' => (int) ($variantProblems['problem_children_count'] ?? 0),
+                    'stale_sync' => (bool) ($staleSync['is_stale'] ?? false),
+                ];
+                $incidents = $this->buildMarketplaceIncidents(
+                    $marketplaceCode,
+                    $marketplace,
+                    $summary,
+                    $batch,
+                    $api,
+                    $queue,
+                    $webhooks,
+                    $variantProblems,
+                    $staleSync
+                );
+
+                return [
+                    'marketplace' => [
+                        'code' => $marketplaceCode,
+                        'label' => $this->marketplaceLabel($marketplaceCode),
+                        'health' => $marketplace['health'],
+                        'active_accounts' => $marketplace['active_accounts'],
+                        'failed_accounts' => $marketplace['failed_accounts'],
+                        'last_product_sync_at' => $marketplace['last_product_sync_at'],
+                        'last_price_sync_at' => $marketplace['last_price_sync_at'],
+                        'last_order_sync_at' => $marketplace['last_order_sync_at'],
+                        'last_error' => $marketplace['last_error'],
+                    ],
+                    'risk_score' => $risk,
+                    'summary' => $summary,
+                    'incidents' => $incidents,
+                    'failed_products' => $failedProducts,
+                    'rejected_products' => $rejectedProducts,
+                    'batch_problems' => array_slice($batch['problem_batches'] ?? [], 0, 50),
+                    'api_errors' => $apiErrors,
+                    'queue_failures' => $queue,
+                    'webhook_failures' => $webhooks,
+                    'variant_problems' => [
+                        ...$variantProblems,
+                        'latest_problem_children' => array_slice($variantProblems['latest_problem_children'] ?? [], 0, 100),
+                    ],
+                    'stale_sync' => $staleSync,
+                    'action_links' => $this->marketplaceActionLinks($marketplaceCode),
+                ];
+            }
+        );
     }
 
     private function sales(CarbonImmutable $from, CarbonImmutable $to, ?int $companyId, ?string $marketplaceCode): array
@@ -1082,6 +1177,191 @@ class AnalyticsService
             'batch_request_id' => $status->batch_request_id,
             'last_checked_at' => $status->last_checked_at,
         ];
+    }
+
+    private function marketplaceProductStatusRows(CarbonImmutable $from, CarbonImmutable $to, ?int $companyId, string $marketplaceCode, array $statuses, int $limit): array
+    {
+        return $this->marketplaceStatusQuery($from, $to, $companyId, $marketplaceCode)
+            ->get()
+            ->filter(fn (ProductMarketplaceStatus $status) => in_array($status->status, $statuses, true))
+            ->sortByDesc(fn (ProductMarketplaceStatus $status) => $this->statusTimestamp($status))
+            ->take($limit)
+            ->map(fn (ProductMarketplaceStatus $status) => $this->marketplaceStatusRow($status))
+            ->values()
+            ->all();
+    }
+
+    private function queueFailures(CarbonImmutable $from, CarbonImmutable $to, ?int $companyId, string $marketplaceCode, int $limit): array
+    {
+        return SyncRun::query()
+            ->with('marketplace:id,company_id,code,name')
+            ->where('status', 'failed')
+            ->whereHas('marketplace', fn ($marketplace) => $marketplace
+                ->where('code', $marketplaceCode)
+                ->when($companyId, fn ($query) => $query->where('company_id', $companyId)))
+            ->whereBetween('created_at', [$from, $to])
+            ->latest()
+            ->limit($limit)
+            ->get()
+            ->map(fn (SyncRun $run) => [
+                'id' => $run->id,
+                'type' => $run->type,
+                'marketplace_code' => $run->marketplace?->code,
+                'status' => $run->status,
+                'attempts' => $run->attempts,
+                'error_message' => $run->error_message,
+                'created_at' => $run->created_at,
+                'target_path' => '/queue',
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function webhookFailures(CarbonImmutable $from, CarbonImmutable $to, ?int $companyId, string $marketplaceCode, int $limit): array
+    {
+        return InboundWebhookDelivery::query()
+            ->when($companyId, fn ($query) => $query->where('company_id', $companyId))
+            ->where('marketplace_code', $marketplaceCode)
+            ->whereBetween('created_at', [$from, $to])
+            ->whereIn('status', ['failed', 'invalid_signature', 'unknown_account'])
+            ->latest()
+            ->limit($limit)
+            ->get()
+            ->map(fn (InboundWebhookDelivery $delivery) => [
+                'id' => $delivery->id,
+                'direction' => 'inbound',
+                'marketplace_code' => $delivery->marketplace_code,
+                'event' => $delivery->event,
+                'status' => $delivery->status,
+                'error_message' => $delivery->last_error,
+                'created_at' => $delivery->created_at,
+                'target_path' => '/api-logs',
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function apiErrorRows(CarbonImmutable $from, CarbonImmutable $to, ?int $companyId, string $marketplaceCode, int $limit): array
+    {
+        return ApiLog::query()
+            ->when($companyId, fn ($query) => $query->where('company_id', $companyId))
+            ->where('marketplace_code', $marketplaceCode)
+            ->whereBetween('created_at', [$from, $to])
+            ->where('status_code', '>=', 400)
+            ->latest()
+            ->limit($limit)
+            ->get()
+            ->map(fn (ApiLog $log) => [
+                'id' => $log->id,
+                'marketplace_code' => $log->marketplace_code,
+                'method' => $log->method,
+                'endpoint' => $log->endpoint,
+                'status_code' => $log->status_code,
+                'duration_ms' => $log->duration_ms,
+                'error_message' => $log->error_message,
+                'created_at' => $log->created_at,
+                'target_path' => '/api-logs?search='.urlencode((string) $log->endpoint),
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function staleSync(string $marketplaceCode, ?int $companyId): array
+    {
+        $accounts = MarketplaceAccount::query()
+            ->where('code', $marketplaceCode)
+            ->when($companyId, fn ($query) => $query->where('company_id', $companyId))
+            ->get();
+        $lastProductSync = $accounts->max('last_product_sync_at');
+        $lastOrderSync = $accounts->max('last_order_sync_at');
+        $threshold = now()->subDays(2);
+        $lastProductSyncDate = $lastProductSync ? CarbonImmutable::parse($lastProductSync) : null;
+        $lastOrderSyncDate = $lastOrderSync ? CarbonImmutable::parse($lastOrderSync) : null;
+        $isStale = $accounts->isNotEmpty() && (
+            $lastProductSyncDate === null
+            || $lastOrderSyncDate === null
+            || $lastProductSyncDate->lt($threshold)
+            || $lastOrderSyncDate->lt($threshold)
+        );
+
+        return [
+            'is_stale' => $isStale,
+            'last_product_sync_at' => $lastProductSync,
+            'last_order_sync_at' => $lastOrderSync,
+            'threshold' => $threshold,
+            'reason' => $isStale ? 'Son pazaryeri senkronu beklenen araligin disinda.' : null,
+        ];
+    }
+
+    private function buildMarketplaceIncidents(
+        string $marketplaceCode,
+        array $marketplace,
+        array $summary,
+        array $batch,
+        array $api,
+        array $queue,
+        array $webhooks,
+        array $variantProblems,
+        array $staleSync
+    ): array {
+        $incidents = [];
+        $label = $this->marketplaceLabel($marketplaceCode);
+
+        $this->pushIncident($incidents, 'marketplace_account_failed', 'critical', 'Marketplace account failed', "{$label} hesap baglantisi basarisiz.", $marketplace['failed_accounts'] ?? 0, 'Credential, yetki veya provider hesap durumunda sorun olabilir.', 'Pazaryeri ayarlarini ve son hata mesajini kontrol edin.', "/marketplaces/{$marketplaceCode}");
+        $rejectedSeverity = ($summary['rejected_products'] ?? 0) >= 10 || ($marketplace['success_rate'] ?? 100) < 80 ? 'critical' : 'warning';
+        $this->pushIncident($incidents, 'rejected_products', $rejectedSeverity, 'Rejected products', "{$label} tarafinda reddedilen urunler var.", $summary['rejected_products'] ?? 0, 'Kategori, barkod, marka veya zorunlu attribute eksigi olabilir.', 'Rejected urunleri urun detayinda ve API loglarinda inceleyin.', '/products');
+        $this->pushIncident($incidents, 'failed_products', 'warning', 'Failed products', "{$label} gonderiminde failed/problematic urunler var.", $summary['failed_products'] ?? 0, 'Provider hata mesaji veya readiness eksigi urun gonderimini bloke ediyor olabilir.', 'Failed urunleri duzenleyin ve publish queue durumunu kontrol edin.', '/products/publish-queue');
+        $this->pushIncident($incidents, 'failed_batch', 'critical', 'Failed batch', "{$label} batch gruplarinda basarisiz urunler var.", $summary['failed_batches'] ?? 0, 'Batch icindeki urunlerden biri veya daha fazlasi provider tarafindan kabul edilmedi.', 'Batch ID ile API loglarini ve publish queue kayitlarini inceleyin.', '/products/publish-queue');
+        $this->pushIncident($incidents, 'api_errors', ($api['status_5xx'] ?? 0) > 0 ? 'critical' : 'warning', 'API errors', "{$label} API hatalari kaydedildi.", $api['api_errors'] ?? 0, (($api['status_5xx'] ?? 0) > 0 ? 'Provider veya servis tarafinda 5xx hata var.' : 'Provider 4xx/validasyon hatalari donuyor olabilir.'), 'API Logs ekraninda endpoint ve payload detayini inceleyin.', '/api-logs');
+        $this->pushIncident($incidents, 'slow_api', 'warning', 'Slow API', "{$label} API isteklerinde yavaslik var.", $api['slow_requests'] ?? 0, 'Provider yanit suresi veya ag gecikmesi operasyonu yavaslatiyor olabilir.', 'Yavas endpointleri API Logs uzerinden kontrol edin.', '/api-logs');
+        $this->pushIncident($incidents, 'queue_failed', 'critical', 'Queue failed', "{$label} queue isleri basarisiz oldu.", count($queue), 'Senkron veya publish joblari hata ile tamamlandi.', 'Queue Retry Merkezi uzerinden job detayini inceleyin.', '/queue');
+        $this->pushIncident($incidents, 'webhook_failed', 'warning', 'Webhook failed', "{$label} webhook teslimat sorunlari var.", count($webhooks), 'Inbound webhook imzasi, hesap eslesmesi veya payload isleme hatasi olabilir.', 'Webhook kayitlarini Hata Merkezi uzerinden inceleyin.', '/api-logs');
+        $this->pushIncident($incidents, 'stale_sync', 'warning', 'Stale sync', "{$label} senkron bilgisi eski.", $staleSync['is_stale'] ? 1 : 0, $staleSync['reason'] ?? 'Senkron zamani kontrol edilmeli.', 'Pazaryeri yonetim ekranindan son senkron zamanlarini kontrol edin.', "/marketplaces/{$marketplaceCode}");
+        $this->pushIncident($incidents, 'variant_problem', 'warning', 'Variant problem', "{$label} varyant child urunlerinde problem var.", $variantProblems['problem_children_count'] ?? 0, 'Parent altindaki child varyantlardan bazilari provider status veya readiness problemi tasiyor.', 'Problemli varyantlari urun detayindan cozumleyin.', '/products');
+
+        return collect($incidents)
+            ->sortBy(fn (array $incident) => ['critical' => 0, 'warning' => 1, 'info' => 2][$incident['severity']] ?? 3)
+            ->take(30)
+            ->values()
+            ->all();
+    }
+
+    private function pushIncident(array &$incidents, string $key, string $severity, string $title, string $summary, int|float $value, string $rootCause, string $actionHint, string $targetPath): void
+    {
+        if ((float) $value <= 0) {
+            return;
+        }
+
+        $incidents[] = [
+            'key' => $key,
+            'type' => $key,
+            'severity' => $severity,
+            'title' => $title,
+            'summary' => $summary,
+            'value' => $value,
+            'root_cause' => $rootCause,
+            'action_hint' => $actionHint,
+            'target_path' => $targetPath,
+        ];
+    }
+
+    private function marketplaceActionLinks(string $marketplaceCode): array
+    {
+        return [
+            ['label' => 'API Logs', 'target' => '/api-logs'],
+            ['label' => 'Queue', 'target' => '/queue'],
+            ['label' => 'Publish Queue', 'target' => '/products/publish-queue'],
+            ['label' => 'Products', 'target' => '/products'],
+            ['label' => "{$this->marketplaceLabel($marketplaceCode)} Settings", 'target' => "/marketplaces/{$marketplaceCode}"],
+        ];
+    }
+
+    private function marketplaceLabel(string $marketplaceCode): string
+    {
+        return [
+            'trendyol' => 'Trendyol',
+            'hepsiburada' => 'Hepsiburada',
+        ][$marketplaceCode] ?? ucfirst($marketplaceCode);
     }
 
     private function statusTimestamp(ProductMarketplaceStatus $status): int

@@ -73,6 +73,7 @@ export const api = {
   },
   analytics: {
     overview: (params) => http.get('/analytics/overview', { params }).then((response) => response.data),
+    marketplaceDrilldown: (marketplace, params) => http.get(`/analytics/marketplaces/${marketplace}/drilldown`, { params }).then((response) => response.data),
   },
   settings: {
     show: () => http.get('/settings').then((response) => asObject(response.data)),
