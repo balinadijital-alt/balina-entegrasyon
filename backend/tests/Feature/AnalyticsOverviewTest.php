@@ -28,7 +28,7 @@ class AnalyticsOverviewTest extends TestCase
         $otherCompany = Company::create(['name' => 'Tenant B', 'email' => 'b@example.test']);
         $this->order($company, 'trendyol', 120, 'delivered');
         $this->order($otherCompany, 'trendyol', 999, 'delivered');
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $this->getJson('/api/analytics/overview?from=2026-05-01&to=2026-05-31')
             ->assertOk()
@@ -79,7 +79,7 @@ class AnalyticsOverviewTest extends TestCase
             'success' => false,
             'failed_at' => now(),
         ])->forceFill(['created_at' => '2026-05-15 10:00:00', 'updated_at' => '2026-05-15 10:00:00'])->save();
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $this->getJson('/api/analytics/overview?from=2026-05-01&to=2026-05-31&marketplace_code=trendyol')
             ->assertOk()
@@ -111,7 +111,7 @@ class AnalyticsOverviewTest extends TestCase
         $outside = $this->order($company, 'trendyol', 500, 'delivered');
         $inside->forceFill(['created_at' => '2026-05-10 10:00:00', 'updated_at' => '2026-05-10 10:00:00'])->save();
         $outside->forceFill(['created_at' => '2026-04-10 10:00:00', 'updated_at' => '2026-04-10 10:00:00'])->save();
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $this->getJson('/api/analytics/overview?from=2026-05-01&to=2026-05-31')
             ->assertOk()
@@ -124,7 +124,7 @@ class AnalyticsOverviewTest extends TestCase
         $company = Company::create(['name' => 'Tenant', 'email' => 'tenant@example.test']);
         $this->order($company, 'trendyol', 300, 'delivered');
         $this->order($company, 'hepsiburada', 700, 'delivered');
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $this->getJson('/api/analytics/overview?from=2026-05-01&to=2026-05-31&marketplace_code=hepsiburada')
             ->assertOk()
@@ -144,7 +144,7 @@ class AnalyticsOverviewTest extends TestCase
             'status' => 'queued',
             'attempts' => 1,
         ])->forceFill(['created_at' => '2026-05-15 10:00:00', 'updated_at' => '2026-05-15 10:00:00'])->save();
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $this->getJson('/api/analytics/overview?from=2026-05-01&to=2026-05-31')
             ->assertOk()
@@ -168,5 +168,15 @@ class AnalyticsOverviewTest extends TestCase
         $order->forceFill(['created_at' => '2026-05-15 10:00:00', 'updated_at' => '2026-05-15 10:00:00'])->save();
 
         return $order;
+    }
+
+    private function analyticsUser(Company $company): User
+    {
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'support', 'guard_name' => 'web']);
+
+        $user = User::factory()->create(['company_id' => $company->id]);
+        $user->assignRole('support');
+
+        return $user;
     }
 }

@@ -33,7 +33,7 @@ class AnalyticsMarketplaceDrilldownTest extends TestCase
         $this->account($other, 'trendyol', ['connection_status' => 'failed', 'last_error' => 'Other failed']);
         $this->marketplaceStatus($this->product($company, 'TENANT-APPROVED'), 'trendyol', 'approved');
         $this->marketplaceStatus($this->product($other, 'OTHER-REJECTED'), 'trendyol', 'rejected', ['error_message' => 'Other rejected']);
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $this->getJson('/api/analytics/marketplaces/trendyol/drilldown?from=2026-05-01&to=2026-05-31')
             ->assertOk()
@@ -72,7 +72,7 @@ class AnalyticsMarketplaceDrilldownTest extends TestCase
         $this->apiLog($company, 'trendyol', 500, '/products', 1500, 'Provider 500');
         $this->apiLog($company, 'trendyol', 422, '/products', 100, 'Validation failed');
         $this->inboundWebhook($company, 'trendyol', 'failed');
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $response = $this->getJson('/api/analytics/marketplaces/trendyol/drilldown?from=2026-05-01&to=2026-05-31')
             ->assertOk()
@@ -120,7 +120,7 @@ class AnalyticsMarketplaceDrilldownTest extends TestCase
         $this->marketplaceStatus($this->product($company, 'TY-FAILED'), 'trendyol', 'failed', ['error_message' => 'TY failed']);
         $this->apiLog($company, 'hepsiburada', 200, '/hb-products', 100);
         $this->apiLog($company, 'trendyol', 500, '/ty-products', 1000);
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $this->getJson('/api/analytics/marketplaces/hepsiburada/drilldown?from=2026-05-01&to=2026-05-31')
             ->assertOk()
@@ -147,7 +147,7 @@ class AnalyticsMarketplaceDrilldownTest extends TestCase
             $this->inboundWebhook($company, 'trendyol', 'failed', ['delivery_id' => 'delivery-'.$i]);
         }
 
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $response = $this->getJson('/api/analytics/marketplaces/trendyol/drilldown?from=2026-05-01&to=2026-05-31')
             ->assertOk();
@@ -162,7 +162,7 @@ class AnalyticsMarketplaceDrilldownTest extends TestCase
     {
         $company = $this->company();
         $this->account($company, 'trendyol');
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $this->getJson('/api/analytics/overview?from=2026-05-01&to=2026-05-31')
             ->assertOk()
@@ -286,5 +286,15 @@ class AnalyticsMarketplaceDrilldownTest extends TestCase
             'signature_valid' => $status !== 'invalid_signature',
             'last_error' => $status === 'processed' ? null : 'Webhook failed',
         ], $overrides))->forceFill(['created_at' => '2026-05-15 10:00:00', 'updated_at' => '2026-05-15 10:00:00'])->save();
+    }
+
+    private function analyticsUser(Company $company): User
+    {
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'support', 'guard_name' => 'web']);
+
+        $user = User::factory()->create(['company_id' => $company->id]);
+        $user->assignRole('support');
+
+        return $user;
     }
 }

@@ -1,6 +1,8 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar.jsx';
 import { Topbar } from '../components/Topbar.jsx';
+import { useApp } from '../context/AppContext.jsx';
+import { filterNavigationByPermissions } from '../navigation.js';
 
 function withBasePath(navigationGroups, basePath) {
   if (!basePath) return navigationGroups;
@@ -15,9 +17,12 @@ function withBasePath(navigationGroups, basePath) {
 }
 
 export function AppLayout({ navigationGroups, panelLabel, basePath = '' }) {
+  const { user } = useApp();
+  const permittedNavigationGroups = filterNavigationByPermissions(navigationGroups, user);
+
   return (
     <div className="shell">
-      <Sidebar navigationGroups={withBasePath(navigationGroups, basePath)} panelLabel={panelLabel} />
+      <Sidebar navigationGroups={withBasePath(permittedNavigationGroups, basePath)} panelLabel={panelLabel} />
       <div className="main-shell">
         <Topbar />
         <main className="content">

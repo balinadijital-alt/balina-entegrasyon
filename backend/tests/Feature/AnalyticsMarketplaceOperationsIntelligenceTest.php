@@ -27,7 +27,7 @@ class AnalyticsMarketplaceOperationsIntelligenceTest extends TestCase
         $this->account($other, 'trendyol', ['connection_status' => 'failed', 'last_error' => 'Other failed']);
         $this->marketplaceStatus($this->product($company, 'TENANT-1'), 'trendyol', 'approved');
         $this->marketplaceStatus($this->product($other, 'OTHER-1'), 'trendyol', 'rejected', ['error_message' => 'Other rejected']);
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $this->getJson('/api/analytics/overview?from=2026-05-01&to=2026-05-31')
             ->assertOk()
@@ -50,7 +50,7 @@ class AnalyticsMarketplaceOperationsIntelligenceTest extends TestCase
         $this->marketplaceStatus($this->product($company, 'TY-PROBLEM'), 'trendyol', 'problematic', ['error_message' => 'Problematic']);
         $this->marketplaceStatus($this->product($company, 'TY-BLOCKED'), 'trendyol', 'blocked', ['error_message' => 'Blocked']);
         $this->marketplaceStatus($this->product($company, 'HB-APPROVED'), 'hepsiburada', 'approved', ['readiness_status' => 'ready']);
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $this->getJson('/api/analytics/overview?from=2026-05-01&to=2026-05-31')
             ->assertOk()
@@ -90,7 +90,7 @@ class AnalyticsMarketplaceOperationsIntelligenceTest extends TestCase
             'readiness_status' => 'not_ready',
             'missing_fields' => ['category'],
         ]);
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $this->getJson('/api/analytics/overview?from=2026-05-01&to=2026-05-31')
             ->assertOk()
@@ -125,7 +125,7 @@ class AnalyticsMarketplaceOperationsIntelligenceTest extends TestCase
         $this->inboundWebhook($company, 'trendyol', 'unknown_account');
         $this->outboundWebhook($company, true);
         $this->outboundWebhook($company, false, ['status' => 'failed', 'last_error' => 'Remote failed']);
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $response = $this->getJson('/api/analytics/overview?from=2026-05-01&to=2026-05-31')
             ->assertOk()
@@ -158,7 +158,7 @@ class AnalyticsMarketplaceOperationsIntelligenceTest extends TestCase
         $this->marketplaceStatus($this->product($company, 'HB-APPROVED'), 'hepsiburada', 'approved');
         $this->apiLog($company, 'trendyol', 500, '/ty', 100);
         $this->apiLog($company, 'hepsiburada', 200, '/hb', 100);
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $this->getJson('/api/analytics/overview?from=2026-05-01&to=2026-05-31&marketplace_code=hepsiburada')
             ->assertOk()
@@ -293,5 +293,15 @@ class AnalyticsMarketplaceOperationsIntelligenceTest extends TestCase
             'success' => $success,
             'failed_at' => $success ? null : '2026-05-15 10:00:00',
         ], $overrides))->forceFill(['created_at' => '2026-05-15 10:00:00', 'updated_at' => '2026-05-15 10:00:00'])->save();
+    }
+
+    private function analyticsUser(Company $company): User
+    {
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'support', 'guard_name' => 'web']);
+
+        $user = User::factory()->create(['company_id' => $company->id]);
+        $user->assignRole('support');
+
+        return $user;
     }
 }

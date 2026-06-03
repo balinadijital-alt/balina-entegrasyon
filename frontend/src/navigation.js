@@ -45,14 +45,14 @@ export const appNavigationGroups = [
     label: 'Baslangic',
     items: [
       { to: '/', label: 'Baslangic', icon: Gauge, end: true },
-      { to: '/executive', label: 'Executive Dashboard', icon: Sparkles },
+      { to: '/executive', label: 'Executive Dashboard', icon: Sparkles, permissions: ['executive.view'] },
     ],
   },
   {
     label: 'Urun Yonetimi',
     items: [
-      { to: '/products', label: 'Urun Listesi', icon: Package, end: true },
-      { to: '/products/new', label: 'Urun Ekle', icon: PackagePlus },
+      { to: '/products', label: 'Urun Listesi', icon: Package, end: true, permissions: ['products.manage'] },
+      { to: '/products/new', label: 'Urun Ekle', icon: PackagePlus, permissions: ['products.manage'] },
       { to: '/catalog/categories', label: 'Kategoriler', icon: Tags },
       { to: '/catalog/brands', label: 'Markalar', icon: ShieldCheck },
       { to: '/catalog/attributes', label: 'Nitelikler / Ozellikler', icon: ClipboardCheck },
@@ -65,40 +65,40 @@ export const appNavigationGroups = [
       { to: '/catalog/units', label: 'Birimler', icon: Settings },
       { to: '/catalog/defaults', label: 'KDV / Birim / Desi', icon: Settings },
       { to: '/pricing/bulk-operations', label: 'Toplu Urun Islemleri', icon: Workflow },
-      { to: '/imports', label: 'Toplu Urun Yukleme', icon: UploadCloud },
-      { to: '/products/publish-queue', label: 'Aktarim Listesi', icon: Send },
+      { to: '/imports', label: 'Toplu Urun Yukleme', icon: UploadCloud, permissions: ['imports.manage'] },
+      { to: '/products/publish-queue', label: 'Aktarim Listesi', icon: Send, permissions: ['marketplaces.send'] },
     ],
   },
   {
     label: 'Pazaryeri Yonetimi',
     items: [
-      { to: '/marketplaces', label: 'Pazaryeri Hesaplari', icon: Link2, end: true },
-      { to: '/marketplaces/onboarding', label: 'Kurulum Sihirbazi', icon: Rocket },
-      { to: '/products/publish-queue', label: 'Urun Aktarim Listesi', icon: Send },
-      { to: '/marketplaces/trendyol', label: 'Trendyol', icon: ShoppingBag },
-      { to: '/marketplaces/hepsiburada', label: 'Hepsiburada', icon: ShoppingBag },
-      { to: '/marketplaces/batch-results', label: 'Batch Sonuclari', icon: ClipboardList },
-      { to: '/api-logs', label: 'Hata Merkezi', icon: AlertTriangle },
+      { to: '/marketplaces', label: 'Pazaryeri Hesaplari', icon: Link2, end: true, permissions: ['marketplaces.manage'] },
+      { to: '/marketplaces/onboarding', label: 'Kurulum Sihirbazi', icon: Rocket, permissions: ['marketplaces.manage'] },
+      { to: '/products/publish-queue', label: 'Urun Aktarim Listesi', icon: Send, permissions: ['marketplaces.send'] },
+      { to: '/marketplaces/trendyol', label: 'Trendyol', icon: ShoppingBag, permissions: ['marketplaces.manage'] },
+      { to: '/marketplaces/hepsiburada', label: 'Hepsiburada', icon: ShoppingBag, permissions: ['marketplaces.manage'] },
+      { to: '/marketplaces/batch-results', label: 'Batch Sonuclari', icon: ClipboardList, permissions: ['marketplaces.manage'] },
+      { to: '/api-logs', label: 'Hata Merkezi', icon: AlertTriangle, permissions: ['logs.view'] },
     ],
   },
   {
     label: 'Siparis Yonetimi',
     items: [
-      { to: '/orders', label: 'Tum Siparisler', icon: ClipboardList, end: true },
-      { to: '/orders/new', label: 'Yeni Siparisler', icon: ClipboardList },
-      { to: '/orders/preparing', label: 'Hazirlanan Siparisler', icon: ClipboardList },
-      { to: '/orders/ready-to-ship', label: 'Kargoya Hazir', icon: Truck },
-      { to: '/orders/shipped', label: 'Kargodaki Siparisler', icon: Truck },
-      { to: '/orders/cancel-returned', label: 'Iade/Iptal', icon: AlertTriangle },
+      { to: '/orders', label: 'Tum Siparisler', icon: ClipboardList, end: true, permissions: ['orders.manage'] },
+      { to: '/orders/new', label: 'Yeni Siparisler', icon: ClipboardList, permissions: ['orders.manage'] },
+      { to: '/orders/preparing', label: 'Hazirlanan Siparisler', icon: ClipboardList, permissions: ['orders.manage'] },
+      { to: '/orders/ready-to-ship', label: 'Kargoya Hazir', icon: Truck, permissions: ['orders.manage'] },
+      { to: '/orders/shipped', label: 'Kargodaki Siparisler', icon: Truck, permissions: ['orders.manage'] },
+      { to: '/orders/cancel-returned', label: 'Iade/Iptal', icon: AlertTriangle, permissions: ['orders.manage'] },
     ],
   },
   {
     label: 'Operasyon',
     items: [
       { to: '/operations', label: 'Operasyon Merkezi', icon: Activity },
-      { to: '/shipping', label: 'Kargo Yonetimi', icon: Truck },
-      { to: '/payments', label: 'Odeme Yonetimi', icon: CreditCard },
-      { to: '/accounting', label: 'Fatura/Cari', icon: Landmark },
+      { to: '/shipping', label: 'Kargo Yonetimi', icon: Truck, permissions: ['shipping.manage'] },
+      { to: '/payments', label: 'Odeme Yonetimi', icon: CreditCard, permissions: ['payments.manage'] },
+      { to: '/accounting', label: 'Fatura/Cari', icon: Landmark, permissions: ['accounting.manage'] },
     ],
   },
   {
@@ -180,10 +180,10 @@ export const appNavigationGroups = [
   {
     label: 'Genel',
     items: [
-      { to: '/reports', label: 'Raporlar', icon: BarChart3 },
+      { to: '/reports', label: 'Raporlar', icon: BarChart3, permissions: ['analytics.view'] },
       { to: '/help-center', label: 'Yardim Merkezi', icon: HelpCircle },
       { to: '/resources', label: 'Kaynaklar', icon: BookOpen },
-      { to: '/settings', label: 'Ayarlar', icon: Settings },
+      { to: '/settings', label: 'Ayarlar', icon: Settings, permissions: ['settings.manage'] },
     ],
   },
 ];
@@ -193,26 +193,64 @@ export const adminNavigationGroups = [
     label: 'Balina Yonetimi',
     items: [
       { to: '/admin', label: 'Dashboard', icon: Gauge, end: true },
-      { to: '/admin/executive', label: 'Executive Dashboard', icon: Sparkles },
-      { to: '/admin/companies', label: 'Musteri Firmalar', icon: Building2 },
-      { to: '/admin/saas', label: 'Paketler Lisanslar', icon: Sparkles },
-      { to: '/admin/saas', label: 'Abonelikler', icon: ClipboardCheck },
-      { to: '/admin/payments', label: 'Odemeler Billing', icon: CircleDollarSign },
+      { to: '/admin/executive', label: 'Executive Dashboard', icon: Sparkles, permissions: ['executive.view'] },
+      { to: '/admin/companies', label: 'Musteri Firmalar', icon: Building2, permissions: ['companies.manage'] },
+      { to: '/admin/saas', label: 'Paketler Lisanslar', icon: Sparkles, permissions: ['saas.manage'] },
+      { to: '/admin/saas', label: 'Abonelikler', icon: ClipboardCheck, permissions: ['saas.manage'] },
+      { to: '/admin/payments', label: 'Odemeler Billing', icon: CircleDollarSign, permissions: ['saas.manage'] },
     ],
   },
   {
     label: 'Sistem Operasyonu',
     items: [
-      { to: '/admin/reports', label: 'Sistem Sagligi', icon: BarChart3 },
+      { to: '/admin/reports', label: 'Sistem Sagligi', icon: BarChart3, permissions: ['analytics.view'] },
       { to: '/admin/operations', label: 'Operasyon Merkezi', icon: Activity },
-      { to: '/admin/queue', label: 'Queue Horizon', icon: Workflow },
-      { to: '/admin/api-logs', label: 'API Loglari', icon: FileText },
-      { to: '/admin/queue', label: 'Failed Jobs', icon: AlertTriangle },
-      { to: '/admin/api-logs', label: 'Audit Log', icon: ShieldCheck },
-      { to: '/admin/settings', label: 'Global Ayarlar', icon: Settings },
+      { to: '/admin/queue', label: 'Queue Horizon', icon: Workflow, permissions: ['queue.view'] },
+      { to: '/admin/api-logs', label: 'API Loglari', icon: FileText, permissions: ['logs.view'] },
+      { to: '/admin/queue', label: 'Failed Jobs', icon: AlertTriangle, permissions: ['queue.view'] },
+      { to: '/admin/api-logs', label: 'Audit Log', icon: ShieldCheck, permissions: ['logs.view'] },
+      { to: '/admin/settings', label: 'Global Ayarlar', icon: Settings, permissions: ['settings.manage'] },
     ],
   },
 ];
 
 export const navigationGroups = appNavigationGroups;
 export const flatNavigation = navigationGroups.flatMap((group) => group.items);
+
+const defaultRolePermissions = {
+  super_admin: ['*'],
+  company_admin: [
+    'companies.manage', 'users.manage', 'roles.manage', 'settings.manage', 'products.manage', 'imports.manage',
+    'marketplaces.manage', 'marketplaces.send', 'orders.manage', 'payments.manage', 'payments.refund',
+    'shipping.manage', 'shipping.labels', 'accounting.manage', 'queue.view', 'queue.retry',
+    'analytics.view', 'executive.view', 'logs.view', 'modules.manage',
+  ],
+  operator: ['products.manage', 'imports.manage', 'marketplaces.manage', 'marketplaces.send', 'orders.manage', 'queue.view', 'queue.retry', 'analytics.view', 'logs.view'],
+  company_operator: ['products.manage', 'imports.manage', 'marketplaces.manage', 'marketplaces.send', 'orders.manage', 'queue.view', 'queue.retry', 'analytics.view', 'logs.view'],
+  finance: ['payments.manage', 'payments.refund', 'accounting.manage', 'analytics.view', 'logs.view'],
+  warehouse: ['shipping.manage', 'shipping.labels', 'orders.manage', 'analytics.view'],
+  support: ['analytics.view', 'logs.view', 'queue.view'],
+};
+
+export function userHasPermission(user, permission) {
+  if (!permission) return true;
+
+  const roleNames = user?.roles?.map((role) => role.name) || [];
+  if (roleNames.includes('super_admin')) return true;
+
+  const directPermissions = new Set(user?.permissions?.map((item) => item.name) || []);
+  if (directPermissions.has(permission)) return true;
+
+  return roleNames.some((role) => (defaultRolePermissions[role] || []).includes(permission));
+}
+
+export function filterNavigationByPermissions(groups, user) {
+  if (!user) return groups;
+
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.permissions || item.permissions.some((permission) => userHasPermission(user, permission))),
+    }))
+    .filter((group) => group.items.length > 0);
+}

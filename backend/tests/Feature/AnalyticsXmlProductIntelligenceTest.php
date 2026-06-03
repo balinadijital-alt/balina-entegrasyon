@@ -24,7 +24,7 @@ class AnalyticsXmlProductIntelligenceTest extends TestCase
         $this->xmlSource($other, 'Other Source', 'failed', 'Remote failed');
         $this->product($company, 'TENANT-READY', true);
         $this->product($other, 'OTHER-READY', true);
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $this->getJson('/api/analytics/overview?from=2026-05-01&to=2026-05-31')
             ->assertOk()
@@ -38,7 +38,7 @@ class AnalyticsXmlProductIntelligenceTest extends TestCase
         $company = $this->company();
         $this->xmlSource($company, 'Healthy XML', 'completed');
         $this->xmlSource($company, 'Failed XML', 'failed', 'HTTP 500');
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $this->getJson('/api/analytics/overview?from=2026-05-01&to=2026-05-31')
             ->assertOk()
@@ -80,7 +80,7 @@ class AnalyticsXmlProductIntelligenceTest extends TestCase
                 ],
             ],
         ])->forceFill(['created_at' => '2026-05-15 10:00:00', 'updated_at' => '2026-05-15 10:00:00'])->save();
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $this->getJson('/api/analytics/overview?from=2026-05-01&to=2026-05-31')
             ->assertOk()
@@ -120,7 +120,7 @@ class AnalyticsXmlProductIntelligenceTest extends TestCase
             'status' => 'approved',
             'readiness_status' => 'ready',
         ]);
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $this->getJson('/api/analytics/overview?from=2026-05-01&to=2026-05-31')
             ->assertOk()
@@ -147,7 +147,7 @@ class AnalyticsXmlProductIntelligenceTest extends TestCase
         $company = $this->company();
         $this->parentProduct($company);
         $this->product($company, 'READY-SIMPLE', true);
-        Sanctum::actingAs(User::factory()->create(['company_id' => $company->id]));
+        Sanctum::actingAs($this->analyticsUser($company));
 
         $this->getJson('/api/analytics/overview?from=2026-05-01&to=2026-05-31')
             ->assertOk()
@@ -255,5 +255,15 @@ class AnalyticsXmlProductIntelligenceTest extends TestCase
                 'missing_fields' => $missing,
             ],
         ];
+    }
+
+    private function analyticsUser(Company $company): User
+    {
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'support', 'guard_name' => 'web']);
+
+        $user = User::factory()->create(['company_id' => $company->id]);
+        $user->assignRole('support');
+
+        return $user;
     }
 }
