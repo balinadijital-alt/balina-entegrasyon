@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Building2, RefreshCcw, ShieldCheck, TrendingUp, Users, WalletCards } from 'lucide-react';
+import { AlertTriangle, Building2, RefreshCcw, ShieldCheck, TrendingUp, Truck, Users, WalletCards } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api/client.js';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -139,6 +139,8 @@ export function ExecutiveDashboardPage() {
   const health = data?.health_scores || {};
   const growth = data?.growth_signals || {};
   const tenants = data?.tenant_scorecards || [];
+  const finance = data?.finance_intelligence || {};
+  const logistics = data?.logistics_intelligence || {};
 
   return (
     <>
@@ -184,6 +186,10 @@ export function ExecutiveDashboardPage() {
             <Kpi icon={Building2} label="Active companies" value={formatNumber(summary.active_companies)} detail="Aktif tenant" />
             <Kpi icon={Users} label="Active subscriptions" value={formatNumber(summary.active_subscriptions)} detail="Active + trial" />
             <Kpi icon={AlertTriangle} label="Risk score" value={formatNumber(summary.executive_risk_score)} detail={healthLabel(summary.system_health)} tone={summary.system_health} />
+            <Kpi icon={WalletCards} label="Payment Health" value={healthLabel(finance.payment_health?.health || data.payment_health)} detail={`Refund ${formatPercent(finance.refund_rate)}`} tone={finance.payment_health?.health || data.payment_health || 'healthy'} />
+            <Kpi icon={AlertTriangle} label="Finance Risk" value={formatNumber(data.finance_risk?.score || summary.finance_risk_score)} detail={healthLabel(data.finance_health)} tone={data.finance_health || data.finance_risk?.health || 'healthy'} />
+            <Kpi icon={Truck} label="Shipping Health" value={healthLabel(logistics.shipping_health?.health || data.shipping_health)} detail={`${formatNumber(logistics.delayed_shipments)} gecikmis`} tone={logistics.shipping_health?.health || data.shipping_health || 'healthy'} />
+            <Kpi icon={AlertTriangle} label="Logistics Risk" value={formatNumber(data.logistics_risk?.score || summary.logistics_risk_score)} detail={healthLabel(data.logistics_health)} tone={data.logistics_health || data.logistics_risk?.health || 'healthy'} />
           </section>
 
           <section className="executive-command-grid">
@@ -203,6 +209,8 @@ export function ExecutiveDashboardPage() {
                 <div><strong>{formatNumber(risk.queue_risk)}</strong><span>Queue risk</span></div>
                 <div><strong>{formatNumber(risk.api_risk)}</strong><span>API risk</span></div>
                 <div><strong>{formatNumber(risk.webhook_risk)}</strong><span>Webhook risk</span></div>
+                <div><strong>{formatNumber(risk.finance_risk)}</strong><span>Finance risk</span></div>
+                <div><strong>{formatNumber(risk.logistics_risk)}</strong><span>Logistics risk</span></div>
               </div>
             </article>
 
@@ -236,6 +244,11 @@ export function ExecutiveDashboardPage() {
             <HealthTile label="Operations" data={health.operations_health} />
             <HealthTile label="API" data={health.api_health} />
             <HealthTile label="Webhook" data={health.webhook_health} />
+            <HealthTile label="Finance" data={health.finance_health} />
+            <HealthTile label="Payment" data={health.payment_health} />
+            <HealthTile label="Accounting" data={health.accounting_health} />
+            <HealthTile label="Logistics" data={health.logistics_health} />
+            <HealthTile label="Shipping" data={health.shipping_health} />
           </section>
 
           <section className="executive-section">

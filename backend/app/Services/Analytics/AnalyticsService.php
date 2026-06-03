@@ -3,15 +3,23 @@
 namespace App\Services\Analytics;
 
 use App\Models\ApiLog;
+use App\Models\AccountingAccount;
+use App\Models\AccountingLog;
 use App\Models\Company;
 use App\Models\InboundWebhookDelivery;
+use App\Models\Invoice;
 use App\Models\MarketplaceAccount;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\PaymentAccount;
+use App\Models\PaymentLog;
+use App\Models\PaymentProvider;
 use App\Models\Product;
 use App\Models\ProductImportRun;
 use App\Models\ProductMarketplaceStatus;
 use App\Models\Shipment;
+use App\Models\ShippingAccount;
+use App\Models\ShippingCarrier;
 use App\Models\Subscription;
 use App\Models\SyncRun;
 use App\Models\UsageCounter;
@@ -77,6 +85,16 @@ class AnalyticsService
                 "analytics:operations-intelligence:".($companyId ?: 'all').':'.($marketplaceCode ?: 'all').":{$from->timestamp}:{$to->timestamp}",
                 now()->addMinute(),
                 fn () => $this->operationsIntelligence($from, $to, $companyId, $marketplaceCode)
+            ),
+            'finance_intelligence' => Cache::remember(
+                "analytics:finance-intelligence:".($companyId ?: 'all').":{$from->timestamp}:{$to->timestamp}",
+                now()->addMinutes(5),
+                fn () => $this->financeIntelligence($from, $to, $companyId)
+            ),
+            'logistics_intelligence' => Cache::remember(
+                "analytics:logistics-intelligence:".($companyId ?: 'all').":{$from->timestamp}:{$to->timestamp}",
+                now()->addMinutes(5),
+                fn () => $this->logisticsIntelligence($from, $to, $companyId)
             ),
             'alerts' => $this->alerts($from, $to, $companyId, $marketplaceCode),
         ]);
@@ -194,9 +212,22 @@ class AnalyticsService
         return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($from, $to, $companyId, $plan, $health) {
             $business = $this->executiveBusinessMetrics($from, $to, $companyId);
             $saas = $this->executiveSaasIntelligence($from, $to, $companyId);
+            $finance = $this->financeIntelligence($from, $to, $companyId);
+            $logistics = $this->logisticsIntelligence($from, $to, $companyId);
             $scorecards = $this->tenantScorecards($from, $to, $companyId, $plan, $health);
-            $riskOverview = $this->executiveRiskOverview($scorecards);
-            $healthScores = $this->executiveHealthScores($scorecards);
+            $riskOverview = [
+                ...$this->executiveRiskOverview($scorecards),
+                'finance_risk' => (int) data_get($finance, 'finance_risk.score', 0),
+                'logistics_risk' => (int) data_get($logistics, 'logistics_risk.score', 0),
+            ];
+            $healthScores = [
+                ...$this->executiveHealthScores($scorecards),
+                'finance_health' => $this->healthScoreFromNamedHealth(data_get($finance, 'finance_risk.health', 'healthy')),
+                'payment_health' => $this->healthScoreFromNamedHealth(data_get($finance, 'payment_health.health', 'healthy')),
+                'accounting_health' => $this->healthScoreFromNamedHealth(data_get($finance, 'accounting_health.health', 'healthy')),
+                'logistics_health' => $this->healthScoreFromNamedHealth(data_get($logistics, 'logistics_risk.health', 'healthy')),
+                'shipping_health' => $this->healthScoreFromNamedHealth(data_get($logistics, 'shipping_health.health', 'healthy')),
+            ];
             $riskScore = (int) round(collect($scorecards)->avg('risk_score') ?? 0);
 
             return [
@@ -214,9 +245,31 @@ class AnalyticsService
                     'active_subscriptions' => $saas['active_subscriptions'],
                     'total_revenue' => $business['total_revenue'],
                     'order_count' => $business['order_count'],
+                    'finance_risk_score' => (int) data_get($finance, 'finance_risk.score', 0),
+                    'logistics_risk_score' => (int) data_get($logistics, 'logistics_risk.score', 0),
                 ],
                 'business_metrics' => $business,
                 'saas_intelligence' => $saas,
+                'finance_intelligence' => [
+                    'payment_health' => $finance['payment_health'],
+                    'accounting_health' => $finance['accounting_health'],
+                    'finance_risk' => $finance['finance_risk'],
+                    'refund_rate' => $finance['refunds']['refund_rate'],
+                    'invoice_success_rate' => $finance['invoice_success']['invoice_success_rate'],
+                ],
+                'logistics_intelligence' => [
+                    'shipping_health' => $logistics['shipping_health'],
+                    'logistics_risk' => $logistics['logistics_risk'],
+                    'delivery_success_rate' => $logistics['delivery_performance']['delivery_success_rate'],
+                    'delayed_shipments' => $logistics['delivery_performance']['delayed_shipments'],
+                ],
+                'finance_health' => $finance['finance_risk']['health'] ?? 'healthy',
+                'payment_health' => $finance['payment_health']['health'] ?? 'healthy',
+                'accounting_health' => $finance['accounting_health']['health'] ?? 'healthy',
+                'logistics_health' => $logistics['logistics_risk']['health'] ?? 'healthy',
+                'shipping_health' => $logistics['shipping_health']['health'] ?? 'healthy',
+                'finance_risk' => $finance['finance_risk'] ?? ['score' => 0, 'health' => 'healthy', 'factors' => []],
+                'logistics_risk' => $logistics['logistics_risk'] ?? ['score' => 0, 'health' => 'healthy', 'factors' => []],
                 'tenant_scorecards' => $scorecards,
                 'risk_overview' => $riskOverview,
                 'health_scores' => $healthScores,
@@ -648,6 +701,424 @@ class AnalyticsService
         }
 
         return 'healthy';
+    }
+
+    private function healthScoreFromNamedHealth(string $health): array
+    {
+        $score = match ($health) {
+            'critical' => 35,
+            'warning' => 70,
+            default => 100,
+        };
+
+        return [
+            'score' => $score,
+            'health' => $health,
+            'risk_count' => $health === 'healthy' ? 0 : 1,
+        ];
+    }
+
+    private function financeIntelligence(CarbonImmutable $from, CarbonImmutable $to, ?int $companyId): array
+    {
+        $payments = $this->financePaymentQuery($from, $to, $companyId)->with(['order.company:id,name', 'account.provider:id,code,name'])->get();
+        $paymentLogs = $this->paymentLogQuery($from, $to, $companyId)->get();
+        $invoices = Invoice::query()
+            ->with(['company:id,name', 'account.integration:id,code,name'])
+            ->when($companyId, fn ($query) => $query->where('company_id', $companyId))
+            ->whereBetween('created_at', [$from, $to])
+            ->get();
+        $accountingLogs = $this->accountingLogQuery($from, $to, $companyId)->get();
+        $paymentHealth = $this->paymentHealth($payments, $paymentLogs);
+        $accountingHealth = $this->accountingHealth($invoices, $accountingLogs);
+        $refunds = $this->refundAnalytics($payments);
+        $commissions = $this->commissionAnalytics($payments);
+        $invoiceSuccess = $this->invoiceSuccessAnalytics($invoices);
+        $accountingErrors = $this->accountingErrorAnalytics($accountingLogs);
+        $risk = $this->financeRiskScore($paymentHealth, $accountingHealth, $refunds, $commissions, $invoiceSuccess, $accountingErrors);
+
+        return [
+            'payment_health' => $paymentHealth,
+            'provider_performance' => $this->providerPerformance($payments, $paymentLogs),
+            'refunds' => $refunds,
+            'commissions' => $commissions,
+            'accounting_health' => $accountingHealth,
+            'invoice_success' => $invoiceSuccess,
+            'accounting_errors' => $accountingErrors,
+            'finance_risk' => $risk,
+        ];
+    }
+
+    private function paymentHealth(\Illuminate\Support\Collection $payments, \Illuminate\Support\Collection $logs): array
+    {
+        $total = $payments->count();
+        $failed = $payments->filter(fn (Payment $payment) => $this->isFailedPayment($payment))->count();
+        $pending = $payments->filter(fn (Payment $payment) => $this->isPendingPayment($payment))->count();
+        $errors = $logs->filter(fn (PaymentLog $log) => filled($log->error_message) || in_array($log->status, ['failed', 'error', 'rejected'], true))->count();
+        $failedRate = $total > 0 ? round(($failed / $total) * 100, 2) : 0;
+        $pendingRate = $total > 0 ? round(($pending / $total) * 100, 2) : 0;
+        $health = $failedRate >= 10 || $errors > 0 && $failedRate >= 5 ? 'critical' : (($failedRate >= 3 || $pendingRate >= 20 || $errors > 0) ? 'warning' : 'healthy');
+
+        return [
+            'health' => $health,
+            'total_payments' => $total,
+            'successful' => $payments->filter(fn (Payment $payment) => $this->isSuccessfulPayment($payment))->count(),
+            'failed' => $failed,
+            'pending' => $pending,
+            'failed_rate' => $failedRate,
+            'pending_rate' => $pendingRate,
+            'provider_errors' => $errors,
+            'latest_failed' => $payments
+                ->filter(fn (Payment $payment) => $this->isFailedPayment($payment))
+                ->sortByDesc('updated_at')
+                ->take(20)
+                ->map(fn (Payment $payment) => $this->paymentRow($payment))
+                ->values()
+                ->all(),
+        ];
+    }
+
+    private function providerPerformance(\Illuminate\Support\Collection $payments, \Illuminate\Support\Collection $logs): array
+    {
+        $providerNames = PaymentProvider::query()->pluck('name', 'code');
+
+        return $payments
+            ->groupBy('provider_code')
+            ->map(function ($providerPayments, string $providerCode) use ($providerNames, $logs) {
+                $total = $providerPayments->count();
+                $successful = $providerPayments->filter(fn (Payment $payment) => $this->isSuccessfulPayment($payment))->count();
+                $failed = $providerPayments->filter(fn (Payment $payment) => $this->isFailedPayment($payment))->count();
+                $refunded = $providerPayments->filter(fn (Payment $payment) => $this->isRefundedPayment($payment))->count();
+                $pending = $providerPayments->filter(fn (Payment $payment) => $this->isPendingPayment($payment))->count();
+                $providerLogs = $logs->where('provider_code', $providerCode);
+
+                return [
+                    'provider_code' => $providerCode,
+                    'provider_name' => $providerNames[$providerCode] ?? $providerCode,
+                    'total_payments' => $total,
+                    'successful' => $successful,
+                    'failed' => $failed,
+                    'refunded' => $refunded,
+                    'pending' => $pending,
+                    'total_amount' => round((float) $providerPayments->sum('amount'), 2),
+                    'refunded_amount' => round((float) $providerPayments->sum('refunded_amount'), 2),
+                    'commission_amount' => round((float) $providerPayments->sum('commission_amount'), 2),
+                    'success_rate' => $total > 0 ? round(($successful / $total) * 100, 2) : 0,
+                    'refund_rate' => $total > 0 ? round(($refunded / $total) * 100, 2) : 0,
+                    'failure_rate' => $total > 0 ? round(($failed / $total) * 100, 2) : 0,
+                    'latest_error' => $providerLogs->filter(fn (PaymentLog $log) => filled($log->error_message))->sortByDesc('created_at')->first()?->error_message
+                        ?: $providerPayments->filter(fn (Payment $payment) => filled($payment->error_message))->sortByDesc('updated_at')->first()?->error_message,
+                ];
+            })
+            ->sortByDesc(fn (array $row) => $row['failed'] + $row['pending'])
+            ->values()
+            ->all();
+    }
+
+    private function refundAnalytics(\Illuminate\Support\Collection $payments): array
+    {
+        $refunds = $payments->filter(fn (Payment $payment) => $this->isRefundedPayment($payment));
+        $total = $payments->count();
+
+        return [
+            'total_refunds' => $refunds->count(),
+            'refunded_amount' => round((float) $payments->sum('refunded_amount'), 2),
+            'refund_rate' => $total > 0 ? round(($refunds->count() / $total) * 100, 2) : 0,
+            'refund_by_provider' => $refunds->countBy('provider_code')->map(fn (int $count, string $provider) => ['provider_code' => $provider, 'count' => $count])->values()->all(),
+            'refund_by_company' => $refunds
+                ->groupBy(fn (Payment $payment) => $payment->order?->company_id ?: 0)
+                ->map(fn ($rows, int|string $companyId) => [
+                    'company_id' => (int) $companyId,
+                    'company_name' => $rows->first()?->order?->company?->name,
+                    'count' => $rows->count(),
+                    'refunded_amount' => round((float) $rows->sum('refunded_amount'), 2),
+                ])
+                ->sortByDesc('refunded_amount')
+                ->take(20)
+                ->values()
+                ->all(),
+            'latest_refunds' => $refunds
+                ->sortByDesc('updated_at')
+                ->take(20)
+                ->map(fn (Payment $payment) => $this->paymentRow($payment))
+                ->values()
+                ->all(),
+        ];
+    }
+
+    private function commissionAnalytics(\Illuminate\Support\Collection $payments): array
+    {
+        $totalRevenue = (float) $payments->sum('amount');
+        $totalCommission = (float) $payments->sum('commission_amount');
+        $rates = $payments->pluck('commission_rate')->filter(fn ($rate) => (float) $rate > 0)->map(fn ($rate) => (float) $rate)->values();
+
+        return [
+            'total_commission_amount' => round($totalCommission, 2),
+            'avg_commission_rate' => $rates->count() > 0 ? round($rates->avg(), 2) : 0,
+            'commission_by_provider' => $payments
+                ->groupBy('provider_code')
+                ->map(fn ($rows, string $provider) => [
+                    'provider_code' => $provider,
+                    'commission_amount' => round((float) $rows->sum('commission_amount'), 2),
+                    'avg_commission_rate' => $rows->count() > 0 ? round((float) $rows->avg('commission_rate'), 2) : 0,
+                ])
+                ->sortByDesc('commission_amount')
+                ->values()
+                ->all(),
+            'commission_to_revenue_ratio' => $totalRevenue > 0 ? round(($totalCommission / $totalRevenue) * 100, 2) : 0,
+        ];
+    }
+
+    private function accountingHealth(\Illuminate\Support\Collection $invoices, \Illuminate\Support\Collection $logs): array
+    {
+        $total = $invoices->count();
+        $failed = $invoices->whereIn('status', ['failed', 'error', 'rejected'])->count();
+        $queued = $invoices->whereIn('status', ['queued', 'pending', 'processing'])->count();
+        $errors = $logs->filter(fn (AccountingLog $log) => filled($log->error_message) || in_array($log->status, ['failed', 'error', 'rejected'], true))->count();
+        $failedRate = $total > 0 ? round(($failed / $total) * 100, 2) : 0;
+        $health = $failedRate >= 10 || $errors >= 3 ? 'critical' : (($failedRate > 0 || $queued > 0 || $errors > 0) ? 'warning' : 'healthy');
+
+        return [
+            'health' => $health,
+            'total_invoices' => $total,
+            'failed_invoices' => $failed,
+            'queued_invoices' => $queued,
+            'accounting_errors' => $errors,
+            'failed_rate' => $failedRate,
+        ];
+    }
+
+    private function invoiceSuccessAnalytics(\Illuminate\Support\Collection $invoices): array
+    {
+        $issued = $invoices->whereIn('status', ['issued', 'completed', 'success'])->count();
+        $failed = $invoices->whereIn('status', ['failed', 'error', 'rejected'])->count();
+        $queued = $invoices->whereIn('status', ['queued', 'pending', 'processing'])->count();
+        $returns = $invoices->filter(fn (Invoice $invoice) => $invoice->type === 'return' || (float) $invoice->grand_total < 0)->count();
+
+        return [
+            'total_invoices' => $invoices->count(),
+            'issued' => $issued,
+            'failed' => $failed,
+            'queued' => $queued,
+            'return_invoices' => $returns,
+            'invoice_success_rate' => $invoices->count() > 0 ? round(($issued / $invoices->count()) * 100, 2) : 0,
+        ];
+    }
+
+    private function accountingErrorAnalytics(\Illuminate\Support\Collection $logs): array
+    {
+        $errors = $logs->filter(fn (AccountingLog $log) => filled($log->error_message) || in_array($log->status, ['failed', 'error', 'rejected'], true));
+
+        return [
+            'total_errors' => $errors->count(),
+            'top_errors' => $errors
+                ->pluck('error_message')
+                ->filter()
+                ->countBy()
+                ->sortDesc()
+                ->take(10)
+                ->map(fn (int $count, string $message) => ['message' => $message, 'count' => $count])
+                ->values()
+                ->all(),
+            'latest_errors' => $errors
+                ->sortByDesc('created_at')
+                ->take(20)
+                ->map(fn (AccountingLog $log) => [
+                    'id' => $log->id,
+                    'invoice_id' => $log->invoice_id,
+                    'provider_code' => $log->provider_code,
+                    'event' => $log->event,
+                    'status' => $log->status,
+                    'error_message' => $log->error_message,
+                    'duration_ms' => $log->duration_ms,
+                    'created_at' => $log->created_at,
+                ])
+                ->values()
+                ->all(),
+        ];
+    }
+
+    private function financeRiskScore(array $paymentHealth, array $accountingHealth, array $refunds, array $commissions, array $invoiceSuccess, array $accountingErrors): array
+    {
+        $score = 0;
+        $factors = [];
+
+        $this->addRiskFactor($score, $factors, 'payment_failed_rate', 'Payment failed rate high', $paymentHealth['failed_rate'] ?? 0, ($paymentHealth['failed_rate'] ?? 0) >= 10 ? 25 : (($paymentHealth['failed_rate'] ?? 0) >= 3 ? 12 : 0));
+        $this->addRiskFactor($score, $factors, 'payment_provider_errors', 'Payment provider errors', $paymentHealth['provider_errors'] ?? 0, ($paymentHealth['provider_errors'] ?? 0) > 0 ? 15 : 0);
+        $this->addRiskFactor($score, $factors, 'refund_rate', 'Refund rate high', $refunds['refund_rate'] ?? 0, ($refunds['refund_rate'] ?? 0) >= 10 ? 15 : 0);
+        $this->addRiskFactor($score, $factors, 'commission_ratio', 'Commission ratio high', $commissions['commission_to_revenue_ratio'] ?? 0, ($commissions['commission_to_revenue_ratio'] ?? 0) >= 8 ? 10 : 0);
+        $this->addRiskFactor($score, $factors, 'invoice_failed_rate', 'Invoice failed rate high', $accountingHealth['failed_rate'] ?? 0, ($accountingHealth['failed_rate'] ?? 0) >= 10 ? 20 : (($invoiceSuccess['failed'] ?? 0) > 0 ? 10 : 0));
+        $this->addRiskFactor($score, $factors, 'accounting_errors', 'ERP/accounting errors', $accountingErrors['total_errors'] ?? 0, ($accountingErrors['total_errors'] ?? 0) > 0 ? 20 : 0);
+
+        return [
+            'score' => min(100, $score),
+            'health' => $this->healthFromRisk($score),
+            'factors' => $factors,
+        ];
+    }
+
+    private function logisticsIntelligence(CarbonImmutable $from, CarbonImmutable $to, ?int $companyId): array
+    {
+        $shipments = $this->shipmentAnalyticsQuery($from, $to, $companyId)->with(['order.company:id,name', 'account.carrier:id,code,name'])->get();
+        $shippingHealth = $this->shippingHealth($shipments, $companyId);
+        $delivery = $this->deliveryPerformance($shipments);
+        $failed = $this->failedShipmentAnalytics($shipments);
+        $risk = $this->logisticsRiskScore($shippingHealth, $delivery, $failed, $shipments, $companyId);
+
+        return [
+            'shipping_health' => $shippingHealth,
+            'carrier_performance' => $this->carrierPerformance($shipments, $companyId),
+            'delivery_performance' => $delivery,
+            'failed_shipments' => $failed,
+            'logistics_risk' => $risk,
+        ];
+    }
+
+    private function shippingHealth(\Illuminate\Support\Collection $shipments, ?int $companyId): array
+    {
+        $total = $shipments->count();
+        $failed = $shipments->filter(fn (Shipment $shipment) => $this->isFailedShipment($shipment))->count();
+        $pending = $shipments->whereIn('status', ['queued', 'pending', 'processing'])->count();
+        $delayed = $this->delayedShipments($shipments)->count();
+        $carrierErrors = ShippingAccount::query()
+            ->when($companyId, fn ($query) => $query->where('company_id', $companyId))
+            ->where(function ($query) {
+                $query->where('last_status', 'failed')->orWhereNotNull('last_error');
+            })
+            ->count();
+        $failedRate = $total > 0 ? round(($failed / $total) * 100, 2) : 0;
+        $health = $failedRate >= 10 || $carrierErrors > 0 ? 'critical' : (($failed > 0 || $pending > 0 || $delayed > 0) ? 'warning' : 'healthy');
+
+        return [
+            'health' => $health,
+            'total_shipments' => $total,
+            'failed_shipments' => $failed,
+            'pending_shipments' => $pending,
+            'delayed_shipments' => $delayed,
+            'carrier_errors' => $carrierErrors,
+            'failed_rate' => $failedRate,
+        ];
+    }
+
+    private function carrierPerformance(\Illuminate\Support\Collection $shipments, ?int $companyId): array
+    {
+        $carrierNames = ShippingCarrier::query()->pluck('name', 'code');
+        $carrierErrors = ShippingAccount::query()
+            ->with('carrier:id,code,name')
+            ->when($companyId, fn ($query) => $query->where('company_id', $companyId))
+            ->where(function ($query) {
+                $query->where('last_status', 'failed')->orWhereNotNull('last_error');
+            })
+            ->get()
+            ->groupBy(fn (ShippingAccount $account) => $account->carrier?->code ?: $account->name);
+
+        return $shipments
+            ->groupBy('carrier_code')
+            ->map(function ($carrierShipments, string $carrierCode) use ($carrierNames, $carrierErrors) {
+                $total = $carrierShipments->count();
+                $delivered = $carrierShipments->where('status', 'delivered')->count();
+                $failed = $carrierShipments->filter(fn (Shipment $shipment) => $this->isFailedShipment($shipment))->count();
+                $deliveryHours = $carrierShipments
+                    ->filter(fn (Shipment $shipment) => $shipment->shipped_at && $shipment->delivered_at)
+                    ->map(fn (Shipment $shipment) => round($shipment->shipped_at->diffInMinutes($shipment->delivered_at) / 60, 2));
+
+                return [
+                    'carrier_code' => $carrierCode,
+                    'carrier_name' => $carrierNames[$carrierCode] ?? $carrierCode,
+                    'total_shipments' => $total,
+                    'delivered' => $delivered,
+                    'shipped' => $carrierShipments->whereIn('status', ['shipped', 'in_transit'])->count(),
+                    'failed' => $failed,
+                    'returned' => $carrierShipments->filter(fn (Shipment $shipment) => filled($shipment->return_code) || in_array($shipment->status, ['returned', 'return_created'], true))->count(),
+                    'delivery_success_rate' => $total > 0 ? round(($delivered / $total) * 100, 2) : 0,
+                    'failure_rate' => $total > 0 ? round(($failed / $total) * 100, 2) : 0,
+                    'avg_delivery_hours' => $deliveryHours->count() > 0 ? round($deliveryHours->avg(), 2) : 0,
+                    'latest_error' => $carrierErrors->get($carrierCode)?->sortByDesc('last_checked_at')->first()?->last_error
+                        ?: $carrierShipments->filter(fn (Shipment $shipment) => filled($shipment->error_message))->sortByDesc('updated_at')->first()?->error_message,
+                ];
+            })
+            ->sortByDesc(fn (array $row) => $row['failed'] + $row['returned'])
+            ->values()
+            ->all();
+    }
+
+    private function deliveryPerformance(\Illuminate\Support\Collection $shipments): array
+    {
+        $delivered = $shipments->where('status', 'delivered');
+        $deliveryHours = $delivered
+            ->filter(fn (Shipment $shipment) => $shipment->shipped_at && $shipment->delivered_at)
+            ->map(fn (Shipment $shipment) => round($shipment->shipped_at->diffInMinutes($shipment->delivered_at) / 60, 2));
+        $total = $shipments->count();
+
+        return [
+            'avg_delivery_time_hours' => $deliveryHours->count() > 0 ? round($deliveryHours->avg(), 2) : 0,
+            'delivered_count' => $delivered->count(),
+            'in_transit_count' => $shipments->whereIn('status', ['shipped', 'in_transit'])->count(),
+            'delayed_shipments' => $this->delayedShipments($shipments)->count(),
+            'delayed_samples' => $this->delayedShipments($shipments)
+                ->sortByDesc('shipped_at')
+                ->take(20)
+                ->map(fn (Shipment $shipment) => $this->shipmentRow($shipment))
+                ->values()
+                ->all(),
+            'delivery_success_rate' => $total > 0 ? round(($delivered->count() / $total) * 100, 2) : 0,
+        ];
+    }
+
+    private function failedShipmentAnalytics(\Illuminate\Support\Collection $shipments): array
+    {
+        $failed = $shipments->filter(fn (Shipment $shipment) => $this->isFailedShipment($shipment));
+        $total = $shipments->count();
+
+        return [
+            'failed_count' => $failed->count(),
+            'failed_rate' => $total > 0 ? round(($failed->count() / $total) * 100, 2) : 0,
+            'top_errors' => $failed
+                ->pluck('error_message')
+                ->filter()
+                ->countBy()
+                ->sortDesc()
+                ->take(10)
+                ->map(fn (int $count, string $message) => ['message' => $message, 'count' => $count])
+                ->values()
+                ->all(),
+            'latest_failed' => $failed
+                ->sortByDesc('updated_at')
+                ->take(20)
+                ->map(fn (Shipment $shipment) => $this->shipmentRow($shipment))
+                ->values()
+                ->all(),
+        ];
+    }
+
+    private function logisticsRiskScore(array $shippingHealth, array $delivery, array $failed, \Illuminate\Support\Collection $shipments, ?int $companyId): array
+    {
+        $score = 0;
+        $factors = [];
+        $carrierErrors = (int) ($shippingHealth['carrier_errors'] ?? 0);
+        $returns = $shipments->filter(fn (Shipment $shipment) => filled($shipment->return_code) || in_array($shipment->status, ['returned', 'return_created'], true))->count();
+        $pending = (int) ($shippingHealth['pending_shipments'] ?? 0);
+
+        $this->addRiskFactor($score, $factors, 'failed_shipments', 'Failed shipment rate high', $failed['failed_rate'] ?? 0, ($failed['failed_rate'] ?? 0) >= 10 ? 25 : (($failed['failed_count'] ?? 0) > 0 ? 12 : 0));
+        $this->addRiskFactor($score, $factors, 'carrier_error', 'Carrier account errors', $carrierErrors, $carrierErrors > 0 ? 25 : 0);
+        $this->addRiskFactor($score, $factors, 'delayed_shipments', 'Delayed shipments', $delivery['delayed_shipments'] ?? 0, ($delivery['delayed_shipments'] ?? 0) > 0 ? 20 : 0);
+        $this->addRiskFactor($score, $factors, 'return_volume', 'Return volume high', $returns, $returns > 0 ? 10 : 0);
+        $this->addRiskFactor($score, $factors, 'pending_backlog', 'Pending shipment backlog', $pending, $pending >= 10 ? 10 : 0);
+
+        return [
+            'score' => min(100, $score),
+            'health' => $this->healthFromRisk($score),
+            'factors' => $factors,
+        ];
+    }
+
+    private function addRiskFactor(int &$score, array &$factors, string $key, string $label, int|float $value, int $weight): void
+    {
+        if ($weight <= 0) {
+            return;
+        }
+
+        $score += $weight;
+        $factors[] = ['key' => $key, 'label' => $label, 'value' => $value, 'weight' => $weight];
     }
 
     private function sales(CarbonImmutable $from, CarbonImmutable $to, ?int $companyId, ?string $marketplaceCode): array
@@ -1851,6 +2322,112 @@ class AnalyticsService
         }
 
         return 0;
+    }
+
+    private function financePaymentQuery(CarbonImmutable $from, CarbonImmutable $to, ?int $companyId): Builder
+    {
+        return Payment::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->when($companyId, fn ($query) => $query->whereHas('order', fn ($order) => $order->where('company_id', $companyId)));
+    }
+
+    private function paymentLogQuery(CarbonImmutable $from, CarbonImmutable $to, ?int $companyId): Builder
+    {
+        return PaymentLog::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->when($companyId, function ($query) use ($companyId) {
+                $query->where(function ($scope) use ($companyId) {
+                    $scope->whereHas('payment.order', fn ($order) => $order->where('company_id', $companyId))
+                        ->orWhereIn('payment_account_id', PaymentAccount::query()->where('company_id', $companyId)->select('id'));
+                });
+            });
+    }
+
+    private function accountingLogQuery(CarbonImmutable $from, CarbonImmutable $to, ?int $companyId): Builder
+    {
+        return AccountingLog::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->when($companyId, function ($query) use ($companyId) {
+                $query->where(function ($scope) use ($companyId) {
+                    $scope->whereIn('invoice_id', Invoice::query()->where('company_id', $companyId)->select('id'))
+                        ->orWhereIn('accounting_account_id', AccountingAccount::query()->where('company_id', $companyId)->select('id'));
+                });
+            });
+    }
+
+    private function shipmentAnalyticsQuery(CarbonImmutable $from, CarbonImmutable $to, ?int $companyId): Builder
+    {
+        return Shipment::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->when($companyId, fn ($query) => $query->whereHas('order', fn ($order) => $order->where('company_id', $companyId)));
+    }
+
+    private function isSuccessfulPayment(Payment $payment): bool
+    {
+        return in_array($payment->status, ['paid', 'completed', 'success'], true);
+    }
+
+    private function isFailedPayment(Payment $payment): bool
+    {
+        return in_array($payment->status, ['failed', 'cancelled', 'canceled', 'rejected', 'error'], true) || filled($payment->error_message);
+    }
+
+    private function isPendingPayment(Payment $payment): bool
+    {
+        return in_array($payment->status, ['pending', 'created', 'processing', 'three_d'], true);
+    }
+
+    private function isRefundedPayment(Payment $payment): bool
+    {
+        return in_array($payment->status, ['refunded', 'partially_refunded', 'partial_refund'], true) || (float) $payment->refunded_amount > 0;
+    }
+
+    private function paymentRow(Payment $payment): array
+    {
+        return [
+            'payment_id' => $payment->id,
+            'order_id' => $payment->order_id,
+            'company_id' => $payment->order?->company_id,
+            'company_name' => $payment->order?->company?->name,
+            'provider_code' => $payment->provider_code,
+            'status' => $payment->status,
+            'amount' => (float) $payment->amount,
+            'refunded_amount' => (float) $payment->refunded_amount,
+            'error_message' => $payment->error_message,
+            'created_at' => $payment->created_at,
+            'updated_at' => $payment->updated_at,
+        ];
+    }
+
+    private function isFailedShipment(Shipment $shipment): bool
+    {
+        return in_array($shipment->status, ['failed', 'cancelled', 'canceled', 'problematic', 'error'], true) || filled($shipment->error_message);
+    }
+
+    private function delayedShipments(\Illuminate\Support\Collection $shipments): \Illuminate\Support\Collection
+    {
+        return $shipments->filter(fn (Shipment $shipment) => $shipment->shipped_at
+            && ! $shipment->delivered_at
+            && ! $this->isFailedShipment($shipment)
+            && $shipment->shipped_at->lt(now()->subDays(3)));
+    }
+
+    private function shipmentRow(Shipment $shipment): array
+    {
+        return [
+            'shipment_id' => $shipment->id,
+            'order_id' => $shipment->order_id,
+            'company_id' => $shipment->order?->company_id,
+            'company_name' => $shipment->order?->company?->name,
+            'carrier_code' => $shipment->carrier_code,
+            'status' => $shipment->status,
+            'tracking_number' => $shipment->tracking_number,
+            'last_action' => $shipment->last_action,
+            'error_message' => $shipment->error_message,
+            'shipped_at' => $shipment->shipped_at,
+            'delivered_at' => $shipment->delivered_at,
+            'updated_at' => $shipment->updated_at,
+        ];
     }
 
     private function ordersQuery(CarbonImmutable $from, CarbonImmutable $to, ?int $companyId, ?string $marketplaceCode): Builder

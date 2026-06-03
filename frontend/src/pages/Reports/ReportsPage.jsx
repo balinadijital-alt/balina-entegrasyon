@@ -703,6 +703,107 @@ export function ReportsPage() {
     ];
   }, [report]);
 
+  const financeKpis = useMemo(() => {
+    if (!report?.finance_intelligence) return [];
+    const finance = report.finance_intelligence;
+    const providers = finance.provider_performance || [];
+    const totalPayments = sumValues(providers.map((provider) => provider.total_payments));
+    const successfulPayments = sumValues(providers.map((provider) => provider.successful));
+    const providerSuccess = totalPayments > 0 ? (successfulPayments / totalPayments) * 100 : 0;
+
+    return [
+      {
+        icon: WalletCards,
+        label: 'Payment Health',
+        value: healthLabel(finance.payment_health?.health),
+        detail: `${formatNumber(finance.payment_health?.failed)} failed, ${formatNumber(finance.payment_health?.pending)} pending`,
+        tone: finance.payment_health?.health === 'critical' ? 'critical' : finance.payment_health?.health === 'warning' ? 'warning' : 'success',
+      },
+      {
+        icon: Activity,
+        label: 'Provider Success',
+        value: formatPercent(providerSuccess),
+        detail: `${formatNumber(successfulPayments)} / ${formatNumber(totalPayments)} basarili`,
+        tone: providerSuccess < 90 && totalPayments > 0 ? 'warning' : 'success',
+      },
+      {
+        icon: ShieldAlert,
+        label: 'Refund Rate',
+        value: formatPercent(finance.refunds?.refund_rate),
+        detail: `${formatMoney(finance.refunds?.refunded_amount)} iade`,
+        tone: Number(finance.refunds?.refund_rate || 0) >= 10 ? 'warning' : 'success',
+      },
+      {
+        icon: BarChart3,
+        label: 'Commission Cost',
+        value: formatMoney(finance.commissions?.total_commission_amount),
+        detail: `Revenue orani ${formatPercent(finance.commissions?.commission_to_revenue_ratio)}`,
+        tone: Number(finance.commissions?.commission_to_revenue_ratio || 0) >= 8 ? 'warning' : 'neutral',
+      },
+      {
+        icon: DatabaseZap,
+        label: 'Accounting Health',
+        value: healthLabel(finance.accounting_health?.health),
+        detail: `${formatNumber(finance.accounting_errors?.total_errors)} ERP hata`,
+        tone: finance.accounting_health?.health === 'critical' ? 'critical' : finance.accounting_health?.health === 'warning' ? 'warning' : 'success',
+      },
+      {
+        icon: PackageCheck,
+        label: 'Invoice Success',
+        value: formatPercent(finance.invoice_success?.invoice_success_rate),
+        detail: `${formatNumber(finance.invoice_success?.issued)} issued, ${formatNumber(finance.invoice_success?.failed)} failed`,
+        tone: Number(finance.invoice_success?.failed || 0) > 0 ? 'warning' : 'success',
+      },
+    ];
+  }, [report]);
+
+  const logisticsKpis = useMemo(() => {
+    if (!report?.logistics_intelligence) return [];
+    const logistics = report.logistics_intelligence;
+    const carriers = logistics.carrier_performance || [];
+    const totalShipments = sumValues(carriers.map((carrier) => carrier.total_shipments));
+    const deliveredShipments = sumValues(carriers.map((carrier) => carrier.delivered));
+    const carrierSuccess = totalShipments > 0 ? (deliveredShipments / totalShipments) * 100 : 0;
+
+    return [
+      {
+        icon: Truck,
+        label: 'Shipping Health',
+        value: healthLabel(logistics.shipping_health?.health),
+        detail: `${formatNumber(logistics.shipping_health?.failed_shipments)} failed, ${formatNumber(logistics.shipping_health?.delayed_shipments)} gecikmis`,
+        tone: logistics.shipping_health?.health === 'critical' ? 'critical' : logistics.shipping_health?.health === 'warning' ? 'warning' : 'success',
+      },
+      {
+        icon: Activity,
+        label: 'Carrier Success',
+        value: formatPercent(carrierSuccess),
+        detail: `${formatNumber(deliveredShipments)} / ${formatNumber(totalShipments)} teslim`,
+        tone: carrierSuccess < 90 && totalShipments > 0 ? 'warning' : 'success',
+      },
+      {
+        icon: Clock,
+        label: 'Delivery Speed',
+        value: `${formatNumber(logistics.delivery_performance?.avg_delivery_time_hours)} saat`,
+        detail: `${formatNumber(logistics.delivery_performance?.in_transit_count)} yolda`,
+        tone: Number(logistics.delivery_performance?.delayed_shipments || 0) > 0 ? 'warning' : 'neutral',
+      },
+      {
+        icon: ShieldAlert,
+        label: 'Failed Shipments',
+        value: formatNumber(logistics.failed_shipments?.failed_count),
+        detail: `Failure ${formatPercent(logistics.failed_shipments?.failed_rate)}`,
+        tone: Number(logistics.failed_shipments?.failed_count || 0) > 0 ? 'critical' : 'success',
+      },
+      {
+        icon: AlertTriangle,
+        label: 'Delayed Shipments',
+        value: formatNumber(logistics.delivery_performance?.delayed_shipments),
+        detail: `Risk ${formatNumber(logistics.logistics_risk?.score)} / 100`,
+        tone: Number(logistics.delivery_performance?.delayed_shipments || 0) > 0 ? 'warning' : 'success',
+      },
+    ];
+  }, [report]);
+
   return (
     <>
       <PageHeader
@@ -889,6 +990,227 @@ export function ReportsPage() {
                       <span>Aksiyon gerektirebilir</span>
                     </div>
                     <small>{formatNumber(item.value)}</small>
+                  </article>
+                )}
+              />
+            </div>
+          </IntelligenceSection>
+
+          <IntelligenceSection
+            title="Finance Intelligence"
+            description="Odeme sagligi, provider performansi, iade/komisyon maliyeti ve ERP/fatura hata sinyalleri."
+          >
+            <section className="analytics-kpi-grid">
+              {financeKpis.map((kpi) => <KpiCard key={kpi.label} {...kpi} />)}
+            </section>
+            {report.finance_intelligence?.finance_risk?.factors?.length > 0 && (
+              <section className={`analytics-risk-banner ${report.finance_intelligence.finance_risk.health}`}>
+                <div>
+                  <span>Finance Risk</span>
+                  <strong>{formatNumber(report.finance_intelligence.finance_risk.score)} / 100</strong>
+                </div>
+                <p>{report.finance_intelligence.finance_risk.factors.map((factor) => factor.label).join(' · ')}</p>
+              </section>
+            )}
+            <div className="analytics-three-column">
+              <InsightList
+                title="Problemli saglayicilar"
+                items={(report.finance_intelligence?.provider_performance || [])
+                  .filter((provider) => Number(provider.failed || 0) > 0 || Number(provider.failure_rate || 0) > 0 || provider.latest_error)
+                  .slice(0, 6)}
+                emptyText="Odeme saglayicilarinda problem sinyali yok."
+                renderItem={(provider) => (
+                  <article className={Number(provider.failure_rate || 0) >= 10 ? 'analytics-insight-row critical' : 'analytics-insight-row warning'} key={provider.provider_code}>
+                    <div>
+                      <strong>{provider.provider_name || provider.provider_code}</strong>
+                      <span>{formatPercent(provider.success_rate)} success · {formatNumber(provider.failed)} failed</span>
+                    </div>
+                    <small>{provider.latest_error || `${formatMoney(provider.total_amount)} hacim`}</small>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Son failed payments"
+                items={(report.finance_intelligence?.payment_health?.latest_failed || []).slice(0, 6)}
+                emptyText="Failed payment kaydi yok."
+                renderItem={(payment) => (
+                  <article className="analytics-insight-row critical" key={`payment-${payment.id}`}>
+                    <div>
+                      <strong>{payment.provider_code || 'Provider'}</strong>
+                      <span>{payment.error_message || payment.status}</span>
+                    </div>
+                    <small>{formatMoney(payment.amount)}</small>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Son ERP hatalari"
+                items={(report.finance_intelligence?.accounting_errors?.latest_errors || []).slice(0, 6)}
+                emptyText="ERP/fatura hata kaydi yok."
+                renderItem={(error) => (
+                  <article className="analytics-insight-row critical" key={`accounting-${error.id}`}>
+                    <div>
+                      <strong>{error.provider_code || 'ERP'}</strong>
+                      <span>{error.error_message || error.status}</span>
+                    </div>
+                    <small>{formatNumber(error.duration_ms)}ms</small>
+                  </article>
+                )}
+              />
+            </div>
+            <div className="analytics-three-column">
+              <InsightList
+                title="Refund trendleri"
+                items={(report.finance_intelligence?.refunds?.refund_by_provider || []).slice(0, 6)}
+                emptyText="Iade trendi gorunmuyor."
+                renderItem={(refund) => (
+                  <article className="analytics-insight-row warning" key={`refund-${refund.provider_code}`}>
+                    <div>
+                      <strong>{refund.provider_code}</strong>
+                      <span>Provider bazli iade hacmi</span>
+                    </div>
+                    <small>{formatNumber(refund.count)} iade</small>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Komisyon maliyeti"
+                items={(report.finance_intelligence?.commissions?.commission_by_provider || []).slice(0, 6)}
+                emptyText="Komisyon verisi bulunmuyor."
+                renderItem={(commission) => (
+                  <article className="analytics-insight-row neutral" key={`commission-${commission.provider_code}`}>
+                    <div>
+                      <strong>{commission.provider_code}</strong>
+                      <span>Ortalama oran {formatPercent(commission.avg_commission_rate)}</span>
+                    </div>
+                    <small>{formatMoney(commission.commission_amount)}</small>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Fatura basarisi"
+                items={[
+                  { key: 'issued', label: 'Issued', value: report.finance_intelligence?.invoice_success?.issued, tone: 'success' },
+                  { key: 'failed', label: 'Failed', value: report.finance_intelligence?.invoice_success?.failed, tone: 'critical' },
+                  { key: 'queued', label: 'Queued', value: report.finance_intelligence?.invoice_success?.queued, tone: 'warning' },
+                  { key: 'return', label: 'Return invoices', value: report.finance_intelligence?.invoice_success?.return_invoices, tone: 'neutral' },
+                ].filter((item) => Number(item.value || 0) > 0)}
+                emptyText="Fatura aktivitesi bulunmuyor."
+                renderItem={(item) => (
+                  <article className={`analytics-insight-row ${item.tone}`} key={`invoice-${item.key}`}>
+                    <div>
+                      <strong>{item.label}</strong>
+                      <span>Secili aralik</span>
+                    </div>
+                    <small>{formatNumber(item.value)}</small>
+                  </article>
+                )}
+              />
+            </div>
+          </IntelligenceSection>
+
+          <IntelligenceSection
+            title="Logistics Intelligence"
+            description="Kargo sagligi, tasiyici performansi, teslimat hizi, geciken ve hatali gonderi sinyalleri."
+          >
+            <section className="analytics-kpi-grid">
+              {logisticsKpis.map((kpi) => <KpiCard key={kpi.label} {...kpi} />)}
+            </section>
+            {report.logistics_intelligence?.logistics_risk?.factors?.length > 0 && (
+              <section className={`analytics-risk-banner ${report.logistics_intelligence.logistics_risk.health}`}>
+                <div>
+                  <span>Logistics Risk</span>
+                  <strong>{formatNumber(report.logistics_intelligence.logistics_risk.score)} / 100</strong>
+                </div>
+                <p>{report.logistics_intelligence.logistics_risk.factors.map((factor) => factor.label).join(' · ')}</p>
+              </section>
+            )}
+            <div className="analytics-three-column">
+              <InsightList
+                title="Problemli kargolar"
+                items={(report.logistics_intelligence?.carrier_performance || [])
+                  .filter((carrier) => Number(carrier.failed || 0) > 0 || Number(carrier.failure_rate || 0) > 0 || carrier.latest_error)
+                  .slice(0, 6)}
+                emptyText="Kargo tasiyicilarinda problem sinyali yok."
+                renderItem={(carrier) => (
+                  <article className={Number(carrier.failure_rate || 0) >= 10 ? 'analytics-insight-row critical' : 'analytics-insight-row warning'} key={carrier.carrier_code}>
+                    <div>
+                      <strong>{carrier.carrier_name || carrier.carrier_code}</strong>
+                      <span>{formatPercent(carrier.delivery_success_rate)} teslim · {formatNumber(carrier.failed)} failed</span>
+                    </div>
+                    <small>{carrier.latest_error || `${formatNumber(carrier.total_shipments)} gonderi`}</small>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Geciken gonderiler"
+                items={(report.logistics_intelligence?.delivery_performance?.delayed_samples || []).slice(0, 6)}
+                emptyText="Geciken gonderi yok."
+                renderItem={(shipment) => (
+                  <article className="analytics-insight-row warning" key={`delayed-${shipment.id}`}>
+                    <div>
+                      <strong>{shipment.carrier_code || 'Kargo'}</strong>
+                      <span>{shipment.tracking_number || shipment.status}</span>
+                    </div>
+                    <small>{shipment.shipped_at || 'Tarih yok'}</small>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Carrier hatalari"
+                items={(report.logistics_intelligence?.carrier_performance || []).filter((carrier) => carrier.latest_error).slice(0, 6)}
+                emptyText="Carrier hata kaydi yok."
+                renderItem={(carrier) => (
+                  <article className="analytics-insight-row critical" key={`carrier-error-${carrier.carrier_code}`}>
+                    <div>
+                      <strong>{carrier.carrier_name || carrier.carrier_code}</strong>
+                      <span>{carrier.latest_error}</span>
+                    </div>
+                    <small>{formatPercent(carrier.failure_rate)}</small>
+                  </article>
+                )}
+              />
+            </div>
+            <div className="analytics-three-column">
+              <InsightList
+                title="Failed shipments"
+                items={(report.logistics_intelligence?.failed_shipments?.latest_failed || []).slice(0, 6)}
+                emptyText="Failed shipment kaydi yok."
+                renderItem={(shipment) => (
+                  <article className="analytics-insight-row critical" key={`failed-shipment-${shipment.id}`}>
+                    <div>
+                      <strong>{shipment.carrier_code || 'Kargo'}</strong>
+                      <span>{shipment.error_message || shipment.status}</span>
+                    </div>
+                    <small>{shipment.tracking_number || shipment.updated_at || 'tracking yok'}</small>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Return trendleri"
+                items={(report.logistics_intelligence?.carrier_performance || []).filter((carrier) => Number(carrier.returned || 0) > 0).slice(0, 6)}
+                emptyText="Iade kargo trendi gorunmuyor."
+                renderItem={(carrier) => (
+                  <article className="analytics-insight-row warning" key={`return-${carrier.carrier_code}`}>
+                    <div>
+                      <strong>{carrier.carrier_name || carrier.carrier_code}</strong>
+                      <span>Return volume</span>
+                    </div>
+                    <small>{formatNumber(carrier.returned)} iade</small>
+                  </article>
+                )}
+              />
+              <InsightList
+                title="Logistics risk faktorleri"
+                items={(report.logistics_intelligence?.logistics_risk?.factors || []).slice(0, 6)}
+                emptyText="Lojistik risk skoru saglikli aralikta."
+                renderItem={(factor) => (
+                  <article className="analytics-insight-row warning" key={`logistics-risk-${factor.key}`}>
+                    <div>
+                      <strong>{factor.label}</strong>
+                      <span>Risk agirligi {formatNumber(factor.weight)}</span>
+                    </div>
+                    <small>{formatNumber(factor.value)}</small>
                   </article>
                 )}
               />
