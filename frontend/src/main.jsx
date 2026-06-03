@@ -62,6 +62,7 @@ const VariantManagementPage = lazyPage(() => import('./pages/Products/VariantMan
 const QueuePage = lazyPage(() => import('./pages/Queue/QueuePage.jsx'), 'QueuePage');
 const ReportsPage = lazyPage(() => import('./pages/Reports/ReportsPage.jsx'), 'ReportsPage');
 const CustomerReportsPage = lazyPage(() => import('./pages/Reports/ReportsPage.jsx'), 'CustomerReportsPage');
+const ExecutiveDashboardPage = lazyPage(() => import('./pages/Analytics/ExecutiveDashboardPage.jsx'), 'ExecutiveDashboardPage');
 const DeveloperCenterPage = lazyPage(() => import('./pages/Resources/DeveloperCenterPage.jsx'), 'DeveloperCenterPage');
 const HelpCenterPage = lazyPage(() => import('./pages/Resources/HelpCenterPage.jsx'), 'HelpCenterPage');
 const RolesPage = lazyPage(() => import('./pages/Roles/RolesPage.jsx'), 'RolesPage');
@@ -86,6 +87,7 @@ function CustomerRoutes() {
     <>
       <Route index element={<CustomerDashboardPage />} />
       <Route path="dashboard" element={<CustomerDashboardPage />} />
+      <Route path="executive" element={<ExecutiveDashboardPage />} />
       <Route path="reports" element={<CustomerReportsPage />} />
       <Route path="help-center" element={<HelpCenterPage />} />
       <Route path="resources" element={<DeveloperCenterPage />} />
@@ -162,6 +164,7 @@ function AdminRoutes() {
       <Route path="companies" element={<CompaniesPage />} />
       <Route path="saas" element={<SaasPage />} />
       <Route path="payments" element={<PaymentsPage />} />
+      <Route path="executive" element={<ExecutiveDashboardPage />} />
       <Route path="reports" element={<ReportsPage />} />
       <Route path="queue" element={<QueuePage />} />
       <Route path="api-logs" element={<ApiLogsPage />} />

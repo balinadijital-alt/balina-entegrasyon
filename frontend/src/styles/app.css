@@ -3563,6 +3563,413 @@ tbody td:last-child .row-actions:focus-within {
   white-space: nowrap;
 }
 
+.executive-filter-bar {
+  grid-template-columns: repeat(2, minmax(150px, 1fr)) auto;
+}
+
+.executive-dashboard {
+  display: grid;
+  gap: 18px;
+}
+
+.executive-hero {
+  align-items: stretch;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 18px;
+  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.18);
+  color: #fff;
+  display: grid;
+  gap: 22px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.55fr);
+  overflow: hidden;
+  padding: 24px;
+}
+
+.executive-hero span,
+.executive-hero p {
+  color: #cbd5e1;
+}
+
+.executive-hero span {
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.executive-hero h2 {
+  color: #fff;
+  font-size: 34px;
+  margin: 6px 0;
+}
+
+.executive-hero p {
+  line-height: 1.55;
+  margin: 0;
+  max-width: 760px;
+}
+
+.executive-hero-metrics,
+.executive-kpi-strip,
+.executive-health-map,
+.executive-tenant-grid,
+.executive-growth-grid,
+.executive-command-grid,
+.executive-risk-grid,
+.executive-license-strip,
+.executive-tenant-metrics {
+  display: grid;
+  gap: 14px;
+}
+
+.executive-hero-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.executive-hero-metrics div {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.executive-hero-metrics strong,
+.executive-hero-metrics span,
+.executive-kpi-card span,
+.executive-kpi-card small,
+.executive-health-tile span,
+.executive-health-tile strong,
+.executive-health-tile small,
+.executive-tenant-heading strong,
+.executive-tenant-heading span,
+.executive-risk-grid strong,
+.executive-risk-grid span,
+.executive-license-strip strong,
+.executive-license-strip span,
+.executive-plan-list strong,
+.executive-plan-list span,
+.executive-tenant-metrics strong,
+.executive-tenant-metrics span,
+.executive-signal-row strong,
+.executive-signal-row span,
+.executive-signal-row small,
+.executive-risk-row strong,
+.executive-risk-row span,
+.executive-risk-row small {
+  display: block;
+}
+
+.executive-hero-metrics strong {
+  color: #fff;
+  font-size: 20px;
+}
+
+.executive-hero-metrics span {
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.executive-kpi-strip {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.executive-kpi-card,
+.executive-health-tile,
+.executive-tenant-card,
+.executive-risk-center,
+.executive-plan-panel {
+  background: #fff;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+}
+
+.executive-kpi-card {
+  border-radius: 14px;
+  display: grid;
+  gap: 8px;
+  min-height: 150px;
+  padding: 16px;
+}
+
+.executive-kpi-card.warning,
+.executive-risk-center.warning {
+  border-top: 4px solid #f59e0b;
+}
+
+.executive-kpi-card.critical,
+.executive-risk-center.critical {
+  border-top: 4px solid #ef4444;
+}
+
+.executive-kpi-card.success {
+  border-top: 4px solid #22c55e;
+}
+
+.executive-kpi-icon {
+  align-items: center;
+  background: #f1f5f9;
+  border-radius: 10px;
+  color: #334155;
+  display: inline-flex;
+  height: 36px;
+  justify-content: center;
+  width: 36px;
+}
+
+.executive-kpi-card span,
+.executive-kpi-card small,
+.executive-health-tile span,
+.executive-health-tile small {
+  color: #64748b;
+}
+
+.executive-kpi-card span {
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.executive-kpi-card strong {
+  color: var(--text);
+  font-size: 25px;
+}
+
+.executive-command-grid {
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+}
+
+.executive-risk-center,
+.executive-plan-panel {
+  border-radius: 16px;
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.executive-risk-grid,
+.executive-license-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.executive-risk-grid div,
+.executive-license-strip div,
+.executive-plan-list div,
+.executive-tenant-metrics div {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.executive-risk-grid strong,
+.executive-license-strip strong {
+  color: var(--text);
+  font-size: 22px;
+}
+
+.executive-risk-grid span,
+.executive-license-strip span,
+.executive-plan-list span,
+.executive-tenant-heading span,
+.executive-tenant-metrics span {
+  color: #64748b;
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.executive-plan-list {
+  display: grid;
+  gap: 8px;
+}
+
+.executive-plan-list strong {
+  color: var(--text);
+}
+
+.executive-health-map {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.executive-health-tile {
+  border-radius: 14px;
+  border-top: 4px solid #22c55e;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.executive-health-tile.warning {
+  border-top-color: #f59e0b;
+}
+
+.executive-health-tile.critical {
+  border-top-color: #ef4444;
+}
+
+.executive-health-tile strong {
+  color: var(--text);
+  font-size: 28px;
+}
+
+.executive-health-tile em,
+.executive-tenant-heading em {
+  border-radius: 999px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+  padding: 5px 8px;
+  width: fit-content;
+}
+
+.executive-health-tile.healthy em,
+.executive-tenant-card.healthy em {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.executive-health-tile.warning em,
+.executive-tenant-card.warning em {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.executive-health-tile.critical em,
+.executive-tenant-card.critical em {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.executive-section {
+  display: grid;
+  gap: 14px;
+}
+
+.executive-tenant-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.executive-tenant-card {
+  border-left: 4px solid #22c55e;
+  border-radius: 14px;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.executive-tenant-card.warning {
+  border-left-color: #f59e0b;
+}
+
+.executive-tenant-card.critical {
+  border-left-color: #ef4444;
+}
+
+.executive-tenant-heading {
+  align-items: start;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.executive-tenant-heading strong {
+  color: var(--text);
+}
+
+.executive-tenant-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.executive-tenant-metrics div {
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.executive-tenant-metrics strong {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.executive-tenant-metrics span {
+  font-size: 11px;
+}
+
+.executive-reason-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.executive-reason-list span {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 5px 8px;
+}
+
+.executive-growth-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.executive-signal-panel {
+  min-height: 280px;
+}
+
+.executive-signal-list,
+.executive-risk-list {
+  display: grid;
+  gap: 8px;
+}
+
+.executive-signal-row,
+.executive-risk-row {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #94a3b8;
+  border-radius: 12px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 11px;
+}
+
+.executive-signal-row.warning,
+.executive-risk-row.warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+  border-left-color: #f59e0b;
+}
+
+.executive-signal-row.critical,
+.executive-risk-row.critical {
+  background: #fef2f2;
+  border-color: #fecaca;
+  border-left-color: #ef4444;
+}
+
+.executive-signal-row strong,
+.executive-risk-row strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.executive-signal-row span,
+.executive-risk-row span {
+  color: #64748b;
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.executive-signal-row small,
+.executive-risk-row small {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .onboarding-grid {
   display: grid;
   gap: 18px;
@@ -7931,12 +8338,19 @@ tbody td:last-child .row-actions:focus-within {
   .page-toolbar,
   .analytics-filter-bar,
   .analytics-overview-grid,
-  .analytics-three-column {
+  .analytics-three-column,
+  .executive-filter-bar,
+  .executive-hero,
+  .executive-command-grid,
+  .executive-growth-grid {
     grid-template-columns: 1fr;
   }
 
   .analytics-kpi-grid,
-  .domain-health-grid {
+  .domain-health-grid,
+  .executive-kpi-strip,
+  .executive-health-map,
+  .executive-tenant-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -8056,7 +8470,14 @@ tbody td:last-child .row-actions:focus-within {
 
   .analytics-kpi-grid,
   .domain-health-grid,
-  .domain-health-metrics {
+  .domain-health-metrics,
+  .executive-kpi-strip,
+  .executive-health-map,
+  .executive-tenant-grid,
+  .executive-hero-metrics,
+  .executive-risk-grid,
+  .executive-license-strip,
+  .executive-tenant-metrics {
     grid-template-columns: 1fr;
   }
 }

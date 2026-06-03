@@ -45,6 +45,7 @@ export const appNavigationGroups = [
     label: 'Baslangic',
     items: [
       { to: '/', label: 'Baslangic', icon: Gauge, end: true },
+      { to: '/executive', label: 'Executive Dashboard', icon: Sparkles },
     ],
   },
   {
@@ -192,6 +193,7 @@ export const adminNavigationGroups = [
     label: 'Balina Yonetimi',
     items: [
       { to: '/admin', label: 'Dashboard', icon: Gauge, end: true },
+      { to: '/admin/executive', label: 'Executive Dashboard', icon: Sparkles },
       { to: '/admin/companies', label: 'Musteri Firmalar', icon: Building2 },
       { to: '/admin/saas', label: 'Paketler Lisanslar', icon: Sparkles },
       { to: '/admin/saas', label: 'Abonelikler', icon: ClipboardCheck },

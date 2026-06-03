@@ -44,4 +44,26 @@ class AnalyticsController extends Controller
 
         return response()->json($analytics->marketplaceDrilldown($marketplace, $data));
     }
+
+    public function executive(Request $request, AnalyticsService $analytics): JsonResponse
+    {
+        $data = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'company_id' => ['nullable', 'integer', 'exists:companies,id'],
+            'plan' => ['nullable', 'string', 'max:80'],
+            'health' => ['nullable', 'in:healthy,warning,critical'],
+        ]);
+
+        $tenantCompanyId = $this->tenantCompanyId($request);
+
+        if ($tenantCompanyId) {
+            $data['company_id'] = $tenantCompanyId;
+            unset($data['plan'], $data['health']);
+        } elseif ($request->filled('company_id')) {
+            $data['company_id'] = $request->integer('company_id');
+        }
+
+        return response()->json($analytics->executive($data));
+    }
 }

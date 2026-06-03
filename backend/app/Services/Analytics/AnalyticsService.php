@@ -3,6 +3,7 @@
 namespace App\Services\Analytics;
 
 use App\Models\ApiLog;
+use App\Models\Company;
 use App\Models\InboundWebhookDelivery;
 use App\Models\MarketplaceAccount;
 use App\Models\Order;
@@ -172,6 +173,481 @@ class AnalyticsService
                 ];
             }
         );
+    }
+
+    public function executive(array $filters = []): array
+    {
+        $from = $this->date($filters['from'] ?? null, CarbonImmutable::today()->subDays(29))->startOfDay();
+        $to = $this->date($filters['to'] ?? null, CarbonImmutable::today())->endOfDay();
+        $companyId = $filters['company_id'] ?? null;
+        $plan = $filters['plan'] ?? null;
+        $health = $filters['health'] ?? null;
+        $cacheKey = sprintf(
+            'analytics:executive:%s:%s:%s:%s:%s',
+            $companyId ?: 'all',
+            $plan ?: 'all',
+            $health ?: 'all',
+            $from->toDateString(),
+            $to->toDateString()
+        );
+
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($from, $to, $companyId, $plan, $health) {
+            $business = $this->executiveBusinessMetrics($from, $to, $companyId);
+            $saas = $this->executiveSaasIntelligence($from, $to, $companyId);
+            $scorecards = $this->tenantScorecards($from, $to, $companyId, $plan, $health);
+            $riskOverview = $this->executiveRiskOverview($scorecards);
+            $healthScores = $this->executiveHealthScores($scorecards);
+            $riskScore = (int) round(collect($scorecards)->avg('risk_score') ?? 0);
+
+            return [
+                'filters' => [
+                    'from' => $from->toDateString(),
+                    'to' => $to->toDateString(),
+                    'company_id' => $companyId,
+                    'plan' => $plan,
+                    'health' => $health,
+                ],
+                'executive_summary' => [
+                    'system_health' => $this->healthFromRisk($riskScore),
+                    'executive_risk_score' => $riskScore,
+                    'active_companies' => $saas['active_companies'],
+                    'active_subscriptions' => $saas['active_subscriptions'],
+                    'total_revenue' => $business['total_revenue'],
+                    'order_count' => $business['order_count'],
+                ],
+                'business_metrics' => $business,
+                'saas_intelligence' => $saas,
+                'tenant_scorecards' => $scorecards,
+                'risk_overview' => $riskOverview,
+                'health_scores' => $healthScores,
+                'top_risks' => $this->executiveTopRisks($scorecards),
+                'growth_signals' => $this->executiveGrowthSignals($scorecards),
+            ];
+        });
+    }
+
+    private function executiveBusinessMetrics(CarbonImmutable $from, CarbonImmutable $to, ?int $companyId): array
+    {
+        $orders = $this->ordersQuery($from, $to, $companyId, null);
+        $orderCount = (clone $orders)->count();
+        $totalRevenue = (float) (clone $orders)->sum('total_amount');
+
+        return [
+            'total_revenue' => round($totalRevenue, 2),
+            'order_count' => $orderCount,
+            'avg_order_value' => $orderCount > 0 ? round($totalRevenue / $orderCount, 2) : 0,
+            'daily_revenue' => $this->dailySeries($from, $to, fn ($day) => (float) $this->ordersQuery($day->startOfDay(), $day->endOfDay(), $companyId, null)->sum('total_amount')),
+            'daily_orders' => $this->dailySeries($from, $to, fn ($day) => $this->ordersQuery($day->startOfDay(), $day->endOfDay(), $companyId, null)->count()),
+        ];
+    }
+
+    private function executiveSaasIntelligence(CarbonImmutable $from, CarbonImmutable $to, ?int $companyId): array
+    {
+        $companies = Company::query()
+            ->when($companyId, fn ($query) => $query->where('id', $companyId))
+            ->with(['subscriptions.plan', 'usageCounters'])
+            ->get();
+        $subscriptions = Subscription::query()
+            ->with(['company:id,name', 'plan'])
+            ->when($companyId, fn ($query) => $query->where('company_id', $companyId))
+            ->get();
+        $activeSubscriptions = $subscriptions->whereIn('status', ['active', 'trial']);
+        $expiring = $activeSubscriptions->filter(fn (Subscription $subscription) => $this->subscriptionExpiresBetween($subscription, now(), now()->addDays(14)));
+        $trial = $subscriptions->where('status', 'trial');
+        $usageCounters = UsageCounter::query()
+            ->when($companyId, fn ($query) => $query->where('company_id', $companyId))
+            ->where('limit', '>', 0)
+            ->get();
+        $riskCounters = $usageCounters->filter(fn (UsageCounter $counter) => $this->usageRate($counter) >= 90);
+        $nearLimitCounters = $usageCounters->filter(fn (UsageCounter $counter) => $this->usageRate($counter) >= 75 && $this->usageRate($counter) < 90);
+        $licenseRisk = $companies->filter(function (Company $company) use ($riskCounters, $expiring) {
+            $latest = $this->latestSubscription($company);
+
+            return ! $latest
+                || ! in_array($latest->status, ['active', 'trial'], true)
+                || $riskCounters->where('company_id', $company->id)->isNotEmpty()
+                || $expiring->where('company_id', $company->id)->isNotEmpty();
+        });
+
+        return [
+            'active_companies' => $companies->where('is_active', true)->count(),
+            'active_subscriptions' => $activeSubscriptions->count(),
+            'plan_distribution' => $activeSubscriptions
+                ->groupBy(fn (Subscription $subscription) => $subscription->plan?->code ?: 'unassigned')
+                ->map(fn ($rows, string $code) => [
+                    'plan' => $code,
+                    'label' => $rows->first()?->plan?->name ?: $code,
+                    'count' => $rows->count(),
+                ])
+                ->values()
+                ->all(),
+            'subscription_health' => [
+                'active' => $subscriptions->where('status', 'active')->count(),
+                'trial' => $trial->count(),
+                'cancelled' => $subscriptions->whereIn('status', ['cancelled', 'canceled'])->count(),
+                'expired' => $subscriptions->where('status', 'expired')->count(),
+                'expiring' => $expiring->count(),
+            ],
+            'usage_limit_summary' => [
+                'tracked_counters' => $usageCounters->count(),
+                'near_limit_counters' => $nearLimitCounters->count(),
+                'limit_risk_counters' => $riskCounters->count(),
+                'limit_risk_companies' => $riskCounters->pluck('company_id')->unique()->count(),
+                'top_limit_risks' => $riskCounters
+                    ->sortByDesc(fn (UsageCounter $counter) => $this->usageRate($counter))
+                    ->take(20)
+                    ->map(fn (UsageCounter $counter) => [
+                        'company_id' => $counter->company_id,
+                        'metric' => $counter->metric,
+                        'used' => (int) $counter->used,
+                        'limit' => (int) $counter->limit,
+                        'usage_rate' => $this->usageRate($counter),
+                    ])
+                    ->values()
+                    ->all(),
+            ],
+            'expiring_subscriptions' => $expiring
+                ->take(20)
+                ->map(fn (Subscription $subscription) => [
+                    'company_id' => $subscription->company_id,
+                    'company_name' => $subscription->company?->name,
+                    'plan' => $subscription->plan?->code,
+                    'status' => $subscription->status,
+                    'ends_at' => $subscription->ends_at,
+                    'trial_ends_at' => $subscription->trial_ends_at,
+                ])
+                ->values()
+                ->all(),
+            'trial_companies' => $trial
+                ->take(20)
+                ->map(fn (Subscription $subscription) => [
+                    'company_id' => $subscription->company_id,
+                    'company_name' => $subscription->company?->name,
+                    'plan' => $subscription->plan?->code,
+                    'trial_ends_at' => $subscription->trial_ends_at,
+                ])
+                ->values()
+                ->all(),
+            'license_risk' => [
+                'risk_companies' => $licenseRisk->count(),
+                'companies' => $licenseRisk
+                    ->take(20)
+                    ->map(function (Company $company) use ($riskCounters, $expiring) {
+                        $latest = $this->latestSubscription($company);
+
+                        return [
+                            'company_id' => $company->id,
+                            'company_name' => $company->name,
+                            'plan' => $latest?->plan?->code,
+                            'subscription_status' => $latest?->status ?: 'none',
+                            'usage_rate' => $this->companyUsageRate($company),
+                            'expiring' => $expiring->where('company_id', $company->id)->isNotEmpty(),
+                            'limit_risk' => $riskCounters->where('company_id', $company->id)->isNotEmpty(),
+                        ];
+                    })
+                    ->values()
+                    ->all(),
+            ],
+        ];
+    }
+
+    private function tenantScorecards(CarbonImmutable $from, CarbonImmutable $to, ?int $companyId, ?string $plan, ?string $health): array
+    {
+        $companies = Company::query()
+            ->when($companyId, fn ($query) => $query->where('id', $companyId))
+            ->when($plan, fn ($query) => $query->whereHas('subscriptions.plan', fn ($subscriptionPlan) => $subscriptionPlan->where('code', $plan)))
+            ->with(['subscriptions.plan', 'usageCounters'])
+            ->get();
+
+        return $companies
+            ->map(fn (Company $company) => $this->tenantScorecard($company, $from, $to))
+            ->when($health, fn ($rows) => $rows->where('health', $health))
+            ->sortByDesc('risk_score')
+            ->take(50)
+            ->values()
+            ->all();
+    }
+
+    private function tenantScorecard(Company $company, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $subscription = $this->latestSubscription($company);
+        $revenue = (float) Order::query()->where('company_id', $company->id)->whereBetween('created_at', [$from, $to])->sum('total_amount');
+        $orderVolume = Order::query()->where('company_id', $company->id)->whereBetween('created_at', [$from, $to])->count();
+        $apiErrors = ApiLog::query()->where('company_id', $company->id)->whereBetween('created_at', [$from, $to])->where('status_code', '>=', 400)->count();
+        $queueFailures = SyncRun::query()
+            ->whereHas('marketplace', fn ($marketplace) => $marketplace->where('company_id', $company->id))
+            ->whereBetween('created_at', [$from, $to])
+            ->where('status', 'failed')
+            ->count();
+        $inboundWebhookFailures = InboundWebhookDelivery::query()
+            ->where('company_id', $company->id)
+            ->whereBetween('created_at', [$from, $to])
+            ->whereIn('status', ['failed', 'invalid_signature', 'unknown_account'])
+            ->count();
+        $outboundWebhookFailures = WebhookDeliveryLog::query()
+            ->where('company_id', $company->id)
+            ->whereBetween('created_at', [$from, $to])
+            ->where(function ($query) {
+                $query->whereIn('status', ['failed', 'error'])->orWhereNotNull('failed_at');
+            })
+            ->count();
+        $xmlFailedRuns = ProductImportRun::query()
+            ->where('company_id', $company->id)
+            ->whereBetween('created_at', [$from, $to])
+            ->whereIn('status', ['failed', 'cancelled'])
+            ->count();
+        $marketplaceFailedProducts = ProductMarketplaceStatus::query()
+            ->whereHas('product', fn ($product) => $product->where('company_id', $company->id))
+            ->whereBetween('updated_at', [$from, $to])
+            ->whereIn('status', ['failed', 'problematic', 'blocked', 'rejected'])
+            ->count();
+        $marketplaceFailedAccounts = MarketplaceAccount::query()
+            ->where('company_id', $company->id)
+            ->where('connection_status', 'failed')
+            ->count();
+        $usageRate = $this->companyUsageRate($company);
+        $risk = $this->tenantRiskScore([
+            'subscription_status' => $subscription?->status,
+            'expiring_subscription' => $subscription ? $this->subscriptionExpiresBetween($subscription, now(), now()->addDays(14)) : false,
+            'usage_rate' => $usageRate,
+            'api_errors' => $apiErrors,
+            'queue_failures' => $queueFailures,
+            'webhook_failures' => $inboundWebhookFailures + $outboundWebhookFailures,
+            'xml_failed_runs' => $xmlFailedRuns,
+            'marketplace_failed_products' => $marketplaceFailedProducts,
+            'marketplace_failed_accounts' => $marketplaceFailedAccounts,
+        ]);
+
+        return [
+            'company_id' => $company->id,
+            'company_name' => $company->name,
+            'plan' => $subscription?->plan?->code ?: 'unassigned',
+            'plan_name' => $subscription?->plan?->name,
+            'subscription_status' => $subscription?->status ?: 'none',
+            'usage_rate' => $usageRate,
+            'order_volume' => $orderVolume,
+            'revenue' => round($revenue, 2),
+            'api_errors' => $apiErrors,
+            'queue_failures' => $queueFailures,
+            'webhook_failures' => $inboundWebhookFailures + $outboundWebhookFailures,
+            'xml_failed_runs' => $xmlFailedRuns,
+            'marketplace_failed_products' => $marketplaceFailedProducts,
+            'risk_score' => $risk['score'],
+            'health' => $risk['health'],
+            'top_reasons' => $risk['reasons'],
+        ];
+    }
+
+    private function tenantRiskScore(array $signals): array
+    {
+        $score = 0;
+        $reasons = [];
+
+        if (! in_array($signals['subscription_status'] ?? null, ['active', 'trial'], true)) {
+            $score += 25;
+            $reasons[] = ['key' => 'subscription_inactive', 'label' => 'Aktif abonelik yok', 'value' => $signals['subscription_status'] ?? 'none'];
+        } elseif ($signals['expiring_subscription'] ?? false) {
+            $score += 12;
+            $reasons[] = ['key' => 'subscription_expiring', 'label' => 'Abonelik yakinda bitiyor', 'value' => 1];
+        }
+        if (($signals['usage_rate'] ?? 0) >= 90) {
+            $score += 20;
+            $reasons[] = ['key' => 'usage_limit_risk', 'label' => 'Kullanim limiti riski', 'value' => $signals['usage_rate']];
+        }
+        if (($signals['marketplace_failed_accounts'] ?? 0) > 0) {
+            $score += 20;
+            $reasons[] = ['key' => 'marketplace_account_failed', 'label' => 'Pazaryeri hesabi hatali', 'value' => $signals['marketplace_failed_accounts']];
+        }
+        if (($signals['marketplace_failed_products'] ?? 0) > 0) {
+            $score += 15;
+            $reasons[] = ['key' => 'marketplace_failed_products', 'label' => 'Problemli pazaryeri urunleri', 'value' => $signals['marketplace_failed_products']];
+        }
+        if (($signals['queue_failures'] ?? 0) > 0) {
+            $score += 12;
+            $reasons[] = ['key' => 'queue_failures', 'label' => 'Queue hatalari', 'value' => $signals['queue_failures']];
+        }
+        if (($signals['api_errors'] ?? 0) > 0) {
+            $score += 10;
+            $reasons[] = ['key' => 'api_errors', 'label' => 'API hatalari', 'value' => $signals['api_errors']];
+        }
+        if (($signals['webhook_failures'] ?? 0) > 0) {
+            $score += 8;
+            $reasons[] = ['key' => 'webhook_failures', 'label' => 'Webhook hatalari', 'value' => $signals['webhook_failures']];
+        }
+        if (($signals['xml_failed_runs'] ?? 0) > 0) {
+            $score += 10;
+            $reasons[] = ['key' => 'xml_failed_runs', 'label' => 'XML import hatalari', 'value' => $signals['xml_failed_runs']];
+        }
+
+        $score = min(100, $score);
+
+        return [
+            'score' => $score,
+            'health' => $this->healthFromRisk($score),
+            'reasons' => array_slice($reasons, 0, 5),
+        ];
+    }
+
+    private function executiveRiskOverview(array $scorecards): array
+    {
+        $rows = collect($scorecards);
+
+        return [
+            'critical_companies' => $rows->where('health', 'critical')->count(),
+            'warning_companies' => $rows->where('health', 'warning')->count(),
+            'marketplace_risk' => $rows->sum('marketplace_failed_products'),
+            'xml_risk' => $rows->sum('xml_failed_runs'),
+            'queue_risk' => $rows->sum('queue_failures'),
+            'api_risk' => $rows->sum('api_errors'),
+            'webhook_risk' => $rows->sum('webhook_failures'),
+        ];
+    }
+
+    private function executiveHealthScores(array $scorecards): array
+    {
+        $rows = collect($scorecards);
+        $total = max(1, $rows->count());
+
+        return [
+            'saas_health' => $this->healthScoreFromRisk($rows->filter(fn (array $row) => ! in_array($row['subscription_status'], ['active', 'trial'], true) || (float) $row['usage_rate'] >= 90)->count(), $total),
+            'marketplace_health' => $this->healthScoreFromRisk($rows->filter(fn (array $row) => (int) $row['marketplace_failed_products'] > 0)->count(), $total),
+            'xml_health' => $this->healthScoreFromRisk($rows->filter(fn (array $row) => (int) $row['xml_failed_runs'] > 0)->count(), $total),
+            'operations_health' => $this->healthScoreFromRisk($rows->filter(fn (array $row) => (int) $row['queue_failures'] > 0)->count(), $total),
+            'api_health' => $this->healthScoreFromRisk($rows->filter(fn (array $row) => (int) $row['api_errors'] > 0)->count(), $total),
+            'webhook_health' => $this->healthScoreFromRisk($rows->filter(fn (array $row) => (int) $row['webhook_failures'] > 0)->count(), $total),
+        ];
+    }
+
+    private function executiveTopRisks(array $scorecards): array
+    {
+        return collect($scorecards)
+            ->flatMap(fn (array $row) => collect($row['top_reasons'] ?? [])->map(fn (array $reason) => [
+                'company_id' => $row['company_id'],
+                'company_name' => $row['company_name'],
+                'health' => $row['health'],
+                'risk_score' => $row['risk_score'],
+                'key' => $reason['key'],
+                'label' => $reason['label'],
+                'value' => $reason['value'],
+                'target_path' => "/companies/{$row['company_id']}",
+            ]))
+            ->sortByDesc('risk_score')
+            ->take(20)
+            ->values()
+            ->all();
+    }
+
+    private function executiveGrowthSignals(array $scorecards): array
+    {
+        $rows = collect($scorecards);
+
+        return [
+            'top_revenue_companies' => $rows
+                ->sortByDesc('revenue')
+                ->take(20)
+                ->map(fn (array $row) => $this->growthSignalRow($row, 'revenue'))
+                ->values()
+                ->all(),
+            'high_usage_companies' => $rows
+                ->filter(fn (array $row) => (float) $row['usage_rate'] >= 75)
+                ->sortByDesc('usage_rate')
+                ->take(20)
+                ->map(fn (array $row) => $this->growthSignalRow($row, 'usage_rate'))
+                ->values()
+                ->all(),
+            'upgrade_candidates' => $rows
+                ->filter(fn (array $row) => (float) $row['usage_rate'] >= 80 && in_array($row['subscription_status'], ['active', 'trial'], true))
+                ->sortByDesc('usage_rate')
+                ->take(20)
+                ->map(fn (array $row) => $this->growthSignalRow($row, 'upgrade'))
+                ->values()
+                ->all(),
+            'trial_to_paid_candidates' => $rows
+                ->filter(fn (array $row) => $row['subscription_status'] === 'trial' && ((int) $row['order_volume'] > 0 || (float) $row['revenue'] > 0))
+                ->sortByDesc('revenue')
+                ->take(20)
+                ->map(fn (array $row) => $this->growthSignalRow($row, 'trial_conversion'))
+                ->values()
+                ->all(),
+            'churn_risk_companies' => $rows
+                ->filter(fn (array $row) => $row['health'] === 'critical' || ! in_array($row['subscription_status'], ['active', 'trial'], true))
+                ->sortByDesc('risk_score')
+                ->take(20)
+                ->map(fn (array $row) => $this->growthSignalRow($row, 'churn_risk'))
+                ->values()
+                ->all(),
+        ];
+    }
+
+    private function growthSignalRow(array $row, string $signal): array
+    {
+        return [
+            'company_id' => $row['company_id'],
+            'company_name' => $row['company_name'],
+            'plan' => $row['plan'],
+            'subscription_status' => $row['subscription_status'],
+            'health' => $row['health'],
+            'risk_score' => $row['risk_score'],
+            'usage_rate' => $row['usage_rate'],
+            'order_volume' => $row['order_volume'],
+            'revenue' => $row['revenue'],
+            'signal' => $signal,
+        ];
+    }
+
+    private function latestSubscription(Company $company): ?Subscription
+    {
+        return $company->subscriptions
+            ->sortByDesc(fn (Subscription $subscription) => $subscription->starts_at?->timestamp ?? $subscription->created_at?->timestamp ?? 0)
+            ->first();
+    }
+
+    private function subscriptionExpiresBetween(Subscription $subscription, \DateTimeInterface $from, \DateTimeInterface $to): bool
+    {
+        foreach ([$subscription->ends_at, $subscription->trial_ends_at] as $date) {
+            if ($date && $date->between($from, $to)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function companyUsageRate(Company $company): float
+    {
+        return round($company->usageCounters
+            ->filter(fn (UsageCounter $counter) => (int) $counter->limit > 0)
+            ->max(fn (UsageCounter $counter) => $this->usageRate($counter)) ?? 0, 2);
+    }
+
+    private function usageRate(UsageCounter $counter): float
+    {
+        return round(((int) $counter->used / max((int) $counter->limit, 1)) * 100, 2);
+    }
+
+    private function healthScoreFromRisk(int $riskCount, int $total): array
+    {
+        $riskRate = ($riskCount / max(1, $total)) * 100;
+        $score = (int) max(0, round(100 - $riskRate));
+
+        return [
+            'score' => $score,
+            'health' => $this->healthFromRisk(100 - $score),
+            'risk_count' => $riskCount,
+        ];
+    }
+
+    private function healthFromRisk(int|float $score): string
+    {
+        if ($score >= 60) {
+            return 'critical';
+        }
+
+        if ($score >= 20) {
+            return 'warning';
+        }
+
+        return 'healthy';
     }
 
     private function sales(CarbonImmutable $from, CarbonImmutable $to, ?int $companyId, ?string $marketplaceCode): array
