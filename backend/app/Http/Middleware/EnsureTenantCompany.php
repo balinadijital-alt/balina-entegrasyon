@@ -20,7 +20,7 @@ class EnsureTenantCompany
             abort(403, 'Kullanici herhangi bir firmaya bagli degil.');
         }
 
-        if ($request->filled('company_id') && (int) $request->input('company_id') !== (int) $user->company_id) {
+        if ($request->filled('company_id') && (int) $request->input('company_id') !== (int) $user->company_id && ! $this->allowsTenantCompanyOverride($request)) {
             abort(403, 'Baska firmaya ait veriye erisim engellendi.');
         }
 
@@ -36,5 +36,22 @@ class EnsureTenantCompany
         }
 
         return $next($request);
+    }
+
+    private function allowsTenantCompanyOverride(Request $request): bool
+    {
+        if (! in_array($request->method(), ['POST', 'PUT', 'PATCH'], true)) {
+            return false;
+        }
+
+        return $request->is(
+            'api/payment-accounts*',
+            'api/shipping-accounts*',
+            'api/accounting-accounts*',
+            'api/marketplaces*',
+            'api/xml-sources*',
+            'api/import-runs/preview-excel',
+            'api/import-runs/excel'
+        );
     }
 }

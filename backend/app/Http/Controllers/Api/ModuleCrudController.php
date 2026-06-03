@@ -23,9 +23,9 @@ class ModuleCrudController extends Controller
         return response()->json($this->service->create($request, $module, $request->validated()), 201);
     }
 
-    public function show(string $module, int $id): JsonResponse
+    public function show(Request $request, string $module, int $id): JsonResponse
     {
-        return response()->json($this->service->find($module, $id));
+        return response()->json($this->service->find($request, $module, $id));
     }
 
     public function update(ModuleRecordRequest $request, string $module, int $id): JsonResponse

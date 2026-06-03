@@ -12,19 +12,22 @@ class AccountingAccountController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json(AccountingAccount::with(['company:id,name', 'integration:id,code,name'])
+            ->when($this->tenantCompanyId($request), fn ($q, $companyId) => $q->where('company_id', $companyId))
             ->when($request->filled('company_id'), fn ($q) => $q->where('company_id', $request->integer('company_id')))
             ->latest()->paginate(20));
     }
 
     public function store(Request $request): JsonResponse
     {
-        $account = AccountingAccount::create($this->validated($request));
+        $account = AccountingAccount::create($this->forceTenantCompany($request, $this->validated($request)));
         return response()->json($account->load(['company:id,name', 'integration:id,code,name']), 201);
     }
 
     public function update(Request $request, AccountingAccount $accountingAccount): JsonResponse
     {
-        $accountingAccount->update($this->validated($request, true));
+        $this->abortIfAccountNotTenant($request, $accountingAccount);
+
+        $accountingAccount->update($this->forceTenantCompany($request, $this->validated($request, true)));
         return response()->json($accountingAccount->load(['company:id,name', 'integration:id,code,name']));
     }
 

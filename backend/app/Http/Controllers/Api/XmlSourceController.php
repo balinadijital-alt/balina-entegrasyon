@@ -13,6 +13,7 @@ class XmlSourceController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json(XmlSource::with('company:id,name')
+            ->when($this->tenantCompanyId($request), fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->when($request->filled('company_id'), fn ($query) => $query->where('company_id', $request->integer('company_id')))
             ->latest()
             ->paginate(20));
@@ -20,20 +21,24 @@ class XmlSourceController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $source = XmlSource::create($this->validated($request));
+        $source = XmlSource::create($this->forceTenantCompany($request, $this->validated($request)));
 
         return response()->json($source->load('company:id,name'), 201);
     }
 
     public function update(Request $request, XmlSource $xmlSource): JsonResponse
     {
-        $xmlSource->update($this->validated($request, true));
+        $this->abortIfXmlSourceNotTenant($request, $xmlSource);
+
+        $xmlSource->update($this->forceTenantCompany($request, $this->validated($request, true)));
 
         return response()->json($xmlSource->load('company:id,name'));
     }
 
     public function destroy(XmlSource $xmlSource): JsonResponse
     {
+        $this->abortIfXmlSourceNotTenant(request(), $xmlSource);
+
         $xmlSource->delete();
 
         return response()->json(status: 204);
@@ -41,6 +46,8 @@ class XmlSourceController extends Controller
 
     public function preview(XmlSource $xmlSource, Request $request, ProductImportService $service): JsonResponse
     {
+        $this->abortIfXmlSourceNotTenant($request, $xmlSource);
+
         $data = $request->validate([
             'field_mapping' => ['nullable', 'array'],
             'options' => ['nullable', 'array'],
@@ -51,6 +58,8 @@ class XmlSourceController extends Controller
 
     public function import(XmlSource $xmlSource, Request $request, ProductImportService $service): JsonResponse
     {
+        $this->abortIfXmlSourceNotTenant($request, $xmlSource);
+
         $data = $request->validate([
             'field_mapping' => ['nullable', 'array'],
             'options' => ['nullable', 'array'],

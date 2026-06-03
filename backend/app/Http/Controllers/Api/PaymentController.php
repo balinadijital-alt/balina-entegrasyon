@@ -18,6 +18,7 @@ class PaymentController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json(Payment::with(['order:id,marketplace_order_id,customer_name', 'account.provider:id,code,name'])
+            ->when($this->tenantCompanyId($request), fn ($query, $companyId) => $query->whereHas('order', fn ($order) => $order->where('company_id', $companyId)))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->latest()
             ->paginate(30));
@@ -26,6 +27,7 @@ class PaymentController extends Controller
     public function logs(Request $request): JsonResponse
     {
         return response()->json(PaymentLog::query()
+            ->when($this->tenantCompanyId($request), fn ($query, $companyId) => $query->whereHas('payment.order', fn ($order) => $order->where('company_id', $companyId)))
             ->when($request->filled('payment_id'), fn ($query) => $query->where('payment_id', $request->integer('payment_id')))
             ->latest()
             ->paginate(50));
@@ -33,6 +35,8 @@ class PaymentController extends Controller
 
     public function createForOrder(Order $order, Request $request, PaymentProviderFactory $factory): JsonResponse
     {
+        $this->abortIfOrderNotTenant($request, $order);
+
         $data = $request->validate([
             'payment_account_id' => ['required', 'exists:payment_accounts,id'],
             'method' => ['nullable', 'in:card,three_d,bank_transfer,cash_on_delivery'],
@@ -42,6 +46,10 @@ class PaymentController extends Controller
         ]);
 
         $account = PaymentAccount::with('provider')->findOrFail($data['payment_account_id']);
+        if ((int) $account->company_id !== (int) $order->company_id) {
+            abort(403, 'Odeme hesabi bu firmaya ait degil.');
+        }
+
         $installment = (int) ($data['installment_count'] ?? 1);
         $amount = (float) ($data['amount'] ?? $order->total_amount);
         $commissionRate = (float) data_get($account->commission_rates, (string) $installment, 0);
@@ -71,6 +79,8 @@ class PaymentController extends Controller
 
     public function query(Payment $payment): JsonResponse
     {
+        $this->abortIfPaymentNotTenant(request(), $payment);
+
         CheckPaymentStatusJob::dispatch($payment);
 
         return response()->json(['message' => 'Odeme durum sorgusu kuyruga alindi.', 'queued' => true], 202);
@@ -78,6 +88,8 @@ class PaymentController extends Controller
 
     public function refund(Payment $payment, Request $request, PaymentProviderFactory $factory): JsonResponse
     {
+        $this->abortIfPaymentNotTenant($request, $payment);
+
         $data = $request->validate([
             'amount' => ['nullable', 'numeric', 'min:0.01'],
             'payload' => ['nullable', 'array'],

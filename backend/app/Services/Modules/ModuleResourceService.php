@@ -20,8 +20,10 @@ class ModuleResourceService
     public function paginate(Request $request, string $module)
     {
         $model = $this->registry->model($module);
+        $tenantCompanyId = $this->tenantCompanyId($request);
 
         return $model::query()
+            ->when($tenantCompanyId && $this->hasCompanyColumn($model), fn ($query) => $query->where('company_id', $tenantCompanyId))
             ->when($request->filled('company_id'), fn ($query) => $query->where('company_id', $request->integer('company_id')))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->filled('search'), function ($query) use ($request) {
@@ -38,23 +40,28 @@ class ModuleResourceService
     public function create(Request $request, string $module, array $payload): Model
     {
         $model = $this->registry->model($module);
-        $record = $model::create($this->normalize($module, $payload));
+        $this->abortIfTenantWritesGlobalModule($request, $model);
+        $record = $model::create($this->normalize($module, $this->withTenantCompany($request, $model, $payload)));
         $this->afterStore($module, $record);
         $this->audit->log($request, $module, 'created', $record, null, $record->toArray());
 
         return $record;
     }
 
-    public function find(string $module, int $id): Model
+    public function find(Request $request, string $module, int $id): Model
     {
-        return $this->registry->model($module)::findOrFail($id);
+        $model = $this->registry->model($module);
+
+        return $this->scopedQuery($request, $model)->findOrFail($id);
     }
 
     public function update(Request $request, string $module, int $id, array $payload): Model
     {
-        $record = $this->find($module, $id);
+        $model = $this->registry->model($module);
+        $this->abortIfTenantWritesGlobalModule($request, $model);
+        $record = $this->find($request, $module, $id);
         $old = $record->toArray();
-        $record->update($this->normalize($module, $payload));
+        $record->update($this->normalize($module, $this->withTenantCompany($request, $model, $payload)));
         $this->audit->log($request, $module, 'updated', $record, $old, $record->fresh()->toArray());
 
         return $record->fresh();
@@ -62,7 +69,9 @@ class ModuleResourceService
 
     public function delete(Request $request, string $module, int $id): void
     {
-        $record = $this->find($module, $id);
+        $model = $this->registry->model($module);
+        $this->abortIfTenantWritesGlobalModule($request, $model);
+        $record = $this->find($request, $module, $id);
         $old = $record->toArray();
         $record->delete();
         $this->audit->log($request, $module, 'deleted', $record, $old, null);
@@ -80,6 +89,40 @@ class ModuleResourceService
             ->filter(fn ($value) => $value !== null)
             ->only($columns)
             ->all();
+    }
+
+    private function scopedQuery(Request $request, string $model)
+    {
+        return $model::query()
+            ->when($this->tenantCompanyId($request) && $this->hasCompanyColumn($model), fn ($query) => $query->where('company_id', $this->tenantCompanyId($request)));
+    }
+
+    private function withTenantCompany(Request $request, string $model, array $payload): array
+    {
+        $tenantCompanyId = $this->tenantCompanyId($request);
+
+        if ($tenantCompanyId && $this->hasCompanyColumn($model)) {
+            $payload['company_id'] = $tenantCompanyId;
+        }
+
+        return $payload;
+    }
+
+    private function abortIfTenantWritesGlobalModule(Request $request, string $model): void
+    {
+        if ($this->tenantCompanyId($request) && ! $this->hasCompanyColumn($model)) {
+            abort(403, 'Global modul kayitlari sadece super admin tarafindan degistirilebilir.');
+        }
+    }
+
+    private function tenantCompanyId(Request $request): ?int
+    {
+        return $request->user()?->hasRole('super_admin') ? null : (int) $request->user()?->company_id;
+    }
+
+    private function hasCompanyColumn(string $model): bool
+    {
+        return Schema::hasColumn((new $model())->getTable(), 'company_id');
     }
 
     private function afterStore(string $module, Model $record): void

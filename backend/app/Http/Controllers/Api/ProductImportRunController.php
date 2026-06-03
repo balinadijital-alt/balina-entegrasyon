@@ -13,6 +13,7 @@ class ProductImportRunController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json(ProductImportRun::with(['company:id,name', 'xmlSource:id,name'])
+            ->when($this->tenantCompanyId($request), fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->when($request->filled('company_id'), fn ($query) => $query->where('company_id', $request->integer('company_id')))
             ->latest()
             ->paginate(30));
@@ -20,6 +21,8 @@ class ProductImportRunController extends Controller
 
     public function show(ProductImportRun $importRun): JsonResponse
     {
+        $this->abortIfImportRunNotTenant(request(), $importRun);
+
         return response()->json($importRun->load(['company:id,name', 'xmlSource:id,name', 'errors' => fn ($query) => $query->latest()->limit(200)]));
     }
 
@@ -30,6 +33,7 @@ class ProductImportRunController extends Controller
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv'],
             'field_mapping' => ['nullable', 'array'],
         ]);
+        $data = $this->forceTenantCompany($request, $data);
 
         return response()->json($service->previewExcel((int) $data['company_id'], $data['file'], $data['field_mapping'] ?? []));
     }
@@ -43,6 +47,7 @@ class ProductImportRunController extends Controller
             'field_mapping' => ['required', 'array'],
             'options' => ['nullable', 'array'],
         ]);
+        $data = $this->forceTenantCompany($request, $data);
 
         $run = $service->queueExcel((int) $data['company_id'], $data['file'], $data);
 
@@ -51,6 +56,8 @@ class ProductImportRunController extends Controller
 
     public function retry(ProductImportRun $importRun, ProductImportService $service): JsonResponse
     {
+        $this->abortIfImportRunNotTenant(request(), $importRun);
+
         $run = $service->retry($importRun);
 
         return response()->json(['message' => 'Import tekrar kuyruga alindi.', 'import_run_id' => $run->id, 'queued' => true], 202);

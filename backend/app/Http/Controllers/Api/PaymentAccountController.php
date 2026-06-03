@@ -12,6 +12,7 @@ class PaymentAccountController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json(PaymentAccount::with(['company:id,name', 'provider:id,code,name'])
+            ->when($this->tenantCompanyId($request), fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->when($request->filled('company_id'), fn ($query) => $query->where('company_id', $request->integer('company_id')))
             ->latest()
             ->paginate(20));
@@ -19,20 +20,24 @@ class PaymentAccountController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $account = PaymentAccount::create($this->validated($request));
+        $account = PaymentAccount::create($this->forceTenantCompany($request, $this->validated($request)));
 
         return response()->json($account->load(['company:id,name', 'provider:id,code,name']), 201);
     }
 
     public function update(Request $request, PaymentAccount $paymentAccount): JsonResponse
     {
-        $paymentAccount->update($this->validated($request, true));
+        $this->abortIfAccountNotTenant($request, $paymentAccount);
+
+        $paymentAccount->update($this->forceTenantCompany($request, $this->validated($request, true)));
 
         return response()->json($paymentAccount->load(['company:id,name', 'provider:id,code,name']));
     }
 
     public function destroy(PaymentAccount $paymentAccount): JsonResponse
     {
+        $this->abortIfAccountNotTenant(request(), $paymentAccount);
+
         $paymentAccount->delete();
 
         return response()->json(status: 204);

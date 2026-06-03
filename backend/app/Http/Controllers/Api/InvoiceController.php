@@ -19,17 +19,26 @@ class InvoiceController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json(Invoice::with(['company:id,name', 'order:id,marketplace_order_id', 'currentAccount:id,name', 'account.integration:id,code,name'])
+            ->when($this->tenantCompanyId($request), fn ($q, $companyId) => $q->where('company_id', $companyId))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
             ->latest()->paginate(30));
     }
 
-    public function logs(): JsonResponse
+    public function logs(Request $request): JsonResponse
     {
-        return response()->json(AccountingLog::latest()->paginate(50));
+        return response()->json(AccountingLog::query()
+            ->when($this->tenantCompanyId($request), fn ($query, $companyId) => $query
+                ->where(fn ($inner) => $inner
+                    ->whereHas('invoice', fn ($invoice) => $invoice->where('company_id', $companyId))
+                    ->orWhereHas('account', fn ($account) => $account->where('company_id', $companyId))))
+            ->latest()
+            ->paginate(50));
     }
 
     public function createForOrder(Order $order, Request $request, OrderOperationService $operations): JsonResponse
     {
+        $this->abortIfOrderNotTenant($request, $order);
+
         $data = $request->validate([
             'accounting_account_id' => ['required', 'exists:accounting_accounts,id'],
             'current_account_id' => ['nullable', 'exists:current_accounts,id'],
@@ -38,10 +47,19 @@ class InvoiceController extends Controller
             'lines' => ['nullable', 'array'],
         ]);
 
+        $account = \App\Models\AccountingAccount::findOrFail($data['accounting_account_id']);
+        if ((int) $account->company_id !== (int) $order->company_id) {
+            abort(403, 'Muhasebe hesabi bu firmaya ait degil.');
+        }
+
         $current = isset($data['current_account_id']) ? CurrentAccount::find($data['current_account_id']) : CurrentAccount::firstOrCreate(
             ['company_id' => $order->company_id, 'email' => $order->customer_email],
             ['type' => 'customer', 'name' => $order->customer_name ?: 'Musteri', 'is_active' => true]
         );
+        if ((int) $current->company_id !== (int) $order->company_id) {
+            abort(403, 'Cari hesap bu firmaya ait degil.');
+        }
+
         $lines = $data['lines'] ?? data_get($order->payload, 'lines', [['name' => 'Siparis', 'quantity' => 1, 'total' => (float) $order->total_amount]]);
         $grandTotal = collect($lines)->sum(fn ($line) => (float) ($line['total'] ?? $line['amount'] ?? 0)) ?: (float) $order->total_amount;
         $taxTotal = round($grandTotal * 20 / 120, 2);
@@ -73,6 +91,8 @@ class InvoiceController extends Controller
 
     public function returnInvoice(Invoice $invoice): JsonResponse
     {
+        $this->abortIfInvoiceNotTenant(request(), $invoice);
+
         $return = $invoice->replicate(['invoice_number', 'external_id', 'pdf_path', 'pdf_url', 'response_payload']);
         $return->type = 'return';
         $return->status = 'queued';
@@ -86,18 +106,24 @@ class InvoiceController extends Controller
 
     public function query(Invoice $invoice): JsonResponse
     {
+        $this->abortIfInvoiceNotTenant(request(), $invoice);
+
         ProcessInvoiceJob::dispatch($invoice, 'query');
         return response()->json(['message' => 'Fatura durum sorgusu kuyruga alindi.', 'queued' => true], 202);
     }
 
     public function pdf(Invoice $invoice): JsonResponse
     {
+        $this->abortIfInvoiceNotTenant(request(), $invoice);
+
         ProcessInvoiceJob::dispatch($invoice, 'pdf');
         return response()->json(['message' => 'Fatura PDF olusturma kuyruga alindi.', 'queued' => true], 202);
     }
 
     public function download(Invoice $invoice)
     {
+        $this->abortIfInvoiceNotTenant(request(), $invoice);
+
         if ($invoice->pdf_path && Storage::disk('public')->exists($invoice->pdf_path)) return Storage::disk('public')->download($invoice->pdf_path);
         return response()->json(['message' => 'Fatura PDF henuz olusmadi.'], 404);
     }

@@ -12,6 +12,7 @@ class ShippingAccountController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json(ShippingAccount::with(['company:id,name', 'carrier:id,code,name'])
+            ->when($this->tenantCompanyId($request), fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->when($request->filled('company_id'), fn ($query) => $query->where('company_id', $request->integer('company_id')))
             ->latest()
             ->paginate(20));
@@ -19,20 +20,24 @@ class ShippingAccountController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $account = ShippingAccount::create($this->validated($request));
+        $account = ShippingAccount::create($this->forceTenantCompany($request, $this->validated($request)));
 
         return response()->json($account->load(['company:id,name', 'carrier:id,code,name']), 201);
     }
 
     public function update(Request $request, ShippingAccount $shippingAccount): JsonResponse
     {
-        $shippingAccount->update($this->validated($request, true));
+        $this->abortIfAccountNotTenant($request, $shippingAccount);
+
+        $shippingAccount->update($this->forceTenantCompany($request, $this->validated($request, true)));
 
         return response()->json($shippingAccount->load(['company:id,name', 'carrier:id,code,name']));
     }
 
     public function destroy(ShippingAccount $shippingAccount): JsonResponse
     {
+        $this->abortIfAccountNotTenant(request(), $shippingAccount);
+
         $shippingAccount->delete();
 
         return response()->json(status: 204);

@@ -18,11 +18,11 @@ trait HandlesDomainModules
         return response()->json($this->service->paginate($request, $module));
     }
 
-    public function show(string $module, int $id): JsonResponse
+    public function show(Request $request, string $module, int $id): JsonResponse
     {
         $this->registry->assertDomain($this->domain(), $module);
 
-        return response()->json($this->service->find($module, $id));
+        return response()->json($this->service->find($request, $module, $id));
     }
 
     public function destroy(Request $request, string $module, int $id): JsonResponse
