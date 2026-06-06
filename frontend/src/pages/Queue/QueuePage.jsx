@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Clock3, Eye, PlayCircle, RadioTower, RefreshCcw, RotateCcw, ServerCog, Timer, Workflow } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api, asArray, asObject } from '../../api/client.js';
+import { hasPermission } from '../../auth/permissions.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -79,7 +80,7 @@ function statusLabel(status) {
 }
 
 export function QueuePage() {
-  const { notify } = useApp();
+  const { notify, user } = useApp();
   const { loading, error, run } = useAsync();
   const [status, setStatus] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
@@ -118,6 +119,7 @@ export function QueuePage() {
   const queueHealthy = Boolean(redis.connected) && Number(stats.failed_jobs || 0) === 0;
   const jobPayload = useMemo(() => parsePayload(selectedJob?.payload), [selectedJob]);
   const selectedModule = selectedJob ? jobModule(selectedJob) : null;
+  const canRetryQueue = hasPermission(user, 'queue.retry');
 
   return (
     <>
@@ -174,7 +176,7 @@ export function QueuePage() {
                     render: (row) => (
                       <div className="row-actions">
                         <button type="button" className="secondary-button" onClick={() => setSelectedJob(row)}><Eye size={15} /> Detay</button>
-                        <button type="button" disabled={loading} onClick={() => retry(row.uuid)}><RotateCcw size={15} /> Retry</button>
+                        {canRetryQueue && <button type="button" disabled={loading} onClick={() => retry(row.uuid)}><RotateCcw size={15} /> Retry</button>}
                       </div>
                     ),
                   },
@@ -213,7 +215,7 @@ export function QueuePage() {
                     <pre>{JSON.stringify(jobPayload, null, 2)}</pre>
                   </details>
                   <div className="row-actions">
-                    <button type="button" disabled={loading} onClick={() => retry(selectedJob.uuid)}><RotateCcw size={15} /> Retry Et</button>
+                    {canRetryQueue && <button type="button" disabled={loading} onClick={() => retry(selectedJob.uuid)}><RotateCcw size={15} /> Retry Et</button>}
                     <Link className="button-link secondary-link" to={moduleLink(selectedModule)}>Ilgili Module Git</Link>
                   </div>
                 </>

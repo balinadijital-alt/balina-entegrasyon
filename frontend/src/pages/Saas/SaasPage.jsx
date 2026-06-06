@@ -14,6 +14,7 @@ import {
   UsersRound,
 } from 'lucide-react';
 import { api, asArray, asObject } from '../../api/client.js';
+import { hasPermission } from '../../auth/permissions.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -114,7 +115,7 @@ function statusLabel(status) {
 }
 
 export function SaasPage() {
-  const { notify } = useApp();
+  const { notify, user } = useApp();
   const { loading, error, run } = useAsync();
   const [companies, setCompanies] = useState([]);
   const [plans, setPlans] = useState([]);
@@ -129,6 +130,7 @@ export function SaasPage() {
   const [partnerForm, setPartnerForm] = useState({ name: '', email: '', phone: '', code: '', commission_rate: 0 });
 
   const selectedUsage = selectedCompanyId ? usageMap[selectedCompanyId] : null;
+  const canManageSaas = hasPermission(user, 'saas.manage');
 
   const load = async () => {
     await run(async () => {
@@ -185,6 +187,7 @@ export function SaasPage() {
   };
 
   const changePlan = async () => {
+    if (!canManageSaas) return;
     await run(async () => {
       const response = await api.saas.changePlan(selectedCompanyId, { saas_plan_id: selectedPlanId });
       notify('success', response.message);
@@ -194,6 +197,7 @@ export function SaasPage() {
   };
 
   const startTrial = async () => {
+    if (!canManageSaas) return;
     await run(async () => {
       await api.saas.startTrial(selectedCompanyId, { saas_plan_id: selectedPlanId });
       notify('success', 'Deneme aboneligi baslatildi.');
@@ -203,6 +207,7 @@ export function SaasPage() {
   };
 
   const createLicense = async () => {
+    if (!canManageSaas) return;
     await run(async () => {
       await api.saas.createLicense({ saas_plan_id: selectedPlanId, company_id: selectedCompanyId || null });
       notify('success', 'Lisans anahtari olusturuldu.');
@@ -211,6 +216,7 @@ export function SaasPage() {
   };
 
   const activateLicense = async () => {
+    if (!canManageSaas) return;
     await run(async () => {
       const response = await api.saas.activateLicense({ key: licenseKey, company_id: selectedCompanyId });
       notify('success', response.message);
@@ -222,6 +228,7 @@ export function SaasPage() {
 
   const createPartner = async (event) => {
     event.preventDefault();
+    if (!canManageSaas) return;
     await run(async () => {
       await api.saas.createPartner({ ...partnerForm, commission_rate: Number(partnerForm.commission_rate || 0) });
       setPartnerForm({ name: '', email: '', phone: '', code: '', commission_rate: 0 });
@@ -255,10 +262,12 @@ export function SaasPage() {
           <span className="eyebrow">SaaS gelir ve limit kontrolu</span>
           <h2>Paket, abonelik ve kullanim sagligini tek panelde takip edin.</h2>
           <p>Trial hesaplari, suresi yaklasan paketleri, limit asimi risklerini, lisanslari ve partner kanalini operasyonel olarak yonetin.</p>
-          <div className="saas-hero-actions">
-            <button type="button" onClick={changePlan} disabled={loading || !selectedCompanyId || !selectedPlanId}><Rocket size={16} /> Paket Degistir</button>
-            <button type="button" className="secondary" onClick={startTrial} disabled={loading || !selectedCompanyId || !selectedPlanId}><Clock3 size={16} /> Trial Baslat</button>
-          </div>
+          {canManageSaas && (
+            <div className="saas-hero-actions">
+              <button type="button" onClick={changePlan} disabled={loading || !selectedCompanyId || !selectedPlanId}><Rocket size={16} /> Paket Degistir</button>
+              <button type="button" className="secondary" onClick={startTrial} disabled={loading || !selectedCompanyId || !selectedPlanId}><Clock3 size={16} /> Trial Baslat</button>
+            </div>
+          )}
         </div>
         <div className="saas-hero-status">
           <Crown size={28} />
@@ -316,7 +325,7 @@ export function SaasPage() {
             </select>
           </Field>
           <button type="button" onClick={() => loadUsage()} disabled={loading || !selectedCompanyId}><Eye size={16} /> Kullanim Detayi</button>
-          <button type="button" onClick={createLicense} disabled={loading || !selectedPlanId}><KeyRound size={16} /> Lisans Olustur</button>
+          {canManageSaas && <button type="button" onClick={createLicense} disabled={loading || !selectedPlanId}><KeyRound size={16} /> Lisans Olustur</button>}
         </div>
       </section>
 
@@ -402,7 +411,7 @@ export function SaasPage() {
             </div>
           </section>
 
-          <section className="saas-form-grid">
+          {canManageSaas && <section className="saas-form-grid">
             <div className="panel saas-action-panel">
               <h2>Lisans aktive et</h2>
               <p>Hazir lisans anahtarini secili firmaya baglayip aboneligi otomatik guncelleyin.</p>
@@ -420,7 +429,7 @@ export function SaasPage() {
               <input type="number" value={partnerForm.commission_rate} onChange={(event) => setPartnerForm({ ...partnerForm, commission_rate: event.target.value })} placeholder="Komisyon" />
               <button disabled={loading}>Partner Kaydet</button>
             </form>
-          </section>
+          </section>}
         </>
       )}
     </div>

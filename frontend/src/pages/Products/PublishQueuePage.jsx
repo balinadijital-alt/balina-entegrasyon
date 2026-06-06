@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, Edit3, Layers3, Send, Tags } from 'lucide-react';
 import { api } from '../../api/client.js';
+import { hasPermission } from '../../auth/permissions.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
@@ -78,7 +79,7 @@ function fixTarget(product, missing = [], marketplaceCode = '') {
 }
 
 export function PublishQueuePage() {
-  const { notify } = useApp();
+  const { notify, user } = useApp();
   const { loading, error, run } = useAsync();
   const [drafts, setDrafts] = useState([]);
   const [products, setProducts] = useState([]);
@@ -96,6 +97,7 @@ export function PublishQueuePage() {
   const blockedDrafts = filteredDrafts.filter((draft) => !['ready', 'queued'].includes(draft.status));
   const visibleDrafts = activeQueueTab === 'ready' ? readyDrafts : blockedDrafts;
   const selectedMarketplaceCode = selectedMarketplace?.code || '';
+  const canSendMarketplaces = hasPermission(user, 'marketplaces.send');
 
   const load = async () => {
     await run(async () => {
@@ -126,6 +128,7 @@ export function PublishQueuePage() {
   };
 
   const createDraft = async () => {
+    if (!canSendMarketplaces) return;
     if (!marketplaceId || selectedProducts.length === 0) {
       notify('error', 'Aktarim listesi icin pazaryeri ve urun secimi zorunludur.');
       return;
@@ -146,6 +149,7 @@ export function PublishQueuePage() {
   };
 
   const sendDraft = async (draftId) => {
+    if (!canSendMarketplaces) return;
     await run(async () => {
       const response = await api.productPublish.send(draftId);
       setPreviewDraft(response);
@@ -171,7 +175,7 @@ export function PublishQueuePage() {
           <>
             <Link className="button-link secondary-link" to="/products/category-mapping"><Layers3 size={16} /> Kategori Esle</Link>
             <Link className="button-link secondary-link" to="/catalog/attributes"><Tags size={16} /> Katalog Kaynaklari</Link>
-            <Link className="button-link" to="/products/publish"><Send size={16} /> Aktarim Hazirlama Sihirbazi</Link>
+            {canSendMarketplaces && <Link className="button-link" to="/products/publish"><Send size={16} /> Aktarim Hazirlama Sihirbazi</Link>}
           </>
         )}
       />
@@ -190,7 +194,7 @@ export function PublishQueuePage() {
               </select>
             </Field>
             <div className="soft-empty"><strong>{selectedProducts.length} urun secildi</strong><span>{selectedMarketplace?.name || 'Pazaryeri secilmedi'}</span></div>
-            <button type="button" disabled={loading} onClick={createDraft}><CheckCircle2 size={16} /> Onizle ve Listeye Ekle</button>
+            {canSendMarketplaces && <button type="button" disabled={loading} onClick={createDraft}><CheckCircle2 size={16} /> Onizle ve Listeye Ekle</button>}
           </div>
           <DataTable
             rows={products}
@@ -228,7 +232,7 @@ export function PublishQueuePage() {
       {selectedDrafts.length > 0 && (
         <section className="state-box bulk-action-bar">
           <span>{selectedDrafts.length} aktarim kaydi secildi.</span>
-          <button type="button" disabled={loading || activeQueueTab !== 'ready'} onClick={sendSelectedDrafts}><Send size={16} /> Secilenleri Hazirla</button>
+          {canSendMarketplaces && <button type="button" disabled={loading || activeQueueTab !== 'ready'} onClick={sendSelectedDrafts}><Send size={16} /> Secilenleri Hazirla</button>}
         </section>
       )}
 
@@ -287,7 +291,7 @@ export function PublishQueuePage() {
               render: (row) => (
                 <div className="row-actions">
                   <button type="button" className="secondary-button" onClick={() => setPreviewDraft(row)}>Onizle</button>
-                  <button type="button" disabled={loading || row.status === 'blocked'} onClick={() => sendDraft(row.id)}><Send size={15} /> Hazirla</button>
+                  {canSendMarketplaces && <button type="button" disabled={loading || row.status === 'blocked'} onClick={() => sendDraft(row.id)}><Send size={15} /> Hazirla</button>}
                 </div>
               ),
             },

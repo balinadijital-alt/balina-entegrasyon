@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, RefreshCw, ShoppingBag, Store } from 'lucide-react';
 import { api, asArray } from '../../api/client.js';
+import { hasPermission } from '../../auth/permissions.js';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
@@ -39,7 +40,7 @@ function statusLabel(value) {
 }
 
 export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
-  const { notify } = useApp();
+  const { notify, user } = useApp();
   const { loading, error, setError, run } = useAsync();
   const [accounts, setAccounts] = useState([]);
   const [companies, setCompanies] = useState([]);
@@ -65,6 +66,7 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
 
   const submit = async (event) => {
     event.preventDefault();
+    if (!canManageMarketplaces) return;
     const validationErrors = validateMarketplace(form);
     setErrors(validationErrors);
 
@@ -125,6 +127,8 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
     const matchesStatus = !status || account.connection_status === status;
     return matchesSearch && matchesStatus;
   });
+  const canManageMarketplaces = hasPermission(user, 'marketplaces.manage');
+  const canSendMarketplaces = hasPermission(user, 'marketplaces.send');
 
   return (
     <>
@@ -173,10 +177,14 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
                 </div>
                 {account.last_error && <SoftEmpty className="error-state"><AlertTriangle size={16} /> {account.last_error}</SoftEmpty>}
                 <div className="row-actions marketplace-card-actions">
-                  <button type="button" disabled={loading || syncing} onClick={() => sync(account.id, isHepsiburada ? 'hbTest' : 'test')}><CheckCircle2 size={15} /> {syncLabel(account.id, isHepsiburada ? 'hbTest' : 'test', 'Baglantiyi Kontrol Et')}</button>
-                  <button type="button" className="secondary-button" disabled={loading || syncing} onClick={() => sync(account.id, isHepsiburada ? 'hbProducts' : 'products')}><RefreshCw size={15} /> Urunleri Gonder</button>
-                  <button type="button" className="secondary-button" disabled={loading || syncing} onClick={() => sync(account.id, isHepsiburada ? 'hbPrices' : 'prices')}>Stok/Fiyat Guncelle</button>
-                  <button type="button" className="secondary-button" disabled={loading || syncing} onClick={() => sync(account.id, isHepsiburada ? 'hbOrders' : 'orders')}>Siparisleri Al</button>
+                  {canManageMarketplaces && <button type="button" disabled={loading || syncing} onClick={() => sync(account.id, isHepsiburada ? 'hbTest' : 'test')}><CheckCircle2 size={15} /> {syncLabel(account.id, isHepsiburada ? 'hbTest' : 'test', 'Baglantiyi Kontrol Et')}</button>}
+                  {canSendMarketplaces && (
+                    <>
+                      <button type="button" className="secondary-button" disabled={loading || syncing} onClick={() => sync(account.id, isHepsiburada ? 'hbProducts' : 'products')}><RefreshCw size={15} /> Urunleri Gonder</button>
+                      <button type="button" className="secondary-button" disabled={loading || syncing} onClick={() => sync(account.id, isHepsiburada ? 'hbPrices' : 'prices')}>Stok/Fiyat Guncelle</button>
+                      <button type="button" className="secondary-button" disabled={loading || syncing} onClick={() => sync(account.id, isHepsiburada ? 'hbOrders' : 'orders')}>Siparisleri Al</button>
+                    </>
+                  )}
                 </div>
               </article>
             );
@@ -203,7 +211,7 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
         </section>
       )}
 
-      <details className="panel marketplace-form-panel">
+      {canManageMarketplaces && <details className="panel marketplace-form-panel">
         <summary>Yeni pazaryeri hesabi ekle</summary>
         <form className="form-grid" onSubmit={submit}>
           <Field label="Firma" error={errors.company_id}>
@@ -237,7 +245,7 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
           </Field>
           <button disabled={loading}>{loading ? 'Kaydediliyor...' : 'Baglanti Ekle'}</button>
         </form>
-      </details>
+      </details>}
       {error && <ErrorState message={error} onRetry={load} />}
       {syncing && <LoadingState label="Islem calisiyor..." />}
       {categories.length > 0 && (

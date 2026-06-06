@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AlertTriangle, Edit3, ImagePlus, Layers3, Send, Upload } from 'lucide-react';
 import { api } from '../../api/client.js';
+import { hasPermission } from '../../auth/permissions.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
@@ -97,7 +98,7 @@ function marketplacePath(code) {
 
 export function ProductDetailPage() {
   const { id } = useParams();
-  const { notify } = useApp();
+  const { notify, user } = useApp();
   const { loading, error, run } = useAsync();
   const [product, setProduct] = useState(null);
   const [readiness, setReadiness] = useState(null);
@@ -161,6 +162,7 @@ export function ProductDetailPage() {
     ...(statusRollup[code] || {}),
   }));
   const problemChildren = batchRows.flatMap((row) => row.problem_children || []);
+  const canSendMarketplaces = hasPermission(user, 'marketplaces.send');
 
   return (
     <>
@@ -170,8 +172,8 @@ export function ProductDetailPage() {
           <>
             <Link className="button-link secondary-link" to={`/products/${product.id}/edit`}><Edit3 size={16} /> Duzenle</Link>
             <Link className="button-link secondary-link" to={`/products/category-mapping?category=${encodeURIComponent(product.category || '')}`}><Layers3 size={16} /> Gonderime Hazirla</Link>
-            <Link className="button-link secondary-link" to="/products/publish-queue">Aktarim Listesine Ekle</Link>
-            <Link className="button-link" to={`/products/publish?product=${product.id}`}><Send size={16} /> Pazaryerine Gonder</Link>
+            {canSendMarketplaces && <Link className="button-link secondary-link" to="/products/publish-queue">Aktarim Listesine Ekle</Link>}
+            {canSendMarketplaces && <Link className="button-link" to={`/products/publish?product=${product.id}`}><Send size={16} /> Pazaryerine Gonder</Link>}
           </>
         )}
       />

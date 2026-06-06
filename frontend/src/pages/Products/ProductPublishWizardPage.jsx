@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Edit3, Layers3, Send, Tags } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client.js';
+import { hasPermission } from '../../auth/permissions.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
@@ -75,7 +76,7 @@ function productReadinessSummary(product, marketplaceCode) {
 
 export function ProductPublishWizardPage() {
   const [searchParams] = useSearchParams();
-  const { notify } = useApp();
+  const { notify, user } = useApp();
   const { loading, error, setError, run } = useAsync();
   const [products, setProducts] = useState([]);
   const [marketplaces, setMarketplaces] = useState([]);
@@ -117,6 +118,7 @@ export function ProductPublishWizardPage() {
   const selectedAverageScore = selectedRows.length
     ? Math.round(selectedRows.reduce((sum, product) => sum + readinessScore(product, marketplaceCode), 0) / selectedRows.length)
     : 0;
+  const canSendMarketplaces = hasPermission(user, 'marketplaces.send');
 
   const load = async () => {
     await run(async () => {
@@ -166,6 +168,7 @@ export function ProductPublishWizardPage() {
   };
 
   const validateDraft = async () => {
+    if (!canSendMarketplaces) return;
     if (!marketplaceId || selectedProducts.length === 0) {
       setError('Urun ve pazaryeri secimi zorunludur.');
       return;
@@ -185,6 +188,7 @@ export function ProductPublishWizardPage() {
   };
 
   const sendDraft = async () => {
+    if (!canSendMarketplaces) return;
     if (!draft?.id) return;
     await run(async () => {
       const response = await api.productPublish.send(draft.id);
@@ -406,8 +410,8 @@ export function ProductPublishWizardPage() {
           <button type="button" className="secondary-button" disabled={step === 0} onClick={() => setStep((current) => current - 1)}><ChevronLeft size={16} /> Geri</button>
           {step < 3 && <button type="button" disabled={(step === 0 && !marketplaceId) || (step === 1 && selectedProducts.length === 0)} onClick={() => setStep((current) => current + 1)}>Ileri <ChevronRight size={16} /></button>}
           {step === 3 && <button type="button" onClick={() => setStep(4)}>Ozete Gec <ChevronRight size={16} /></button>}
-          {step === 4 && !draft && <button type="button" disabled={loading || selectedProducts.length === 0} onClick={validateDraft}><CheckCircle2 size={16} /> Kontrol Et ve Onizle</button>}
-          {step === 4 && draft && <button type="button" disabled={loading || draft?.status === 'blocked'} onClick={sendDraft}><Send size={16} /> Aktarim Listesine Hazirla</button>}
+          {step === 4 && !draft && canSendMarketplaces && <button type="button" disabled={loading || selectedProducts.length === 0} onClick={validateDraft}><CheckCircle2 size={16} /> Kontrol Et ve Onizle</button>}
+          {step === 4 && draft && canSendMarketplaces && <button type="button" disabled={loading || draft?.status === 'blocked'} onClick={sendDraft}><Send size={16} /> Aktarim Listesine Hazirla</button>}
         </div>
       </section>
     </>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { defaultRouteForUser } from '../../auth/permissions.js';
 import { Field } from '../../components/Field.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
@@ -26,7 +27,7 @@ export function LoginPage() {
 
     await run(async () => {
       const response = await login(form);
-      navigate(response.panel || (response.user?.roles?.some((role) => role.name === 'super_admin') ? '/admin' : '/app'));
+      navigate(response.panel || defaultRouteForUser(response.user, '/app'));
     });
   };
 

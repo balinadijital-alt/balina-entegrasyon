@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Link as RouterLink } from 'react-router-dom';
 import { api, asArray } from '../../api/client.js';
+import { hasPermission } from '../../auth/permissions.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -204,7 +205,7 @@ function latestLog(payment, logs) {
 }
 
 export function PaymentsPage() {
-  const { notify } = useApp();
+  const { notify, user } = useApp();
   const { loading, error, run } = useAsync();
   const [companies, setCompanies] = useState([]);
   const [providers, setProviders] = useState([]);
@@ -284,6 +285,8 @@ export function PaymentsPage() {
   }), [logs, payments]);
 
   const successRate = payments.length ? Math.round((metrics.paid / payments.length) * 100) : 0;
+  const canManagePayments = hasPermission(user, 'payments.manage');
+  const canRefundPayments = hasPermission(user, 'payments.refund');
 
   const createAccount = async (event) => {
     event.preventDefault();
@@ -417,15 +420,21 @@ export function PaymentsPage() {
                     label: 'Islem',
                     render: (row) => (
                       <div className="row-actions payment-row-actions">
-                        <button type="button" title="Durum sorgula" onClick={() => action(row.id, api.payments.query, null, 'Sorgu kuyruga alindi.')}>
-                          <RotateCcw size={15} />
-                        </button>
-                        <button type="button" title="Iade baslat" onClick={() => action(row.id, api.payments.refund, { amount: refundAmount(row) }, 'Iade islendi.')} disabled={!['paid', 'partially_refunded'].includes(row.status)}>
-                          <Undo2 size={15} />
-                        </button>
-                        <button type="button" title="Kismi iade" onClick={() => action(row.id, api.payments.refund, { amount: refundAmount(row, 0.5) }, 'Kismi iade islendi.')} disabled={!['paid', 'partially_refunded'].includes(row.status)}>
-                          <Banknote size={15} />
-                        </button>
+                        {canManagePayments && (
+                          <button type="button" title="Durum sorgula" onClick={() => action(row.id, api.payments.query, null, 'Sorgu kuyruga alindi.')}>
+                            <RotateCcw size={15} />
+                          </button>
+                        )}
+                        {canRefundPayments && (
+                          <>
+                            <button type="button" title="Iade baslat" onClick={() => action(row.id, api.payments.refund, { amount: refundAmount(row) }, 'Iade islendi.')} disabled={!['paid', 'partially_refunded'].includes(row.status)}>
+                              <Undo2 size={15} />
+                            </button>
+                            <button type="button" title="Kismi iade" onClick={() => action(row.id, api.payments.refund, { amount: refundAmount(row, 0.5) }, 'Kismi iade islendi.')} disabled={!['paid', 'partially_refunded'].includes(row.status)}>
+                              <Banknote size={15} />
+                            </button>
+                          </>
+                        )}
                         <button type="button" title="Detay gor" onClick={() => setSelectedPayment(row)}>
                           <Eye size={15} />
                         </button>
@@ -442,6 +451,8 @@ export function PaymentsPage() {
               onQuery={(id) => action(id, api.payments.query, null, 'Sorgu kuyruga alindi.')}
               onRefund={(payment) => action(payment.id, api.payments.refund, { amount: refundAmount(payment) }, 'Iade islendi.')}
               onPartialRefund={(payment) => action(payment.id, api.payments.refund, { amount: refundAmount(payment, 0.5) }, 'Kismi iade islendi.')}
+              canManage={canManagePayments}
+              canRefund={canRefundPayments}
             />
           </section>
 
@@ -496,7 +507,7 @@ export function PaymentsPage() {
   );
 }
 
-function PaymentDetailPanel({ payment, logs, onQuery, onRefund, onPartialRefund }) {
+function PaymentDetailPanel({ payment, logs, onQuery, onRefund, onPartialRefund, canManage, canRefund }) {
   if (!payment) {
     return (
       <aside className="panel payment-detail-panel empty">
@@ -509,7 +520,7 @@ function PaymentDetailPanel({ payment, logs, onQuery, onRefund, onPartialRefund 
 
   const relatedLogs = paymentLogs(payment, logs);
   const latest = latestLog(payment, logs);
-  const canRefund = ['paid', 'partially_refunded'].includes(payment.status);
+  const refundable = ['paid', 'partially_refunded'].includes(payment.status);
 
   return (
     <aside className="panel payment-detail-panel">
@@ -553,9 +564,9 @@ function PaymentDetailPanel({ payment, logs, onQuery, onRefund, onPartialRefund 
       )}
 
       <div className="payment-detail-actions">
-        <button type="button" onClick={() => onQuery(payment.id)}><RotateCcw size={15} /> Durum Sorgula</button>
-        <button type="button" onClick={() => onRefund(payment)} disabled={!canRefund}><Undo2 size={15} /> Iade Baslat</button>
-        <button type="button" className="secondary" onClick={() => onPartialRefund(payment)} disabled={!canRefund}><Banknote size={15} /> Kismi Iade</button>
+        {canManage && <button type="button" onClick={() => onQuery(payment.id)}><RotateCcw size={15} /> Durum Sorgula</button>}
+        {canRefund && <button type="button" onClick={() => onRefund(payment)} disabled={!refundable}><Undo2 size={15} /> Iade Baslat</button>}
+        {canRefund && <button type="button" className="secondary" onClick={() => onPartialRefund(payment)} disabled={!refundable}><Banknote size={15} /> Kismi Iade</button>}
         <RouterLink className="button-link secondary-link" to="/api-logs"><ReceiptText size={15} /> Loglari Gor</RouterLink>
       </div>
 

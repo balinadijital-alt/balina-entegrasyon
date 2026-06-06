@@ -445,6 +445,24 @@ a {
   padding: 0 10px;
 }
 
+.topbar-user {
+  align-items: center;
+  display: inline-flex;
+  gap: 10px;
+}
+
+.role-badge {
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
 .breadcrumbs {
   align-items: center;
   color: #64748b;
@@ -2336,6 +2354,37 @@ tbody td:last-child .row-actions:focus-within {
 
 .empty-state span {
   max-width: 380px;
+}
+
+.unauthorized-state {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-soft);
+  color: #64748b;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  margin: 56px auto;
+  max-width: 560px;
+  padding: 42px 28px;
+  text-align: center;
+}
+
+.unauthorized-state svg {
+  color: #f59e0b;
+}
+
+.unauthorized-state h1 {
+  color: var(--text);
+  font-size: 24px;
+  margin: 0;
+}
+
+.unauthorized-state p {
+  line-height: 1.6;
+  margin: 0 0 8px;
 }
 
 .soft-empty {

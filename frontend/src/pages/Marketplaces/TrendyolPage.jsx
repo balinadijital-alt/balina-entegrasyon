@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Activity, Boxes, ClipboardList, FileText, HelpCircle, Layers3, Link2, PackageCheck, RefreshCw, RotateCcw, Send, Tags } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api, asArray } from '../../api/client.js';
+import { hasPermission } from '../../auth/permissions.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -38,7 +39,7 @@ function userMessage(error) {
 }
 
 export function TrendyolPage() {
-  const { notify } = useApp();
+  const { notify, user } = useApp();
   const { loading, error, run } = useAsync();
   const [accounts, setAccounts] = useState([]);
   const [companies, setCompanies] = useState([]);
@@ -55,6 +56,8 @@ export function TrendyolPage() {
   const [result, setResult] = useState(null);
 
   const selectedAccount = useMemo(() => accounts.find((account) => String(account.id) === String(accountId)), [accounts, accountId]);
+  const canManageMarketplaces = hasPermission(user, 'marketplaces.manage');
+  const canSendMarketplaces = hasPermission(user, 'marketplaces.send');
 
   const load = async () => {
     await run(async () => {
@@ -95,6 +98,7 @@ export function TrendyolPage() {
 
   const saveAccount = async (event) => {
     event.preventDefault();
+    if (!canManageMarketplaces) return;
     const payload = {
       company_id: form.company_id,
       code: 'trendyol',
@@ -183,8 +187,8 @@ export function TrendyolPage() {
               </select>
             </Field>
             <Field label="User-Agent"><input value={form.user_agent} onChange={(event) => setForm({ ...form, user_agent: event.target.value })} /></Field>
-            <button disabled={loading}>Kaydet</button>
-            <button type="button" disabled={loading || !accountId} onClick={() => accountRequired() && execute('Baglanti testi', () => api.marketplaces.trendyolTest(accountId))}><RefreshCw size={16} /> Baglanti Testi</button>
+            {canManageMarketplaces && <button disabled={loading}>Kaydet</button>}
+            {canManageMarketplaces && <button type="button" disabled={loading || !accountId} onClick={() => accountRequired() && execute('Baglanti testi', () => api.marketplaces.trendyolTest(accountId))}><RefreshCw size={16} /> Baglanti Testi</button>}
           </form>
         </section>
       )}
@@ -193,12 +197,12 @@ export function TrendyolPage() {
         <section className="panel">
           <h2>Kategori ve Marka Guncelleme</h2>
           <div className="bulk-grid">
-            <button disabled={!accountId || loading} onClick={() => accountRequired() && execute('Kategori agaci', () => api.marketplaces.trendyolCategories(accountId))}><RefreshCw size={16} /> Kategori Agaci</button>
-            <button disabled={!accountId || loading} onClick={() => accountRequired() && execute('Marka listesi', () => api.marketplaces.trendyolBrands(accountId))}><RefreshCw size={16} /> Marka Listesi</button>
+            {canManageMarketplaces && <button disabled={!accountId || loading} onClick={() => accountRequired() && execute('Kategori agaci', () => api.marketplaces.trendyolCategories(accountId))}><RefreshCw size={16} /> Kategori Agaci</button>}
+            {canManageMarketplaces && <button disabled={!accountId || loading} onClick={() => accountRequired() && execute('Marka listesi', () => api.marketplaces.trendyolBrands(accountId))}><RefreshCw size={16} /> Marka Listesi</button>}
             <input value={categoryId} onChange={(event) => setCategoryId(event.target.value)} placeholder="Kategori ID" />
-            <button disabled={!accountId || !categoryId || loading} onClick={() => execute('Kategori ozellikleri', () => api.marketplaces.trendyolCategoryAttributes(accountId, categoryId))}>Ozellikleri Getir</button>
+            {canManageMarketplaces && <button disabled={!accountId || !categoryId || loading} onClick={() => execute('Kategori ozellikleri', () => api.marketplaces.trendyolCategoryAttributes(accountId, categoryId))}>Ozellikleri Getir</button>}
             <input value={attributeId} onChange={(event) => setAttributeId(event.target.value)} placeholder="Ozellik ID" />
-            <button disabled={!accountId || !categoryId || !attributeId || loading} onClick={() => execute('Ozellik degerleri', () => api.marketplaces.trendyolCategoryAttributeValues(accountId, categoryId, attributeId))}>Degerleri Getir</button>
+            {canManageMarketplaces && <button disabled={!accountId || !categoryId || !attributeId || loading} onClick={() => execute('Ozellik degerleri', () => api.marketplaces.trendyolCategoryAttributeValues(accountId, categoryId, attributeId))}>Degerleri Getir</button>}
           </div>
         </section>
       )}
@@ -209,7 +213,7 @@ export function TrendyolPage() {
           <p className="muted-text">Urun gonderme sihirbazi Trendyol kategori bilgisine gore zorunlu ozellikleri kontrol eder. Eksik zorunlu ozellik varsa gonderim engellenir.</p>
           <div className="bulk-grid">
             <input value={categoryId} onChange={(event) => setCategoryId(event.target.value)} placeholder="Kategori ID" />
-            <button disabled={!accountId || !categoryId} onClick={() => execute('Zorunlu ozellik kontrolu', () => api.marketplaces.trendyolCategoryAttributes(accountId, categoryId))}>Zorunlu Ozellikleri Kontrol Et</button>
+            {canManageMarketplaces && <button disabled={!accountId || !categoryId} onClick={() => execute('Zorunlu ozellik kontrolu', () => api.marketplaces.trendyolCategoryAttributes(accountId, categoryId))}>Zorunlu Ozellikleri Kontrol Et</button>}
             <Link className="button-link" to="/products/category-mapping">Kategori Esleme Sayfasina Git</Link>
           </div>
         </section>
@@ -220,9 +224,9 @@ export function TrendyolPage() {
           <h2>Urun Aktarim Listesi</h2>
           <div className="bulk-grid">
             <Link className="button-link secondary-link" to="/products/publish-queue">Aktarim Listesini Ac</Link>
-            <button disabled={!accountId || loading} onClick={() => execute('Toplu urun gonderimi', () => api.marketplaces.trendyolSendProducts(accountId))}><Send size={16} /> Toplu Urun Gonder</button>
-            <button disabled={!accountId || loading} onClick={() => execute('Onayli urunler', () => api.marketplaces.trendyolFilterProducts(accountId, { state: 'approved' }))}>Onayli Urunler</button>
-            <button disabled={!accountId || loading} onClick={() => execute('Onaysiz urunler', () => api.marketplaces.trendyolFilterProducts(accountId, { state: 'unapproved' }))}>Onaysiz Urunler</button>
+            {canSendMarketplaces && <button disabled={!accountId || loading} onClick={() => execute('Toplu urun gonderimi', () => api.marketplaces.trendyolSendProducts(accountId))}><Send size={16} /> Toplu Urun Gonder</button>}
+            {canManageMarketplaces && <button disabled={!accountId || loading} onClick={() => execute('Onayli urunler', () => api.marketplaces.trendyolFilterProducts(accountId, { state: 'approved' }))}>Onayli Urunler</button>}
+            {canManageMarketplaces && <button disabled={!accountId || loading} onClick={() => execute('Onaysiz urunler', () => api.marketplaces.trendyolFilterProducts(accountId, { state: 'unapproved' }))}>Onaysiz Urunler</button>}
           </div>
         </section>
       )}
@@ -237,7 +241,7 @@ export function TrendyolPage() {
       {activeTab === 'price' && (
         <section className="panel">
           <h2>Stok / Fiyat Guncelleme</h2>
-          <div className="bulk-grid"><button disabled={!accountId || loading} onClick={() => execute('Stok fiyat guncelleme', () => api.marketplaces.trendyolUpdatePriceInventory(accountId))}>Toplu Stok/Fiyat Gonder</button></div>
+          <div className="bulk-grid">{canSendMarketplaces && <button disabled={!accountId || loading} onClick={() => execute('Stok fiyat guncelleme', () => api.marketplaces.trendyolUpdatePriceInventory(accountId))}>Toplu Stok/Fiyat Gonder</button>}</div>
         </section>
       )}
 
@@ -245,8 +249,8 @@ export function TrendyolPage() {
         <section className="panel">
           <h2>Siparisleri Al</h2>
           <div className="bulk-grid">
-            <button disabled={!accountId || loading} onClick={() => execute('Yeni siparisleri alma', () => api.marketplaces.trendyolOrdersStream(accountId))}>Yeni Siparisleri Al</button>
-            <button disabled={!accountId || loading} onClick={() => execute('Tum siparisleri alma', () => api.marketplaces.trendyolPullOrders(accountId))}>Tum Siparisleri Kontrol Et</button>
+            {canSendMarketplaces && <button disabled={!accountId || loading} onClick={() => execute('Yeni siparisleri alma', () => api.marketplaces.trendyolOrdersStream(accountId))}>Yeni Siparisleri Al</button>}
+            {canSendMarketplaces && <button disabled={!accountId || loading} onClick={() => execute('Tum siparisleri alma', () => api.marketplaces.trendyolPullOrders(accountId))}>Tum Siparisleri Kontrol Et</button>}
           </div>
         </section>
       )}
@@ -254,14 +258,14 @@ export function TrendyolPage() {
       {activeTab === 'returns' && (
         <section className="panel">
           <h2>Iade Yonetimi</h2>
-          <button disabled={!accountId || loading} onClick={() => execute('Iade talepleri', () => api.marketplaces.trendyolReturns(accountId))}>Iade Taleplerini Cek</button>
+          {canSendMarketplaces && <button disabled={!accountId || loading} onClick={() => execute('Iade talepleri', () => api.marketplaces.trendyolReturns(accountId))}>Iade Taleplerini Cek</button>}
         </section>
       )}
 
       {activeTab === 'questions' && (
         <section className="panel">
           <h2>Musteri Soru - Cevap</h2>
-          <button disabled={!accountId || loading} onClick={() => execute('Soru listesi', () => api.marketplaces.trendyolQuestions(accountId))}>Sorulari Cek</button>
+          {canSendMarketplaces && <button disabled={!accountId || loading} onClick={() => execute('Soru listesi', () => api.marketplaces.trendyolQuestions(accountId))}>Sorulari Cek</button>}
         </section>
       )}
 
@@ -271,8 +275,8 @@ export function TrendyolPage() {
           <div className="bulk-grid">
             <input value={packageId} onChange={(event) => setPackageId(event.target.value)} placeholder="Paket ID" />
             <input value={invoiceLink} onChange={(event) => setInvoiceLink(event.target.value)} placeholder="Fatura PDF linki" />
-            <button disabled={!accountId || !packageId || !invoiceLink || loading} onClick={() => execute('Fatura linki', () => api.marketplaces.trendyolSendInvoiceLink(accountId, packageId, { invoice_link: invoiceLink }))}>Fatura Linki Gonder</button>
-            <button disabled={!accountId || loading} onClick={() => execute('Ortak etiket barkod', () => api.marketplaces.trendyolCommonLabelBarcodes(accountId))}>Ortak Etiket Barkod</button>
+            {canSendMarketplaces && <button disabled={!accountId || !packageId || !invoiceLink || loading} onClick={() => execute('Fatura linki', () => api.marketplaces.trendyolSendInvoiceLink(accountId, packageId, { invoice_link: invoiceLink }))}>Fatura Linki Gonder</button>}
+            {canSendMarketplaces && <button disabled={!accountId || loading} onClick={() => execute('Ortak etiket barkod', () => api.marketplaces.trendyolCommonLabelBarcodes(accountId))}>Ortak Etiket Barkod</button>}
           </div>
         </section>
       )}

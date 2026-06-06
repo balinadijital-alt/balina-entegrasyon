@@ -20,6 +20,7 @@ import {
   Webhook,
 } from 'lucide-react';
 import { api, apiErrorMessage, asArray, asObject } from '../../api/client.js';
+import { hasPermission } from '../../auth/permissions.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -29,6 +30,7 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { SoftEmpty } from '../../components/SoftEmpty.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { StatusPill } from '../../components/StatusPill.jsx';
+import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
 const tabs = [
@@ -138,6 +140,7 @@ function jsonPreview(value) {
 }
 
 export function SettingsPage({ audience = 'admin' }) {
+  const { user } = useApp();
   const { loading, error, run } = useAsync();
   const [activeTab, setActiveTab] = useState('companies');
   const [selectedCompany, setSelectedCompany] = useState(null);
@@ -165,6 +168,7 @@ export function SettingsPage({ audience = 'admin' }) {
   });
 
   const basePath = audience === 'customer' ? '/app' : '';
+  const canManageSettings = hasPermission(user, 'settings.manage');
 
   const load = async () => {
     await run(async () => {
@@ -235,6 +239,7 @@ export function SettingsPage({ audience = 'admin' }) {
 
   const saveSettings = async (event) => {
     event.preventDefault();
+    if (!canManageSettings) return;
     setSettingsSaving(true);
     setSettingsMessage('');
     setSettingsError('');
@@ -251,6 +256,7 @@ export function SettingsPage({ audience = 'admin' }) {
   };
 
   const testWebhook = async () => {
+    if (!canManageSettings) return;
     setWebhookTestMessage('');
     setWebhookTestError('');
 
@@ -473,7 +479,7 @@ export function SettingsPage({ audience = 'admin' }) {
                       />
                     ),
                   },
-                  { key: 'actions', label: 'Islem', render: (row) => <Link className="button-link secondary-link" to={row.manageTo}>Duzenle</Link> },
+                  { key: 'actions', label: 'Islem', render: (row) => canManageSettings ? <Link className="button-link secondary-link" to={row.manageTo}>Duzenle</Link> : '-' },
                 ]}
               />
             </section>
@@ -498,7 +504,7 @@ export function SettingsPage({ audience = 'admin' }) {
                   <span>Sadece kritik uyari</span>
                   <input type="checkbox" checked={Boolean(settings.notifications.critical_only)} onChange={(event) => updateSetting('notifications', 'critical_only', event.target.checked)} />
                 </label>
-                <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+                {canManageSettings && <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>}
               </article>
 
               <article className="settings-option-card">
@@ -517,7 +523,7 @@ export function SettingsPage({ audience = 'admin' }) {
                   <span>SMTP host</span>
                   <input value={settings.email.smtp_host || ''} onChange={(event) => updateSetting('email', 'smtp_host', event.target.value)} />
                 </label>
-                <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+                {canManageSettings && <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>}
               </article>
 
               <article className="settings-option-card">
@@ -538,8 +544,8 @@ export function SettingsPage({ audience = 'admin' }) {
                 </label>
                 <button type="button" className="text-link" onClick={() => setSettingsRevealed((current) => !current)}>{settingsRevealed ? <EyeOff size={14} /> : <Eye size={14} />} {settingsRevealed ? 'Gizle' : 'Goster'}</button>
                 {(webhookTestMessage || webhookTestError) && <small>{webhookTestMessage || webhookTestError}</small>}
-                <button type="button" className="secondary" onClick={testWebhook} disabled={settingsSaving || webhookTesting}>{webhookTesting ? 'Test ediliyor...' : 'Webhook test et'}</button>
-                <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+                {canManageSettings && <button type="button" className="secondary" onClick={testWebhook} disabled={settingsSaving || webhookTesting}>{webhookTesting ? 'Test ediliyor...' : 'Webhook test et'}</button>}
+                {canManageSettings && <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>}
               </article>
 
               <article className="settings-option-card">
@@ -564,7 +570,7 @@ export function SettingsPage({ audience = 'admin' }) {
                     <option value="yyyy-MM-dd">yyyy-MM-dd</option>
                   </select>
                 </label>
-                <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+                {canManageSettings && <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>}
               </article>
 
               <article className="settings-option-card">
@@ -587,7 +593,7 @@ export function SettingsPage({ audience = 'admin' }) {
                   <span>Kur saglayici</span>
                   <input value={settings.localization.currency_provider || ''} onChange={(event) => updateSetting('localization', 'currency_provider', event.target.value)} />
                 </label>
-                <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+                {canManageSettings && <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>}
               </article>
 
               <article className="settings-option-card">
@@ -613,7 +619,7 @@ export function SettingsPage({ audience = 'admin' }) {
                   <span>Animasyonlari azalt</span>
                   <input type="checkbox" checked={Boolean(settings.theme.reduce_motion)} onChange={(event) => updateSetting('theme', 'reduce_motion', event.target.checked)} />
                 </label>
-                <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+                {canManageSettings && <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>}
               </article>
 
               <article className="settings-option-card">
@@ -632,7 +638,7 @@ export function SettingsPage({ audience = 'admin' }) {
                   <span>Oturum uyarisi dk</span>
                   <input type="number" min="1" value={settings.security.session_warning_minutes || ''} onChange={(event) => updateSetting('security', 'session_warning_minutes', event.target.value)} />
                 </label>
-                <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+                {canManageSettings && <button type="submit" disabled={settingsSaving}><Save size={16} /> {settingsSaving ? 'Kaydediliyor...' : 'Kaydet'}</button>}
               </article>
 
               {(settingsMessage || settingsError) && (

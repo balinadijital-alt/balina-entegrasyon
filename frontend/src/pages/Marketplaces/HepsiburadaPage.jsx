@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Boxes, ClipboardList, ExternalLink, FileText, Link2, PackageCheck, RefreshCw, Send, ShoppingBag, Tags } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api, asArray } from '../../api/client.js';
+import { hasPermission } from '../../auth/permissions.js';
 import { CredentialInput } from '../../components/CredentialInput.jsx';
 import { DataTable } from '../../components/DataTable.jsx';
 import { DetailItem } from '../../components/DetailItem.jsx';
@@ -47,7 +48,7 @@ function resultSummary(result) {
 }
 
 export function HepsiburadaPage() {
-  const { notify } = useApp();
+  const { notify, user } = useApp();
   const { loading, error, run } = useAsync();
   const [accounts, setAccounts] = useState([]);
   const [companies, setCompanies] = useState([]);
@@ -60,6 +61,8 @@ export function HepsiburadaPage() {
 
   const selectedAccount = useMemo(() => accounts.find((account) => String(account.id) === String(accountId)), [accounts, accountId]);
   const hasError = selectedAccount?.connection_status === 'failed' || Boolean(selectedAccount?.last_error);
+  const canManageMarketplaces = hasPermission(user, 'marketplaces.manage');
+  const canSendMarketplaces = hasPermission(user, 'marketplaces.send');
 
   const load = async () => {
     await run(async () => {
@@ -103,6 +106,7 @@ export function HepsiburadaPage() {
 
   const saveAccount = async (event) => {
     event.preventDefault();
+    if (!canManageMarketplaces) return;
     const payload = {
       company_id: form.company_id,
       code: 'hepsiburada',
@@ -179,7 +183,7 @@ export function HepsiburadaPage() {
             <DetailItem className="detail-card" label="Son Hata" value={selectedAccount?.last_error || 'Yok'} />
           </div>
           <div className="wizard-actions inline-actions">
-            <button type="button" disabled={!accountId || loading} onClick={() => accountRequired() && execute('Baglanti testi', () => api.marketplaces.hepsiburadaTest(accountId))}><RefreshCw size={16} /> Baglanti Testi Yap</button>
+            {canManageMarketplaces && <button type="button" disabled={!accountId || loading} onClick={() => accountRequired() && execute('Baglanti testi', () => api.marketplaces.hepsiburadaTest(accountId))}><RefreshCw size={16} /> Baglanti Testi Yap</button>}
             <Link className="button-link secondary-link" to="/marketplaces/onboarding">Kuruluma Don</Link>
           </div>
         </section>
@@ -205,8 +209,8 @@ export function HepsiburadaPage() {
                 <option value="stage">Test Ortami</option>
               </select>
             </Field>
-            <button disabled={loading}>Kaydet</button>
-            <button type="button" disabled={loading || !accountId} onClick={() => accountRequired() && execute('Baglanti testi', () => api.marketplaces.hepsiburadaTest(accountId))}><RefreshCw size={16} /> Kaydetmeden Test Et</button>
+            {canManageMarketplaces && <button disabled={loading}>Kaydet</button>}
+            {canManageMarketplaces && <button type="button" disabled={loading || !accountId} onClick={() => accountRequired() && execute('Baglanti testi', () => api.marketplaces.hepsiburadaTest(accountId))}><RefreshCw size={16} /> Kaydetmeden Test Et</button>}
           </form>
         </section>
       )}
@@ -216,7 +220,7 @@ export function HepsiburadaPage() {
           <h2>Kategori Onizleme</h2>
           <p className="muted-text">Hepsiburada kategori servisi mevcut endpoint uzerinden cagrilir. Gelen kategoriler onizleme olarak listelenir, eslestirme icin kategori eslestirme ekranini kullanin.</p>
           <div className="bulk-grid">
-            <button disabled={!accountId || loading} onClick={() => accountRequired() && execute('Kategori listesi', () => api.marketplaces.hepsiburadaCategories(accountId))}><RefreshCw size={16} /> Kategorileri Cek</button>
+            {canManageMarketplaces && <button disabled={!accountId || loading} onClick={() => accountRequired() && execute('Kategori listesi', () => api.marketplaces.hepsiburadaCategories(accountId))}><RefreshCw size={16} /> Kategorileri Cek</button>}
             <Link className="button-link secondary-link" to="/products/category-mapping">Kategori Eslestirme</Link>
           </div>
           {categories.length > 0 ? (
@@ -235,7 +239,7 @@ export function HepsiburadaPage() {
           <p className="muted-text">Hazir urunleri aktarim listesinden kontrol edip Hepsiburada gonderim kuyruguna alabilirsiniz.</p>
           <div className="bulk-grid">
             <Link className="button-link secondary-link" to="/products/publish-queue">Aktarim Listesini Ac</Link>
-            <button disabled={!accountId || loading} onClick={() => accountRequired() && execute('Hepsiburada urun gonderimi', () => api.marketplaces.hepsiburadaSendProducts(accountId))}><Send size={16} /> Urunleri Gonder</button>
+            {canSendMarketplaces && <button disabled={!accountId || loading} onClick={() => accountRequired() && execute('Hepsiburada urun gonderimi', () => api.marketplaces.hepsiburadaSendProducts(accountId))}><Send size={16} /> Urunleri Gonder</button>}
           </div>
         </section>
       )}
@@ -245,7 +249,7 @@ export function HepsiburadaPage() {
           <h2>Stok / Fiyat Guncelleme</h2>
           <p className="muted-text">Hepsiburada stok ve fiyat guncellemesi mevcut kuyruk altyapisi uzerinden baslatilir.</p>
           <div className="bulk-grid">
-            <button disabled={!accountId || loading} onClick={() => accountRequired() && execute('Stok fiyat guncelleme', () => api.marketplaces.hepsiburadaUpdatePriceInventory(accountId))}><RefreshCw size={16} /> Toplu Stok/Fiyat Gonder</button>
+            {canSendMarketplaces && <button disabled={!accountId || loading} onClick={() => accountRequired() && execute('Stok fiyat guncelleme', () => api.marketplaces.hepsiburadaUpdatePriceInventory(accountId))}><RefreshCw size={16} /> Toplu Stok/Fiyat Gonder</button>}
           </div>
         </section>
       )}
@@ -255,7 +259,7 @@ export function HepsiburadaPage() {
           <h2>Siparisleri Cek</h2>
           <p className="muted-text">Hepsiburada siparisleri kuyruga alinir ve sonuc Hata Merkezi ile siparis ekranlarindan takip edilir.</p>
           <div className="bulk-grid">
-            <button disabled={!accountId || loading} onClick={() => accountRequired() && execute('Siparisleri cekme', () => api.marketplaces.hepsiburadaPullOrders(accountId))}>Siparisleri Cek</button>
+            {canSendMarketplaces && <button disabled={!accountId || loading} onClick={() => accountRequired() && execute('Siparisleri cekme', () => api.marketplaces.hepsiburadaPullOrders(accountId))}>Siparisleri Cek</button>}
             <Link className="button-link secondary-link" to="/orders">Siparisleri Ac</Link>
           </div>
         </section>

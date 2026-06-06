@@ -39,6 +39,7 @@ import {
   UploadCloud,
   Workflow,
 } from 'lucide-react';
+import { canAccessNavigationItem, hasPermission } from './auth/permissions.js';
 
 export const appNavigationGroups = [
   {
@@ -53,18 +54,18 @@ export const appNavigationGroups = [
     items: [
       { to: '/products', label: 'Urun Listesi', icon: Package, end: true, permissions: ['products.manage'] },
       { to: '/products/new', label: 'Urun Ekle', icon: PackagePlus, permissions: ['products.manage'] },
-      { to: '/catalog/categories', label: 'Kategoriler', icon: Tags },
-      { to: '/catalog/brands', label: 'Markalar', icon: ShieldCheck },
-      { to: '/catalog/attributes', label: 'Nitelikler / Ozellikler', icon: ClipboardCheck },
-      { to: '/products/category-mapping', label: 'Kategori Eslestirme', icon: Tags },
-      { to: '/catalog/variants', label: 'Varyantlar', icon: ClipboardCheck },
-      { to: '/catalog/tags', label: 'Etiketler', icon: Percent },
-      { to: '/catalog/suppliers', label: 'Tedarikciler', icon: Building2 },
-      { to: '/pricing/profit-rules', label: 'Fiyat Kurallari', icon: Calculator },
-      { to: '/catalog/tax-rates', label: 'KDV Oranlari', icon: Percent },
-      { to: '/catalog/units', label: 'Birimler', icon: Settings },
-      { to: '/catalog/defaults', label: 'KDV / Birim / Desi', icon: Settings },
-      { to: '/pricing/bulk-operations', label: 'Toplu Urun Islemleri', icon: Workflow },
+      { to: '/catalog/categories', label: 'Kategoriler', icon: Tags, permissions: ['products.manage'] },
+      { to: '/catalog/brands', label: 'Markalar', icon: ShieldCheck, permissions: ['products.manage'] },
+      { to: '/catalog/attributes', label: 'Nitelikler / Ozellikler', icon: ClipboardCheck, permissions: ['products.manage'] },
+      { to: '/products/category-mapping', label: 'Kategori Eslestirme', icon: Tags, permissions: ['products.manage'] },
+      { to: '/catalog/variants', label: 'Varyantlar', icon: ClipboardCheck, permissions: ['products.manage'] },
+      { to: '/catalog/tags', label: 'Etiketler', icon: Percent, permissions: ['products.manage'] },
+      { to: '/catalog/suppliers', label: 'Tedarikciler', icon: Building2, permissions: ['products.manage'] },
+      { to: '/pricing/profit-rules', label: 'Fiyat Kurallari', icon: Calculator, permissions: ['products.manage'] },
+      { to: '/catalog/tax-rates', label: 'KDV Oranlari', icon: Percent, permissions: ['products.manage'] },
+      { to: '/catalog/units', label: 'Birimler', icon: Settings, permissions: ['products.manage'] },
+      { to: '/catalog/defaults', label: 'KDV / Birim / Desi', icon: Settings, permissions: ['products.manage'] },
+      { to: '/pricing/bulk-operations', label: 'Toplu Urun Islemleri', icon: Workflow, permissions: ['products.manage'] },
       { to: '/imports', label: 'Toplu Urun Yukleme', icon: UploadCloud, permissions: ['imports.manage'] },
       { to: '/products/publish-queue', label: 'Aktarim Listesi', icon: Send, permissions: ['marketplaces.send'] },
     ],
@@ -95,86 +96,87 @@ export const appNavigationGroups = [
   {
     label: 'Operasyon',
     items: [
-      { to: '/operations', label: 'Operasyon Merkezi', icon: Activity },
+      { to: '/operations', label: 'Operasyon Merkezi', icon: Activity, permissions: ['queue.view', 'logs.view', 'analytics.view'] },
       { to: '/shipping', label: 'Kargo Yonetimi', icon: Truck, permissions: ['shipping.manage'] },
       { to: '/payments', label: 'Odeme Yonetimi', icon: CreditCard, permissions: ['payments.manage'] },
       { to: '/accounting', label: 'Fatura/Cari', icon: Landmark, permissions: ['accounting.manage'] },
+      { to: '/queue', label: 'Queue Merkezi', icon: Workflow, permissions: ['queue.view'] },
     ],
   },
   {
     label: 'CMS',
     items: [
-      { to: '/cms/pages', label: 'Sayfalar', icon: FileText },
-      { to: '/cms/blog-posts', label: 'Blog', icon: FileText },
-      { to: '/cms/blog-categories', label: 'Blog Kategorileri', icon: Tags },
-      { to: '/cms/banners', label: 'Bannerlar', icon: FileImage },
-      { to: '/cms/popups', label: 'Popup', icon: Megaphone },
-      { to: '/cms/menus', label: 'Menu', icon: Menu },
-      { to: '/cms/faqs', label: 'SSS', icon: HelpCircle },
-      { to: '/cms/legal', label: 'Sozlesmeler / Cerez', icon: ReceiptText },
+      { to: '/cms/pages', label: 'Sayfalar', icon: FileText, permissions: ['modules.manage'] },
+      { to: '/cms/blog-posts', label: 'Blog', icon: FileText, permissions: ['modules.manage'] },
+      { to: '/cms/blog-categories', label: 'Blog Kategorileri', icon: Tags, permissions: ['modules.manage'] },
+      { to: '/cms/banners', label: 'Bannerlar', icon: FileImage, permissions: ['modules.manage'] },
+      { to: '/cms/popups', label: 'Popup', icon: Megaphone, permissions: ['modules.manage'] },
+      { to: '/cms/menus', label: 'Menu', icon: Menu, permissions: ['modules.manage'] },
+      { to: '/cms/faqs', label: 'SSS', icon: HelpCircle, permissions: ['modules.manage'] },
+      { to: '/cms/legal', label: 'Sozlesmeler / Cerez', icon: ReceiptText, permissions: ['modules.manage'] },
     ],
   },
   {
     label: 'Pazarlama',
     items: [
-      { to: '/marketing/coupons', label: 'Kuponlar', icon: Percent },
-      { to: '/marketing/coupons', label: 'Sepet Indirimleri', icon: Percent },
-      { to: '/marketing/abandoned-carts', label: 'Terk Edilmis Sepet', icon: ShoppingBag },
-      { to: '/marketing/email-templates', label: 'E-posta Sablonlari', icon: Mail },
-      { to: '/marketing/sms-templates', label: 'SMS Sablonlari', icon: Smartphone },
-      { to: '/marketing/whatsapp', label: 'WhatsApp Sablonlari', icon: MessageSquare },
-      { to: '/marketing/feeds', label: 'Merchant / Meta Feed', icon: Megaphone },
-      { to: '/marketing/pixels', label: 'Pixel Ayarlari', icon: FileCode2 },
+      { to: '/marketing/coupons', label: 'Kuponlar', icon: Percent, permissions: ['modules.manage'] },
+      { to: '/marketing/coupons', label: 'Sepet Indirimleri', icon: Percent, permissions: ['modules.manage'] },
+      { to: '/marketing/abandoned-carts', label: 'Terk Edilmis Sepet', icon: ShoppingBag, permissions: ['modules.manage'] },
+      { to: '/marketing/email-templates', label: 'E-posta Sablonlari', icon: Mail, permissions: ['modules.manage'] },
+      { to: '/marketing/sms-templates', label: 'SMS Sablonlari', icon: Smartphone, permissions: ['modules.manage'] },
+      { to: '/marketing/whatsapp', label: 'WhatsApp Sablonlari', icon: MessageSquare, permissions: ['modules.manage'] },
+      { to: '/marketing/feeds', label: 'Merchant / Meta Feed', icon: Megaphone, permissions: ['modules.manage'] },
+      { to: '/marketing/pixels', label: 'Pixel Ayarlari', icon: FileCode2, permissions: ['modules.manage'] },
     ],
   },
   {
     label: 'SEO',
     items: [
-      { to: '/seo/settings', label: 'Meta Ayarlari', icon: SearchCheck },
-      { to: '/seo/sitemap', label: 'Sitemap', icon: FileText },
-      { to: '/seo/robots', label: 'Robots.txt', icon: FileCode2 },
-      { to: '/seo/head-tags', label: 'Search Console / Head Kodlari', icon: ShieldCheck },
-      { to: '/seo/languages', label: 'Coklu Dil', icon: Languages },
-      { to: '/seo/locations', label: 'Lokasyonlar', icon: MapPinned },
-      { to: '/seo/currencies', label: 'Doviz Ayarlari', icon: CircleDollarSign },
+      { to: '/seo/settings', label: 'Meta Ayarlari', icon: SearchCheck, permissions: ['modules.manage'] },
+      { to: '/seo/sitemap', label: 'Sitemap', icon: FileText, permissions: ['modules.manage'] },
+      { to: '/seo/robots', label: 'Robots.txt', icon: FileCode2, permissions: ['modules.manage'] },
+      { to: '/seo/head-tags', label: 'Search Console / Head Kodlari', icon: ShieldCheck, permissions: ['modules.manage'] },
+      { to: '/seo/languages', label: 'Coklu Dil', icon: Languages, permissions: ['modules.manage'] },
+      { to: '/seo/locations', label: 'Lokasyonlar', icon: MapPinned, permissions: ['modules.manage'] },
+      { to: '/seo/currencies', label: 'Doviz Ayarlari', icon: CircleDollarSign, permissions: ['modules.manage'] },
     ],
   },
   {
     label: 'B2B / Bayi',
     items: [
-      { to: '/b2b/groups', label: 'Bayi Gruplari', icon: Building2 },
-      { to: '/b2b/dealers', label: 'Bayi Firmalari', icon: Building2 },
-      { to: '/b2b/prices', label: 'Ozel Fiyatlar', icon: CircleDollarSign },
-      { to: '/b2b/transactions', label: 'Bakiye / Tahsilat', icon: Landmark },
-      { to: '/b2b/dealers', label: 'Bayi XML Ayarlari', icon: UploadCloud },
+      { to: '/b2b/groups', label: 'Bayi Gruplari', icon: Building2, permissions: ['modules.manage'] },
+      { to: '/b2b/dealers', label: 'Bayi Firmalari', icon: Building2, permissions: ['modules.manage'] },
+      { to: '/b2b/prices', label: 'Ozel Fiyatlar', icon: CircleDollarSign, permissions: ['modules.manage'] },
+      { to: '/b2b/transactions', label: 'Bakiye / Tahsilat', icon: Landmark, permissions: ['modules.manage'] },
+      { to: '/b2b/dealers', label: 'Bayi XML Ayarlari', icon: UploadCloud, permissions: ['modules.manage'] },
     ],
   },
   {
     label: 'Fiyat Motoru',
     items: [
-      { to: '/pricing/profit-rules', label: 'Kar Kurallari', icon: Calculator },
-      { to: '/pricing/bulk-operations', label: 'Toplu Fiyat Operasyonlari', icon: Workflow },
-      { to: '/pricing/profit-rules', label: 'Kategori Bazli Fiyatlama', icon: Tags },
-      { to: '/pricing/bulk-operations', label: 'XML Bazli Fiyatlama', icon: UploadCloud },
-      { to: '/pricing/calculator', label: 'Maliyet Dahil Hesaplama', icon: Calculator },
+      { to: '/pricing/profit-rules', label: 'Kar Kurallari', icon: Calculator, permissions: ['products.manage'] },
+      { to: '/pricing/bulk-operations', label: 'Toplu Fiyat Operasyonlari', icon: Workflow, permissions: ['products.manage'] },
+      { to: '/pricing/profit-rules', label: 'Kategori Bazli Fiyatlama', icon: Tags, permissions: ['products.manage'] },
+      { to: '/pricing/bulk-operations', label: 'XML Bazli Fiyatlama', icon: UploadCloud, permissions: ['products.manage'] },
+      { to: '/pricing/calculator', label: 'Maliyet Dahil Hesaplama', icon: Calculator, permissions: ['products.manage'] },
     ],
   },
   {
     label: 'Siparis Is Akisi',
     items: [
-      { to: '/workflow/rules', label: 'Durum Gecis Kurallari', icon: Workflow },
-      { to: '/workflow/rules', label: 'Kilitli Durumlar', icon: ShieldCheck },
-      { to: '/workflow/notes', label: 'Siparis Notlari', icon: ClipboardList },
-      { to: '/workflow/history', label: 'Operasyon Gecmisi', icon: FileText },
+      { to: '/workflow/rules', label: 'Durum Gecis Kurallari', icon: Workflow, permissions: ['modules.manage'] },
+      { to: '/workflow/rules', label: 'Kilitli Durumlar', icon: ShieldCheck, permissions: ['modules.manage'] },
+      { to: '/workflow/notes', label: 'Siparis Notlari', icon: ClipboardList, permissions: ['modules.manage'] },
+      { to: '/workflow/history', label: 'Operasyon Gecmisi', icon: FileText, permissions: ['modules.manage'] },
     ],
   },
   {
     label: 'Katalog Gelismis',
     items: [
-      { to: '/catalog/relations', label: 'Urun Iliskileri', icon: Link2 },
-      { to: '/catalog/custom-fields', label: 'Urun Ozel Alanlari', icon: ClipboardCheck },
-      { to: '/catalog/barcodes', label: 'Toplu Barkod', icon: FileCode2 },
-      { to: '/catalog/reviews', label: 'Urun Yorumlari', icon: MessageSquare },
+      { to: '/catalog/relations', label: 'Urun Iliskileri', icon: Link2, permissions: ['products.manage'] },
+      { to: '/catalog/custom-fields', label: 'Urun Ozel Alanlari', icon: ClipboardCheck, permissions: ['products.manage'] },
+      { to: '/catalog/barcodes', label: 'Toplu Barkod', icon: FileCode2, permissions: ['products.manage'] },
+      { to: '/catalog/reviews', label: 'Urun Yorumlari', icon: MessageSquare, permissions: ['products.manage'] },
     ],
   },
   {
@@ -192,24 +194,25 @@ export const adminNavigationGroups = [
   {
     label: 'Balina Yonetimi',
     items: [
-      { to: '/admin', label: 'Dashboard', icon: Gauge, end: true },
-      { to: '/admin/executive', label: 'Executive Dashboard', icon: Sparkles, permissions: ['executive.view'] },
-      { to: '/admin/companies', label: 'Musteri Firmalar', icon: Building2, permissions: ['companies.manage'] },
-      { to: '/admin/saas', label: 'Paketler Lisanslar', icon: Sparkles, permissions: ['saas.manage'] },
-      { to: '/admin/saas', label: 'Abonelikler', icon: ClipboardCheck, permissions: ['saas.manage'] },
-      { to: '/admin/payments', label: 'Odemeler Billing', icon: CircleDollarSign, permissions: ['saas.manage'] },
+      { to: '/admin', label: 'Dashboard', icon: Gauge, end: true, roles: ['super_admin'] },
+      { to: '/admin/executive', label: 'Executive Dashboard', icon: Sparkles, roles: ['super_admin'], permissions: ['executive.view'] },
+      { to: '/admin/companies', label: 'Musteri Firmalar', icon: Building2, roles: ['super_admin'], permissions: ['companies.manage'] },
+      { to: '/admin/saas', label: 'Paketler Lisanslar', icon: Sparkles, roles: ['super_admin'], permissions: ['saas.manage'] },
+      { to: '/admin/saas', label: 'Abonelikler', icon: ClipboardCheck, roles: ['super_admin'], permissions: ['saas.manage'] },
+      { to: '/admin/payments', label: 'Odemeler Billing', icon: CircleDollarSign, roles: ['super_admin'], permissions: ['saas.manage'] },
+      { to: '/admin/roles', label: 'Roller', icon: ShieldCheck, roles: ['super_admin'], permissions: ['roles.manage'] },
     ],
   },
   {
     label: 'Sistem Operasyonu',
     items: [
-      { to: '/admin/reports', label: 'Sistem Sagligi', icon: BarChart3, permissions: ['analytics.view'] },
-      { to: '/admin/operations', label: 'Operasyon Merkezi', icon: Activity },
-      { to: '/admin/queue', label: 'Queue Horizon', icon: Workflow, permissions: ['queue.view'] },
-      { to: '/admin/api-logs', label: 'API Loglari', icon: FileText, permissions: ['logs.view'] },
-      { to: '/admin/queue', label: 'Failed Jobs', icon: AlertTriangle, permissions: ['queue.view'] },
-      { to: '/admin/api-logs', label: 'Audit Log', icon: ShieldCheck, permissions: ['logs.view'] },
-      { to: '/admin/settings', label: 'Global Ayarlar', icon: Settings, permissions: ['settings.manage'] },
+      { to: '/admin/reports', label: 'Sistem Sagligi', icon: BarChart3, roles: ['super_admin'], permissions: ['analytics.view'] },
+      { to: '/admin/operations', label: 'Operasyon Merkezi', icon: Activity, roles: ['super_admin'] },
+      { to: '/admin/queue', label: 'Queue Horizon', icon: Workflow, roles: ['super_admin'], permissions: ['queue.view'] },
+      { to: '/admin/api-logs', label: 'API Loglari', icon: FileText, roles: ['super_admin'], permissions: ['logs.view'] },
+      { to: '/admin/queue', label: 'Failed Jobs', icon: AlertTriangle, roles: ['super_admin'], permissions: ['queue.view'] },
+      { to: '/admin/api-logs', label: 'Audit Log', icon: ShieldCheck, roles: ['super_admin'], permissions: ['logs.view'] },
+      { to: '/admin/settings', label: 'Global Ayarlar', icon: Settings, roles: ['super_admin'], permissions: ['settings.manage'] },
     ],
   },
 ];
@@ -217,40 +220,15 @@ export const adminNavigationGroups = [
 export const navigationGroups = appNavigationGroups;
 export const flatNavigation = navigationGroups.flatMap((group) => group.items);
 
-const defaultRolePermissions = {
-  super_admin: ['*'],
-  company_admin: [
-    'companies.manage', 'users.manage', 'roles.manage', 'settings.manage', 'products.manage', 'imports.manage',
-    'marketplaces.manage', 'marketplaces.send', 'orders.manage', 'payments.manage', 'payments.refund',
-    'shipping.manage', 'shipping.labels', 'accounting.manage', 'queue.view', 'queue.retry',
-    'analytics.view', 'executive.view', 'logs.view', 'modules.manage',
-  ],
-  operator: ['products.manage', 'imports.manage', 'marketplaces.manage', 'marketplaces.send', 'orders.manage', 'queue.view', 'queue.retry', 'analytics.view', 'logs.view'],
-  company_operator: ['products.manage', 'imports.manage', 'marketplaces.manage', 'marketplaces.send', 'orders.manage', 'queue.view', 'queue.retry', 'analytics.view', 'logs.view'],
-  finance: ['payments.manage', 'payments.refund', 'accounting.manage', 'analytics.view', 'logs.view'],
-  warehouse: ['shipping.manage', 'shipping.labels', 'orders.manage', 'analytics.view'],
-  support: ['analytics.view', 'logs.view', 'queue.view'],
-};
-
 export function userHasPermission(user, permission) {
-  if (!permission) return true;
-
-  const roleNames = user?.roles?.map((role) => role.name) || [];
-  if (roleNames.includes('super_admin')) return true;
-
-  const directPermissions = new Set(user?.permissions?.map((item) => item.name) || []);
-  if (directPermissions.has(permission)) return true;
-
-  return roleNames.some((role) => (defaultRolePermissions[role] || []).includes(permission));
+  return hasPermission(user, permission);
 }
 
 export function filterNavigationByPermissions(groups, user) {
-  if (!user) return groups;
-
   return groups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => !item.permissions || item.permissions.some((permission) => userHasPermission(user, permission))),
+      items: group.items.filter((item) => canAccessNavigationItem(user, item)),
     }))
     .filter((group) => group.items.length > 0);
 }

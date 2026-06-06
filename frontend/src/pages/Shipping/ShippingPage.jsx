@@ -15,6 +15,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import { api, asArray } from '../../api/client.js';
+import { hasPermission } from '../../auth/permissions.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -174,7 +175,7 @@ function metricValue(items, predicate) {
 }
 
 export function ShippingPage() {
-  const { notify } = useApp();
+  const { notify, user } = useApp();
   const { loading, error, run } = useAsync();
   const [companies, setCompanies] = useState([]);
   const [carriers, setCarriers] = useState([]);
@@ -255,6 +256,8 @@ export function ShippingPage() {
     const shipment = shipments.find((item) => item.id === id);
     return shipment && !hasError(shipment);
   }).length;
+  const canManageShipping = hasPermission(user, 'shipping.manage');
+  const canCreateLabels = hasPermission(user, 'shipping.labels');
 
   const createAccount = async (event) => {
     event.preventDefault();
@@ -327,9 +330,11 @@ export function ShippingPage() {
             Barkod bekleyen, etiketi hazirlanan, takipte olan ve hataya dusen kargo islemlerini tasiyici bazinda filtreleyin.
           </p>
           <div className="shipping-hero-actions">
-            <button type="button" onClick={bulkLabels} disabled={loading || selectedShipments.length === 0}>
-              <FileText size={16} /> Toplu Etiket
-            </button>
+            {canCreateLabels && (
+              <button type="button" onClick={bulkLabels} disabled={loading || selectedShipments.length === 0}>
+                <FileText size={16} /> Toplu Etiket
+              </button>
+            )}
             <button type="button" className="secondary" onClick={() => setFilters({ carrier: 'all', status: 'failed', search: '' })}>
               <AlertTriangle size={16} /> Hatalari Gor
             </button>
@@ -395,9 +400,11 @@ export function ShippingPage() {
                   <button type="button" className="secondary" onClick={toggleAllFiltered} disabled={filteredShipments.length === 0}>
                     Tumunu Sec
                   </button>
-                  <button type="button" onClick={bulkLabels} disabled={loading || selectedShipments.length === 0}>
-                    <FileText size={15} /> Toplu Etiket
-                  </button>
+                  {canCreateLabels && (
+                    <button type="button" onClick={bulkLabels} disabled={loading || selectedShipments.length === 0}>
+                      <FileText size={15} /> Toplu Etiket
+                    </button>
+                  )}
                 </div>
               </div>
               <DataTable
@@ -440,18 +447,26 @@ export function ShippingPage() {
                     label: 'Islem',
                     render: (row) => (
                       <div className="row-actions shipping-row-actions">
-                        <button type="button" title="Takip sorgula" onClick={() => action(row.id, api.shipping.track, 'Takip sorgusu kuyruga alindi.')}>
-                          <Search size={15} />
-                        </button>
-                        <button type="button" title="Etiket olustur" onClick={() => action(row.id, api.shipping.label, 'Etiket kuyruga alindi.')}>
-                          <FileText size={15} />
-                        </button>
-                        <button type="button" title="Iade kodu olustur" onClick={() => action(row.id, api.shipping.returnCode, 'Iade kodu kuyruga alindi.')}>
-                          <Undo2 size={15} />
-                        </button>
-                        <button type="button" title="Hatali islemi tekrar dene" onClick={() => action(row.id, api.shipping.retry, 'Tekrar deneme baslatildi.')} disabled={!hasError(row) && row.status !== 'queued'}>
-                          <RotateCcw size={15} />
-                        </button>
+                        {canManageShipping && (
+                          <button type="button" title="Takip sorgula" onClick={() => action(row.id, api.shipping.track, 'Takip sorgusu kuyruga alindi.')}>
+                            <Search size={15} />
+                          </button>
+                        )}
+                        {canCreateLabels && (
+                          <button type="button" title="Etiket olustur" onClick={() => action(row.id, api.shipping.label, 'Etiket kuyruga alindi.')}>
+                            <FileText size={15} />
+                          </button>
+                        )}
+                        {canManageShipping && (
+                          <>
+                            <button type="button" title="Iade kodu olustur" onClick={() => action(row.id, api.shipping.returnCode, 'Iade kodu kuyruga alindi.')}>
+                              <Undo2 size={15} />
+                            </button>
+                            <button type="button" title="Hatali islemi tekrar dene" onClick={() => action(row.id, api.shipping.retry, 'Tekrar deneme baslatildi.')} disabled={!hasError(row) && row.status !== 'queued'}>
+                              <RotateCcw size={15} />
+                            </button>
+                          </>
+                        )}
                         <button type="button" title="Etiketi indir" onClick={() => downloadLabel(row.id)} disabled={!hasLabel(row)}>
                           <Download size={15} />
                         </button>
@@ -472,6 +487,8 @@ export function ShippingPage() {
               onReturn={(id) => action(id, api.shipping.returnCode, 'Iade kodu kuyruga alindi.')}
               onRetry={(id) => action(id, api.shipping.retry, 'Tekrar deneme baslatildi.')}
               onDownload={downloadLabel}
+              canManage={canManageShipping}
+              canCreateLabels={canCreateLabels}
             />
           </section>
 
@@ -491,7 +508,7 @@ export function ShippingPage() {
               />
             </div>
 
-            <div className="panel shipping-account-panel">
+            {canManageShipping && <div className="panel shipping-account-panel">
               <h2>Yeni kargo hesabi</h2>
               <p>API bilgilerini kaydederek barkod, etiket ve takip islemlerini tasiyici uzerinden yurutun.</p>
               <form className="form-grid" onSubmit={createAccount}>
@@ -516,7 +533,7 @@ export function ShippingPage() {
                 <Field label="Servis Adresi"><input value={form.base_url} onChange={(event) => setForm({ ...form, base_url: event.target.value })} /></Field>
                 <button disabled={loading}>Kargo Hesabi Ekle</button>
               </form>
-            </div>
+            </div>}
           </section>
         </>
       )}
@@ -524,7 +541,7 @@ export function ShippingPage() {
   );
 }
 
-function ShipmentDetailPanel({ shipment, onTrack, onLabel, onReturn, onRetry, onDownload }) {
+function ShipmentDetailPanel({ shipment, onTrack, onLabel, onReturn, onRetry, onDownload, canManage, canCreateLabels }) {
   if (!shipment) {
     return (
       <aside className="panel shipping-detail-panel empty">
@@ -573,10 +590,10 @@ function ShipmentDetailPanel({ shipment, onTrack, onLabel, onReturn, onRetry, on
       )}
 
       <div className="shipping-detail-actions">
-        <button type="button" onClick={() => onTrack(shipment.id)}><Search size={15} /> Takip Sorgula</button>
-        <button type="button" onClick={() => onLabel(shipment.id)}><FileText size={15} /> Etiket Olustur</button>
-        <button type="button" onClick={() => onReturn(shipment.id)}><Undo2 size={15} /> Iade Kodu</button>
-        <button type="button" className="secondary" onClick={() => onRetry(shipment.id)} disabled={!hasError(shipment) && shipment.status !== 'queued'}><RotateCcw size={15} /> Tekrar Dene</button>
+        {canManage && <button type="button" onClick={() => onTrack(shipment.id)}><Search size={15} /> Takip Sorgula</button>}
+        {canCreateLabels && <button type="button" onClick={() => onLabel(shipment.id)}><FileText size={15} /> Etiket Olustur</button>}
+        {canManage && <button type="button" onClick={() => onReturn(shipment.id)}><Undo2 size={15} /> Iade Kodu</button>}
+        {canManage && <button type="button" className="secondary" onClick={() => onRetry(shipment.id)} disabled={!hasError(shipment) && shipment.status !== 'queued'}><RotateCcw size={15} /> Tekrar Dene</button>}
         <button type="button" className="secondary" onClick={() => onDownload(shipment.id)} disabled={!hasLabel(shipment)}><Download size={15} /> Etiketi Indir</button>
       </div>
     </aside>

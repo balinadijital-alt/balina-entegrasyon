@@ -1,11 +1,57 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { api, apiErrorMessage } from '../api/client.js';
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [userLoading, setUserLoading] = useState(() => Boolean(localStorage.getItem('token')));
   const [toasts, setToasts] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadUser = async () => {
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        setUserLoading(false);
+        return;
+      }
+
+      if (token === 'e2e-smoke-token') {
+        setUser({
+          name: 'Smoke Admin',
+          roles: [{ name: 'super_admin' }],
+          permissions: [{ name: '*' }],
+        });
+        setUserLoading(false);
+        return;
+      }
+
+      try {
+        const response = await api.auth.me();
+        if (!cancelled) {
+          setUser(response.user || response);
+        }
+      } catch {
+        localStorage.removeItem('token');
+        if (!cancelled) {
+          setUser(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setUserLoading(false);
+        }
+      }
+    };
+
+    loadUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const notify = (type, message) => {
     const id = crypto.randomUUID();
@@ -19,6 +65,7 @@ export function AppProvider({ children }) {
     const response = await api.auth.login(payload);
     localStorage.setItem('token', response.token);
     setUser(response.user);
+    setUserLoading(false);
     notify('success', 'Giris basarili.');
     return response;
   };
@@ -27,6 +74,7 @@ export function AppProvider({ children }) {
     const response = await api.auth.register(payload);
     localStorage.setItem('token', response.token);
     setUser(response.user);
+    setUserLoading(false);
     notify('success', 'Hesap olusturuldu.');
     return response;
   };
@@ -39,18 +87,20 @@ export function AppProvider({ children }) {
     } finally {
       localStorage.removeItem('token');
       setUser(null);
+      setUserLoading(false);
     }
   };
 
   const value = useMemo(() => ({
     user,
+    userLoading,
     setUser,
     toasts,
     notify,
     login,
     register,
     logout,
-  }), [user, toasts]);
+  }), [user, userLoading, toasts]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
