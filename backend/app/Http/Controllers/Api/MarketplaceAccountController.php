@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MarketplaceAccount;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -22,9 +23,10 @@ class MarketplaceAccountController extends Controller
         return response()->json($accounts);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, AuditLogger $audit): JsonResponse
     {
         $account = MarketplaceAccount::create($this->validated($request));
+        $audit->logAction($request, 'credentials', 'marketplace_account.create', $account, ['marketplace_code' => $account->code], null, $account->toArray());
 
         return response()->json($this->maskSecrets($account->load('company')), 201);
     }
@@ -36,20 +38,25 @@ class MarketplaceAccountController extends Controller
         return response()->json($this->maskSecrets($marketplace->load('company')));
     }
 
-    public function update(Request $request, MarketplaceAccount $marketplace): JsonResponse
+    public function update(Request $request, MarketplaceAccount $marketplace, AuditLogger $audit): JsonResponse
     {
         $this->abortIfNotTenant($request, $marketplace);
 
-        $marketplace->update($this->validated($request));
+        $old = $marketplace->fresh()->makeVisible($this->secretFields())->toArray();
+        $payload = $audit->preserveBlankSecrets($marketplace, $this->validated($request), $this->secretFields());
+        $marketplace->update($payload);
+        $audit->logAction($request, 'credentials', 'marketplace_account.update', $marketplace, ['marketplace_code' => $marketplace->code], $old, $marketplace->fresh()->makeVisible($this->secretFields())->toArray());
 
         return response()->json($this->maskSecrets($marketplace->load('company')));
     }
 
-    public function destroy(MarketplaceAccount $marketplace): JsonResponse
+    public function destroy(MarketplaceAccount $marketplace, AuditLogger $audit): JsonResponse
     {
         $this->abortIfNotTenant(request(), $marketplace);
 
+        $old = $marketplace->fresh()->makeVisible($this->secretFields())->toArray();
         $marketplace->delete();
+        $audit->logAction(request(), 'credentials', 'marketplace_account.delete', $marketplace, ['marketplace_code' => $marketplace->code], $old);
 
         return response()->json(status: 204);
     }
@@ -84,5 +91,10 @@ class MarketplaceAccountController extends Controller
         $account->api_secret = $account->api_secret ? '********' : null;
 
         return $account;
+    }
+
+    private function secretFields(): array
+    {
+        return ['api_key', 'api_secret', 'service_password'];
     }
 }

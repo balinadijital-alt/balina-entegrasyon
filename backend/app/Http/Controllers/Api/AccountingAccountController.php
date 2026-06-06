@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AccountingAccount;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -17,17 +18,21 @@ class AccountingAccountController extends Controller
             ->latest()->paginate(20));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, AuditLogger $audit): JsonResponse
     {
         $account = AccountingAccount::create($this->forceTenantCompany($request, $this->validated($request)));
+        $audit->logAction($request, 'credentials', 'accounting_account.create', $account, ['account_type' => 'accounting'], null, $account->toArray());
         return response()->json($account->load(['company:id,name', 'integration:id,code,name']), 201);
     }
 
-    public function update(Request $request, AccountingAccount $accountingAccount): JsonResponse
+    public function update(Request $request, AccountingAccount $accountingAccount, AuditLogger $audit): JsonResponse
     {
         $this->abortIfAccountNotTenant($request, $accountingAccount);
 
-        $accountingAccount->update($this->forceTenantCompany($request, $this->validated($request, true)));
+        $old = $accountingAccount->fresh()->makeVisible($this->secretFields())->toArray();
+        $payload = $audit->preserveBlankSecrets($accountingAccount, $this->forceTenantCompany($request, $this->validated($request, true)), $this->secretFields());
+        $accountingAccount->update($payload);
+        $audit->logAction($request, 'credentials', 'accounting_account.update', $accountingAccount, ['account_type' => 'accounting'], $old, $accountingAccount->fresh()->makeVisible($this->secretFields())->toArray());
         return response()->json($accountingAccount->load(['company:id,name', 'integration:id,code,name']));
     }
 
@@ -42,5 +47,10 @@ class AccountingAccountController extends Controller
             'api_key' => ['nullable', 'string'], 'api_secret' => ['nullable', 'string'],
             'base_url' => ['nullable', 'url'], 'settings' => ['nullable', 'array'], 'is_active' => ['boolean'],
         ]);
+    }
+
+    private function secretFields(): array
+    {
+        return ['client_secret', 'password', 'api_key', 'api_secret'];
     }
 }

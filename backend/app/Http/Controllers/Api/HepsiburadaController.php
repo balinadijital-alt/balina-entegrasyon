@@ -8,9 +8,11 @@ use App\Jobs\Hepsiburada\PullHepsiburadaOrdersJob;
 use App\Jobs\Hepsiburada\SendProductsToHepsiburadaJob;
 use App\Jobs\Hepsiburada\UpdateHepsiburadaPriceInventoryJob;
 use App\Models\MarketplaceAccount;
+use App\Services\Audit\AuditLogger;
 use App\Services\Marketplaces\HepsiburadaService;
 use App\Services\Queue\SyncRunService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class HepsiburadaController extends Controller
 {
@@ -24,34 +26,58 @@ class HepsiburadaController extends Controller
         return $this->respond(fn () => $service->categories($marketplace));
     }
 
-    public function sendProducts(MarketplaceAccount $marketplace, SyncRunService $runs): JsonResponse
+    public function sendProducts(MarketplaceAccount $marketplace, SyncRunService $runs, Request $request, AuditLogger $audit): JsonResponse
     {
-        return $this->respond(function () use ($marketplace, $runs) {
+        $this->abortIfNotTenant($request, $marketplace);
+
+        return $this->respond(function () use ($marketplace, $runs, $request, $audit) {
             $syncRun = $runs->create($marketplace, 'hepsiburada_products');
             SendProductsToHepsiburadaJob::dispatch($marketplace, $syncRun);
             $marketplace->update(['last_error' => null]);
+            $audit->logAction($request, 'marketplace', 'products.send', $marketplace, [
+                'marketplace_code' => $marketplace->code,
+                'marketplace_account_id' => $marketplace->id,
+                'sync_run_id' => $syncRun->id,
+                'queued' => true,
+            ]);
 
             return response()->json(['message' => 'Hepsiburada urun gonderimi kuyruga alindi.', 'queued' => true, 'sync_run_id' => $syncRun->id], 202);
         });
     }
 
-    public function updatePriceInventory(MarketplaceAccount $marketplace, SyncRunService $runs): JsonResponse
+    public function updatePriceInventory(MarketplaceAccount $marketplace, SyncRunService $runs, Request $request, AuditLogger $audit): JsonResponse
     {
-        return $this->respond(function () use ($marketplace, $runs) {
+        $this->abortIfNotTenant($request, $marketplace);
+
+        return $this->respond(function () use ($marketplace, $runs, $request, $audit) {
             $syncRun = $runs->create($marketplace, 'hepsiburada_price_inventory');
             UpdateHepsiburadaPriceInventoryJob::dispatch($marketplace, $syncRun);
             $marketplace->update(['last_error' => null]);
+            $audit->logAction($request, 'marketplace', 'price_inventory.update', $marketplace, [
+                'marketplace_code' => $marketplace->code,
+                'marketplace_account_id' => $marketplace->id,
+                'sync_run_id' => $syncRun->id,
+                'queued' => true,
+            ]);
 
             return response()->json(['message' => 'Hepsiburada stok/fiyat guncellemesi kuyruga alindi.', 'queued' => true, 'sync_run_id' => $syncRun->id], 202);
         });
     }
 
-    public function pullOrders(MarketplaceAccount $marketplace, SyncRunService $runs): JsonResponse
+    public function pullOrders(MarketplaceAccount $marketplace, SyncRunService $runs, Request $request, AuditLogger $audit): JsonResponse
     {
-        return $this->respond(function () use ($marketplace, $runs) {
+        $this->abortIfNotTenant($request, $marketplace);
+
+        return $this->respond(function () use ($marketplace, $runs, $request, $audit) {
             $syncRun = $runs->create($marketplace, 'hepsiburada_orders');
             PullHepsiburadaOrdersJob::dispatch($marketplace, $syncRun);
             $marketplace->update(['last_error' => null]);
+            $audit->logAction($request, 'marketplace', 'orders.pull', $marketplace, [
+                'marketplace_code' => $marketplace->code,
+                'marketplace_account_id' => $marketplace->id,
+                'sync_run_id' => $syncRun->id,
+                'queued' => true,
+            ]);
 
             return response()->json(['message' => 'Hepsiburada siparis cekme isi kuyruga alindi.', 'queued' => true, 'sync_run_id' => $syncRun->id], 202);
         });

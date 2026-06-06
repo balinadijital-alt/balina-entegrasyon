@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplacePublishDraft;
 use App\Models\Product;
+use App\Services\Audit\AuditLogger;
 use App\Services\Marketplaces\MarketplacePublishService;
 use App\Services\Products\ProductReadinessService;
 use Illuminate\Http\JsonResponse;
@@ -54,10 +55,18 @@ class ProductMarketplaceController extends Controller
         return response()->json($draft->load(['company:id,name', 'marketplaceAccount:id,name,code']), 201);
     }
 
-    public function send(MarketplacePublishDraft $draft, MarketplacePublishService $service): JsonResponse
+    public function send(MarketplacePublishDraft $draft, MarketplacePublishService $service, AuditLogger $audit): JsonResponse
     {
         $this->abortIfNotTenant(request(), $draft);
 
-        return response()->json($service->send($draft)->load(['company:id,name', 'marketplaceAccount:id,name,code']));
+        $sent = $service->send($draft);
+        $audit->logAction(request(), 'marketplace', 'products.send', $draft, [
+            'marketplace_code' => $draft->marketplace_code,
+            'marketplace_account_id' => $draft->marketplace_account_id,
+            'draft_id' => $draft->id,
+            'status' => $sent->status,
+        ]);
+
+        return response()->json($sent->load(['company:id,name', 'marketplaceAccount:id,name,code']));
     }
 }

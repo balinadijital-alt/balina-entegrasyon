@@ -9,6 +9,7 @@ use App\Models\CurrentAccount;
 use App\Models\CurrentAccountTransaction;
 use App\Models\Invoice;
 use App\Models\Order;
+use App\Services\Audit\AuditLogger;
 use App\Services\Orders\OrderOperationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,7 +36,7 @@ class InvoiceController extends Controller
             ->paginate(50));
     }
 
-    public function createForOrder(Order $order, Request $request, OrderOperationService $operations): JsonResponse
+    public function createForOrder(Order $order, Request $request, OrderOperationService $operations, AuditLogger $audit): JsonResponse
     {
         $this->abortIfOrderNotTenant($request, $order);
 
@@ -85,11 +86,18 @@ class InvoiceController extends Controller
         ProcessInvoiceJob::dispatch($invoice, 'create');
         $order->update(['invoice_status' => 'queued']);
         $operations->recordHistory($order, 'invoice_queued', $order->status, $order->status, ['invoice_id' => $invoice->id], $request->user());
+        $audit->logAction($request, 'accounting', 'invoice.create', $invoice, [
+            'company_id' => $order->company_id,
+            'order_id' => $order->id,
+            'invoice_id' => $invoice->id,
+            'accounting_account_id' => $account->id,
+            'queued' => true,
+        ], null, ['type' => $invoice->type, 'grand_total' => $invoice->grand_total]);
 
         return response()->json(['message' => 'Fatura kuyruga alindi.', 'invoice_id' => $invoice->id, 'queued' => true], 202);
     }
 
-    public function returnInvoice(Invoice $invoice): JsonResponse
+    public function returnInvoice(Invoice $invoice, AuditLogger $audit): JsonResponse
     {
         $this->abortIfInvoiceNotTenant(request(), $invoice);
 
@@ -101,22 +109,30 @@ class InvoiceController extends Controller
         $return->tax_total = -1 * abs((float) $invoice->tax_total);
         $return->save();
         ProcessInvoiceJob::dispatch($return, 'return');
+        $audit->logAction(request(), 'accounting', 'invoice.return', $return, [
+            'company_id' => $invoice->company_id,
+            'source_invoice_id' => $invoice->id,
+            'return_invoice_id' => $return->id,
+            'queued' => true,
+        ]);
         return response()->json(['message' => 'Iade faturasi kuyruga alindi.', 'invoice_id' => $return->id, 'queued' => true], 202);
     }
 
-    public function query(Invoice $invoice): JsonResponse
+    public function query(Invoice $invoice, AuditLogger $audit): JsonResponse
     {
         $this->abortIfInvoiceNotTenant(request(), $invoice);
 
         ProcessInvoiceJob::dispatch($invoice, 'query');
+        $audit->logAction(request(), 'accounting', 'invoice.query', $invoice, $this->invoiceContext($invoice, 'query'));
         return response()->json(['message' => 'Fatura durum sorgusu kuyruga alindi.', 'queued' => true], 202);
     }
 
-    public function pdf(Invoice $invoice): JsonResponse
+    public function pdf(Invoice $invoice, AuditLogger $audit): JsonResponse
     {
         $this->abortIfInvoiceNotTenant(request(), $invoice);
 
         ProcessInvoiceJob::dispatch($invoice, 'pdf');
+        $audit->logAction(request(), 'accounting', 'invoice.pdf', $invoice, $this->invoiceContext($invoice, 'pdf'));
         return response()->json(['message' => 'Fatura PDF olusturma kuyruga alindi.', 'queued' => true], 202);
     }
 
@@ -126,5 +142,17 @@ class InvoiceController extends Controller
 
         if ($invoice->pdf_path && Storage::disk('public')->exists($invoice->pdf_path)) return Storage::disk('public')->download($invoice->pdf_path);
         return response()->json(['message' => 'Fatura PDF henuz olusmadi.'], 404);
+    }
+
+    private function invoiceContext(Invoice $invoice, string $action): array
+    {
+        return [
+            'company_id' => $invoice->company_id,
+            'order_id' => $invoice->order_id,
+            'invoice_id' => $invoice->id,
+            'accounting_account_id' => $invoice->accounting_account_id,
+            'action' => $action,
+            'queued' => true,
+        ];
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ProductImportRun;
+use App\Services\Audit\AuditLogger;
 use App\Services\Imports\ProductImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -38,7 +39,7 @@ class ProductImportRunController extends Controller
         return response()->json($service->previewExcel((int) $data['company_id'], $data['file'], $data['field_mapping'] ?? []));
     }
 
-    public function queueExcel(Request $request, ProductImportService $service): JsonResponse
+    public function queueExcel(Request $request, ProductImportService $service, AuditLogger $audit): JsonResponse
     {
         $data = $request->validate([
             'company_id' => ['required', 'exists:companies,id'],
@@ -50,15 +51,29 @@ class ProductImportRunController extends Controller
         $data = $this->forceTenantCompany($request, $data);
 
         $run = $service->queueExcel((int) $data['company_id'], $data['file'], $data);
+        $audit->logAction($request, 'import', 'product_import.excel.queue', $run, [
+            'company_id' => $run->company_id,
+            'import_run_id' => $run->id,
+            'source_type' => $run->source_type,
+            'queued' => true,
+        ], null, ['field_mapping' => $data['field_mapping'], 'options' => $data['options'] ?? []]);
 
         return response()->json(['message' => 'Excel import kuyruga alindi.', 'import_run_id' => $run->id, 'queued' => true], 202);
     }
 
-    public function retry(ProductImportRun $importRun, ProductImportService $service): JsonResponse
+    public function retry(ProductImportRun $importRun, ProductImportService $service, AuditLogger $audit): JsonResponse
     {
         $this->abortIfImportRunNotTenant(request(), $importRun);
 
+        $old = $importRun->toArray();
         $run = $service->retry($importRun);
+        $audit->logAction(request(), 'import', 'product_import.retry', $run, [
+            'company_id' => $run->company_id,
+            'import_run_id' => $run->id,
+            'source_type' => $run->source_type,
+            'xml_source_id' => $run->xml_source_id,
+            'queued' => true,
+        ], $old, $run->fresh()->toArray());
 
         return response()->json(['message' => 'Import tekrar kuyruga alindi.', 'import_run_id' => $run->id, 'queued' => true], 202);
     }

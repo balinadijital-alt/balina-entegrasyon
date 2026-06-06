@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\XmlSource;
+use App\Services\Audit\AuditLogger;
 use App\Services\Imports\ProductImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,27 +20,32 @@ class XmlSourceController extends Controller
             ->paginate(20));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, AuditLogger $audit): JsonResponse
     {
         $source = XmlSource::create($this->forceTenantCompany($request, $this->validated($request)));
+        $audit->logAction($request, 'import', 'xml_source.create', $source, ['company_id' => $source->company_id, 'xml_source_id' => $source->id], null, $source->toArray());
 
         return response()->json($source->load('company:id,name'), 201);
     }
 
-    public function update(Request $request, XmlSource $xmlSource): JsonResponse
+    public function update(Request $request, XmlSource $xmlSource, AuditLogger $audit): JsonResponse
     {
         $this->abortIfXmlSourceNotTenant($request, $xmlSource);
 
-        $xmlSource->update($this->forceTenantCompany($request, $this->validated($request, true)));
+        $old = $xmlSource->toArray();
+        $xmlSource->update($audit->preserveBlankSecrets($xmlSource, $this->forceTenantCompany($request, $this->validated($request, true)), ['password']));
+        $audit->logAction($request, 'import', 'xml_source.update', $xmlSource, ['company_id' => $xmlSource->company_id, 'xml_source_id' => $xmlSource->id], $old, $xmlSource->fresh()->toArray());
 
         return response()->json($xmlSource->load('company:id,name'));
     }
 
-    public function destroy(XmlSource $xmlSource): JsonResponse
+    public function destroy(XmlSource $xmlSource, AuditLogger $audit): JsonResponse
     {
         $this->abortIfXmlSourceNotTenant(request(), $xmlSource);
 
+        $old = $xmlSource->toArray();
         $xmlSource->delete();
+        $audit->logAction(request(), 'import', 'xml_source.delete', $xmlSource, ['company_id' => $old['company_id'] ?? null, 'xml_source_id' => $xmlSource->id], $old);
 
         return response()->json(status: 204);
     }
@@ -56,7 +62,7 @@ class XmlSourceController extends Controller
         return response()->json($service->previewXmlSource($xmlSource, $data['field_mapping'] ?? [], $data['options'] ?? []));
     }
 
-    public function import(XmlSource $xmlSource, Request $request, ProductImportService $service): JsonResponse
+    public function import(XmlSource $xmlSource, Request $request, ProductImportService $service, AuditLogger $audit): JsonResponse
     {
         $this->abortIfXmlSourceNotTenant($request, $xmlSource);
 
@@ -67,6 +73,12 @@ class XmlSourceController extends Controller
         ]);
 
         $run = $service->queueXml($xmlSource, $data);
+        $audit->logAction($request, 'import', 'xml_source.import', $xmlSource, [
+            'company_id' => $xmlSource->company_id,
+            'xml_source_id' => $xmlSource->id,
+            'import_run_id' => $run->id,
+            'queued' => true,
+        ], null, $data);
 
         return response()->json(['message' => 'XML import kuyruga alindi.', 'import_run_id' => $run->id, 'queued' => true], 202);
     }

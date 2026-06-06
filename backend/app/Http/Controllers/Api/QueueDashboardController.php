@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\QueueNotification;
 use App\Models\SyncRun;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -36,13 +37,19 @@ class QueueDashboardController extends Controller
         ]);
     }
 
-    public function retry(Request $request, string $uuid): JsonResponse
+    public function retry(Request $request, string $uuid, AuditLogger $audit): JsonResponse
     {
         if ($this->tenantCompanyId($request)) {
             abort(403, 'Global failed job retry sadece super admin tarafindan yapilabilir.');
         }
 
         Artisan::call('queue:retry', ['id' => [$uuid]]);
+        $audit->logAction($request, 'queue', 'queue.failed.retry', null, [
+            'uuid' => $uuid,
+            'queue' => 'failed_jobs',
+            'tenant_scope' => 'global',
+            'retry_triggered' => true,
+        ]);
 
         QueueNotification::create([
             'level' => 'info',

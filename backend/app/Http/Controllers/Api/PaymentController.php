@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentLog;
+use App\Services\Audit\AuditLogger;
 use App\Services\Payments\PaymentProviderFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,7 +34,7 @@ class PaymentController extends Controller
             ->paginate(50));
     }
 
-    public function createForOrder(Order $order, Request $request, PaymentProviderFactory $factory): JsonResponse
+    public function createForOrder(Order $order, Request $request, PaymentProviderFactory $factory, AuditLogger $audit): JsonResponse
     {
         $this->abortIfOrderNotTenant($request, $order);
 
@@ -73,20 +74,33 @@ class PaymentController extends Controller
             : $provider->create($payment->fresh(['order', 'account.provider']), $data['payload'] ?? []);
         $payment->update(array_filter($result, fn ($value) => $value !== null));
         CheckPaymentStatusJob::dispatch($payment)->delay(now()->addMinutes(2));
+        $audit->logAction($request, 'payment', 'payment.create', $payment, [
+            'company_id' => $order->company_id,
+            'order_id' => $order->id,
+            'payment_account_id' => $account->id,
+            'provider_code' => $account->provider->code,
+            'queued' => true,
+        ], null, ['amount' => $amount, 'method' => $payment->method, 'payload' => $data['payload'] ?? []]);
 
         return response()->json($payment->fresh(), 201);
     }
 
-    public function query(Payment $payment): JsonResponse
+    public function query(Payment $payment, AuditLogger $audit): JsonResponse
     {
         $this->abortIfPaymentNotTenant(request(), $payment);
 
         CheckPaymentStatusJob::dispatch($payment);
+        $audit->logAction(request(), 'payment', 'payment.query', $payment, [
+            'company_id' => $payment->order?->company_id,
+            'payment_id' => $payment->id,
+            'provider_code' => $payment->provider_code,
+            'queued' => true,
+        ]);
 
         return response()->json(['message' => 'Odeme durum sorgusu kuyruga alindi.', 'queued' => true], 202);
     }
 
-    public function refund(Payment $payment, Request $request, PaymentProviderFactory $factory): JsonResponse
+    public function refund(Payment $payment, Request $request, PaymentProviderFactory $factory, AuditLogger $audit): JsonResponse
     {
         $this->abortIfPaymentNotTenant($request, $payment);
 
@@ -95,11 +109,22 @@ class PaymentController extends Controller
             'payload' => ['nullable', 'array'],
         ]);
 
-        $amount = (float) ($data['amount'] ?? ((float) $payment->amount - (float) $payment->refunded_amount));
+        $old = $payment->fresh(['order'])->toArray();
+        $oldRefundedAmount = (float) $payment->refunded_amount;
+        $amount = (float) ($data['amount'] ?? ((float) $payment->amount - $oldRefundedAmount));
         $result = $factory->make($payment->account()->with('provider')->firstOrFail())->refund($payment->fresh(['account.provider']), $amount, $data['payload'] ?? []);
         $payment->update(array_filter($result, fn ($value) => $value !== null));
+        $fresh = $payment->fresh(['order']);
+        $audit->logAction($request, 'payment', 'payment.refund', $payment, [
+            'company_id' => $fresh->order?->company_id,
+            'payment_id' => $payment->id,
+            'provider_code' => $payment->provider_code,
+            'amount' => $amount,
+            'old_refunded_amount' => $oldRefundedAmount,
+            'new_refunded_amount' => (float) $fresh->refunded_amount,
+        ], $old, ['status' => $fresh->status, 'refunded_amount' => $fresh->refunded_amount, 'payload' => $data['payload'] ?? []]);
 
-        return response()->json($payment->fresh());
+        return response()->json($fresh);
     }
 
     public function callback(Payment $payment, Request $request, PaymentProviderFactory $factory): JsonResponse

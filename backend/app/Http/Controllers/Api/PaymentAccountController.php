@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\PaymentAccount;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -18,27 +19,34 @@ class PaymentAccountController extends Controller
             ->paginate(20));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, AuditLogger $audit): JsonResponse
     {
-        $account = PaymentAccount::create($this->forceTenantCompany($request, $this->validated($request)));
+        $payload = $this->forceTenantCompany($request, $this->validated($request));
+        $account = PaymentAccount::create($payload);
+        $audit->logAction($request, 'credentials', 'payment_account.create', $account, ['account_type' => 'payment'], null, $account->toArray());
 
         return response()->json($account->load(['company:id,name', 'provider:id,code,name']), 201);
     }
 
-    public function update(Request $request, PaymentAccount $paymentAccount): JsonResponse
+    public function update(Request $request, PaymentAccount $paymentAccount, AuditLogger $audit): JsonResponse
     {
         $this->abortIfAccountNotTenant($request, $paymentAccount);
 
-        $paymentAccount->update($this->forceTenantCompany($request, $this->validated($request, true)));
+        $old = $paymentAccount->fresh()->makeVisible($this->secretFields())->toArray();
+        $payload = $audit->preserveBlankSecrets($paymentAccount, $this->forceTenantCompany($request, $this->validated($request, true)), $this->secretFields());
+        $paymentAccount->update($payload);
+        $audit->logAction($request, 'credentials', 'payment_account.update', $paymentAccount, ['account_type' => 'payment'], $old, $paymentAccount->fresh()->makeVisible($this->secretFields())->toArray());
 
         return response()->json($paymentAccount->load(['company:id,name', 'provider:id,code,name']));
     }
 
-    public function destroy(PaymentAccount $paymentAccount): JsonResponse
+    public function destroy(PaymentAccount $paymentAccount, AuditLogger $audit): JsonResponse
     {
         $this->abortIfAccountNotTenant(request(), $paymentAccount);
 
+        $old = $paymentAccount->fresh()->makeVisible($this->secretFields())->toArray();
         $paymentAccount->delete();
+        $audit->logAction(request(), 'credentials', 'payment_account.delete', $paymentAccount, ['account_type' => 'payment'], $old);
 
         return response()->json(status: 204);
     }
@@ -61,5 +69,10 @@ class PaymentAccountController extends Controller
             'settings' => ['nullable', 'array'],
             'is_active' => ['boolean'],
         ]);
+    }
+
+    private function secretFields(): array
+    {
+        return ['api_key', 'api_secret', 'client_secret', 'webhook_secret'];
     }
 }
