@@ -3,6 +3,7 @@
 namespace App\Services\Audit;
 
 use App\Models\AuditLog;
+use App\Http\Middleware\RequestCorrelationMiddleware;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
@@ -33,6 +34,8 @@ class AuditLogger
             'auditable_id' => $model?->getKey(),
             'old_values' => $this->maskSensitive($old),
             'new_values' => $this->maskSensitive($new),
+            'request_id' => $request->attributes->get(RequestCorrelationMiddleware::REQUEST_ID_ATTRIBUTE),
+            'correlation_id' => $request->attributes->get(RequestCorrelationMiddleware::CORRELATION_ID_ATTRIBUTE),
             'ip_address' => $request->ip(),
             'user_agent' => substr((string) $request->userAgent(), 0, 255),
         ]);
@@ -59,6 +62,8 @@ class AuditLogger
                 'context' => $context,
                 'changes' => $new,
             ], fn ($value) => $value !== null && $value !== [])),
+            'request_id' => $request->attributes->get(RequestCorrelationMiddleware::REQUEST_ID_ATTRIBUTE),
+            'correlation_id' => $request->attributes->get(RequestCorrelationMiddleware::CORRELATION_ID_ATTRIBUTE),
             'ip_address' => $request->ip(),
             'user_agent' => substr((string) $request->userAgent(), 0, 255),
         ]);

@@ -10,7 +10,7 @@ interface PaymentProvider
 
     public function startThreeDSecure(Payment $payment, array $payload = []): array;
 
-    public function verifyCallback(Payment $payment, array $payload, ?string $signature = null): bool;
+    public function verifyCallback(Payment $payment, array $payload, ?string $signature = null, ?string $rawBody = null): bool;
 
     public function query(Payment $payment): array;
 

@@ -3,6 +3,7 @@
 namespace App\Services\Notifications;
 
 use App\Jobs\Notifications\DispatchWebhookNotificationJob;
+use App\Http\Middleware\RequestCorrelationMiddleware;
 use App\Models\CompanySetting;
 use App\Models\WebhookDeliveryLog;
 use Illuminate\Http\Client\Response;
@@ -28,6 +29,8 @@ class NotificationRuntimeService
         if (! $this->shouldDispatchWebhook($settings, $level)) {
             return;
         }
+
+        $this->assertAllowedEndpoint((string) data_get($settings, 'webhooks.endpoint_url'));
 
         $delivery = $this->createDeliveryLog(
             $companyId,
@@ -73,6 +76,7 @@ class NotificationRuntimeService
         if ($endpoint === '') {
             throw new RuntimeException('Webhook hedef URL bos.');
         }
+        $this->assertAllowedEndpoint($endpoint);
 
         $payload = $this->payload('webhook.test', 'info', [
             'company_id' => $companyId,
@@ -124,6 +128,8 @@ class NotificationRuntimeService
             'payload' => $this->maskPayload($payload),
             'status' => 'queued',
             'success' => false,
+            'request_id' => request()?->attributes->get(RequestCorrelationMiddleware::REQUEST_ID_ATTRIBUTE),
+            'correlation_id' => request()?->attributes->get(RequestCorrelationMiddleware::CORRELATION_ID_ATTRIBUTE),
         ]);
     }
 
@@ -173,6 +179,30 @@ class NotificationRuntimeService
         }
 
         return true;
+    }
+
+    private function assertAllowedEndpoint(string $endpoint): void
+    {
+        $parts = parse_url($endpoint);
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        $host = strtolower((string) ($parts['host'] ?? ''));
+
+        if ($scheme !== 'https' || $host === '') {
+            throw new RuntimeException('Webhook endpoint HTTPS olmak zorunda.');
+        }
+
+        if ($host === 'localhost' || str_ends_with($host, '.localhost')) {
+            throw new RuntimeException('Webhook endpoint localhost olamaz.');
+        }
+
+        if (in_array($host, ['169.254.169.254', 'metadata.google.internal'], true)) {
+            throw new RuntimeException('Webhook endpoint metadata servisi olamaz.');
+        }
+
+        $ip = filter_var($host, FILTER_VALIDATE_IP) ? $host : null;
+        if ($ip && ! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            throw new RuntimeException('Webhook endpoint private veya reserved IP olamaz.');
+        }
     }
 
     private function payload(string $event, string $level, array $payload): array

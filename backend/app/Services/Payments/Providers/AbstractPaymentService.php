@@ -5,6 +5,7 @@ namespace App\Services\Payments\Providers;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentLog;
+use App\Http\Middleware\RequestCorrelationMiddleware;
 use App\Services\Payments\Contracts\PaymentProvider;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -45,17 +46,23 @@ abstract class AbstractPaymentService implements PaymentProvider
         ];
     }
 
-    public function verifyCallback(Payment $payment, array $payload, ?string $signature = null): bool
+    public function verifyCallback(Payment $payment, array $payload, ?string $signature = null, ?string $rawBody = null): bool
     {
         $secret = $payment->account?->webhook_secret ?: $payment->account?->api_secret;
 
         if (! $secret) {
-            return true;
+            return ! (app()->environment('production') || config('app.env') === 'production');
         }
 
-        $expected = hash_hmac('sha256', json_encode($payload, JSON_UNESCAPED_UNICODE), $secret);
+        $body = $rawBody !== null && $rawBody !== ''
+            ? $rawBody
+            : json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $expected = hash_hmac('sha256', (string) $body, $secret);
+        $given = Str::startsWith((string) $signature, 'sha256=')
+            ? Str::after((string) $signature, 'sha256=')
+            : (string) $signature;
 
-        return hash_equals($expected, (string) $signature);
+        return hash_equals($expected, $given);
     }
 
     public function query(Payment $payment): array
@@ -155,10 +162,27 @@ abstract class AbstractPaymentService implements PaymentProvider
             'provider_code' => $payment->provider_code,
             'event' => $event,
             'status' => $payment->status,
-            'request_payload' => $request,
-            'response_payload' => is_array($response) ? $response : null,
+            'request_payload' => $this->maskPayload($request),
+            'response_payload' => is_array($response) ? $this->maskPayload($response) : null,
             'error_message' => $error,
             'duration_ms' => (int) ((microtime(true) - $startedAt) * 1000),
+            'request_id' => request()?->attributes->get(RequestCorrelationMiddleware::REQUEST_ID_ATTRIBUTE),
+            'correlation_id' => request()?->attributes->get(RequestCorrelationMiddleware::CORRELATION_ID_ATTRIBUTE),
         ]);
+    }
+
+    protected function maskPayload(mixed $payload, string $key = ''): mixed
+    {
+        if ($key !== '' && collect(['secret', 'token', 'password', 'api_key', 'api_secret', 'authorization', 'webhook_secret', 'key', 'three_d_html'])->contains(fn (string $pattern) => str_contains(strtolower($key), $pattern))) {
+            return '******';
+        }
+
+        if (is_array($payload)) {
+            return collect($payload)
+                ->mapWithKeys(fn ($value, $childKey) => [$childKey => $this->maskPayload($value, (string) $childKey)])
+                ->all();
+        }
+
+        return $payload;
     }
 }

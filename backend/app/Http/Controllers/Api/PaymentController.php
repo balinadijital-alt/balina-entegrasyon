@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\RequestCorrelationMiddleware;
 use App\Jobs\Payments\CheckPaymentStatusJob;
 use App\Models\Order;
 use App\Models\Payment;
@@ -10,12 +11,18 @@ use App\Models\PaymentAccount;
 use App\Models\PaymentLog;
 use App\Services\Audit\AuditLogger;
 use App\Services\Payments\PaymentProviderFactory;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
 class PaymentController extends Controller
 {
+    private const CALLBACK_TIMESTAMP_TOLERANCE_SECONDS = 300;
+    private const CALLBACK_STATUSES = ['paid', 'failed', 'pending', 'cancelled', 'refunded'];
+    private const SENSITIVE_KEYS = ['secret', 'token', 'password', 'api_key', 'api_secret', 'authorization', 'webhook_secret', 'key', 'three_d_html'];
+
     public function index(Request $request): JsonResponse
     {
         return response()->json(Payment::with(['order:id,marketplace_order_id,customer_name', 'account.provider:id,code,name'])
@@ -130,42 +137,150 @@ class PaymentController extends Controller
     public function callback(Payment $payment, Request $request, PaymentProviderFactory $factory): JsonResponse
     {
         $payload = $request->all();
+        $rawBody = $request->getContent();
         $signature = $request->header('X-Signature') ?: $request->input('signature');
+        $providerTimestamp = $this->providerTimestamp($request);
+        $idempotencyKey = $this->callbackIdempotencyKey($request, $payment, $payload, $rawBody);
         $provider = $factory->make($payment->account()->with('provider')->firstOrFail());
 
-        if (! $provider->verifyCallback($payment->fresh(['account.provider']), $payload, $signature)) {
-            PaymentLog::create([
-                'payment_id' => $payment->id,
-                'payment_account_id' => $payment->payment_account_id,
-                'provider_code' => $payment->provider_code,
-                'event' => 'callback',
-                'status' => 'rejected',
-                'request_payload' => $payload,
-                'error_message' => 'Callback imzasi dogrulanamadi.',
-            ]);
+        if (! $providerTimestamp || ! $this->timestampWithinWindow($providerTimestamp)) {
+            $this->callbackLog($request, $payment, 'rejected', $payload, 'Callback timestamp gecersiz.', $idempotencyKey, false, $providerTimestamp);
+
+            return response()->json(['message' => 'Callback timestamp gecersiz.'], 403);
+        }
+
+        if (! $provider->verifyCallback($payment->fresh(['account.provider']), $payload, $signature, $rawBody)) {
+            $this->callbackLog($request, $payment, 'rejected', $payload, 'Callback imzasi dogrulanamadi.', $idempotencyKey, false, $providerTimestamp);
 
             return response()->json(['message' => 'Callback imzasi gecersiz.'], 403);
         }
 
         $status = $payload['status'] ?? $payload['payment_status'] ?? 'paid';
+        if (! in_array($status, self::CALLBACK_STATUSES, true)) {
+            $this->callbackLog($request, $payment, 'rejected', $payload, 'Callback status gecersiz.', $idempotencyKey, true, $providerTimestamp);
+
+            return response()->json(['message' => 'Callback status gecersiz.'], 422);
+        }
+
+        $existing = PaymentLog::query()
+            ->where('payment_id', $payment->id)
+            ->where('event', 'callback')
+            ->where('idempotency_key', $idempotencyKey)
+            ->where('signature_valid', true)
+            ->where('status', '!=', 'rejected')
+            ->first();
+
+        if ($existing) {
+            return response()->json(['message' => 'Callback daha once islendi.', 'duplicate' => true]);
+        }
+
         $payment->update([
             'status' => $status,
             'transaction_id' => $payload['transaction_id'] ?? $payment->transaction_id,
-            'response_payload' => $payload,
+            'response_payload' => $this->maskPayload($payload),
             'paid_at' => $status === 'paid' ? now() : $payment->paid_at,
             'failed_at' => $status === 'failed' ? now() : $payment->failed_at,
         ]);
 
+        $this->callbackLog($request, $payment, $status, $payload, null, $idempotencyKey, true, $providerTimestamp, ['accepted' => true]);
+
+        return response()->json(['message' => 'Callback islendi.']);
+    }
+
+    private function callbackLog(
+        Request $request,
+        Payment $payment,
+        string $status,
+        array $payload,
+        ?string $error,
+        string $idempotencyKey,
+        ?bool $signatureValid,
+        ?CarbonImmutable $providerTimestamp,
+        ?array $response = null,
+    ): void {
         PaymentLog::create([
             'payment_id' => $payment->id,
             'payment_account_id' => $payment->payment_account_id,
             'provider_code' => $payment->provider_code,
             'event' => 'callback',
             'status' => $status,
-            'request_payload' => $payload,
-            'response_payload' => ['accepted' => true],
+            'request_payload' => $this->maskPayload($payload),
+            'response_payload' => $response,
+            'error_message' => $error,
+            'request_id' => $request->attributes->get(RequestCorrelationMiddleware::REQUEST_ID_ATTRIBUTE),
+            'correlation_id' => $request->attributes->get(RequestCorrelationMiddleware::CORRELATION_ID_ATTRIBUTE),
+            'idempotency_key' => $idempotencyKey,
+            'signature_valid' => $signatureValid,
+            'provider_timestamp' => $providerTimestamp,
         ]);
+    }
 
-        return response()->json(['message' => 'Callback islendi.']);
+    private function providerTimestamp(Request $request): ?CarbonImmutable
+    {
+        $value = $request->header('X-Timestamp')
+            ?: $request->header('X-Balina-Timestamp')
+            ?: $request->header('X-Provider-Timestamp')
+            ?: $request->input('timestamp');
+
+        if (! $value) {
+            return null;
+        }
+
+        try {
+            return is_numeric($value)
+                ? CarbonImmutable::createFromTimestamp((int) $value)
+                : CarbonImmutable::parse($value);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function timestampWithinWindow(CarbonImmutable $timestamp): bool
+    {
+        $now = CarbonImmutable::now();
+
+        return $timestamp->greaterThanOrEqualTo($now->subSeconds(self::CALLBACK_TIMESTAMP_TOLERANCE_SECONDS))
+            && $timestamp->lessThanOrEqualTo($now->addSeconds(self::CALLBACK_TIMESTAMP_TOLERANCE_SECONDS));
+    }
+
+    private function callbackIdempotencyKey(Request $request, Payment $payment, array $payload, string $rawBody): string
+    {
+        $providerKey = $request->header('X-Idempotency-Key')
+            ?: $request->header('X-Callback-Id')
+            ?: data_get($payload, 'idempotency_key')
+            ?: data_get($payload, 'callback_id')
+            ?: implode('|', array_filter([
+                data_get($payload, 'transaction_id'),
+                data_get($payload, 'status', data_get($payload, 'payment_status')),
+            ]));
+
+        if (! $providerKey) {
+            $providerKey = hash('sha256', $rawBody);
+        }
+
+        return hash('sha256', implode('|', [
+            'payment',
+            $payment->id,
+            $payment->provider_code,
+            $providerKey,
+        ]));
+    }
+
+    private function maskPayload(mixed $value): mixed
+    {
+        if (is_array($value)) {
+            return collect($value)
+                ->mapWithKeys(fn ($item, $key) => [
+                    $key => $this->isSensitive((string) $key) ? '******' : $this->maskPayload($item),
+                ])
+                ->all();
+        }
+
+        return $value;
+    }
+
+    private function isSensitive(string $key): bool
+    {
+        return Arr::first(self::SENSITIVE_KEYS, fn (string $needle) => str_contains(strtolower($key), $needle)) !== null;
     }
 }

@@ -19,6 +19,14 @@ class InboundWebhookDelivery extends Model
         'signature_valid',
         'processed_at',
         'last_error',
+        'request_id',
+        'correlation_id',
+        'business_event_key',
+        'body_sha256',
+        'source_ip',
+        'user_agent',
+        'provider_timestamp',
+        'received_at',
     ];
 
     protected function casts(): array
@@ -27,6 +35,8 @@ class InboundWebhookDelivery extends Model
             'payload' => 'array',
             'signature_valid' => 'boolean',
             'processed_at' => 'datetime',
+            'provider_timestamp' => 'datetime',
+            'received_at' => 'datetime',
         ];
     }
 

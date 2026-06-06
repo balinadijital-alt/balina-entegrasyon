@@ -9,6 +9,9 @@ class ApiLog extends Model
 {
     protected $fillable = [
         'company_id',
+        'user_id',
+        'request_id',
+        'correlation_id',
         'marketplace_code',
         'direction',
         'method',

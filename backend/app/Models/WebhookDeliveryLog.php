@@ -21,6 +21,8 @@ class WebhookDeliveryLog extends Model
         'delivered_at',
         'failed_at',
         'last_error',
+        'request_id',
+        'correlation_id',
     ];
 
     protected function casts(): array

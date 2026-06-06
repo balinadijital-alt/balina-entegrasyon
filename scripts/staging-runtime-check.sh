@@ -12,7 +12,7 @@ if [ "$#" -ne 1 ]; then
 fi
 
 BASE_URL="${1%/}"
-HEALTH_URL="$BASE_URL/api/health"
+HEALTH_URL="$BASE_URL/api/health/ready"
 
 health_response="$(curl -fsS --max-time 10 "$HEALTH_URL")"
 
@@ -24,8 +24,15 @@ fi
 
 missing_checks=0
 for check_name in database cache queue storage; do
-  if ! printf '%s' "$health_response" | grep -Eq "\"$check_name\"[[:space:]]*:"; then
-    echo "Health check response is missing checks.$check_name." >&2
+  if ! printf '%s' "$health_response" | grep -Eq "\"$check_name\"[[:space:]]*:[[:space:]]*\"ok\""; then
+    echo "Health check response has non-ok checks.$check_name." >&2
+    missing_checks=1
+  fi
+done
+
+for top_level in queue scheduler; do
+  if ! printf '%s' "$health_response" | grep -Eq "\"$top_level\"[[:space:]]*:"; then
+    echo "Health check response is missing $top_level field." >&2
     missing_checks=1
   fi
 done

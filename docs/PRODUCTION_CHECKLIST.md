@@ -153,7 +153,8 @@ Deploy sonrasi:
 veya:
 
 ```bash
-curl -fsS https://api.example.com/api/health
+curl -fsS https://api.example.com/api/health/live
+curl -fsS https://api.example.com/api/health/ready
 ```
 
 Beklenen:
@@ -161,6 +162,25 @@ Beklenen:
 - HTTP 200
 - `status` degeri `healthy`
 - `database`, `cache`, `queue`, `storage` kontrolleri `ok`
+- `queue.backlog` ve `queue.failed_jobs` alanlari gorunur
+- `scheduler.last_run_at` cron calistiktan sonra dolu olur
+
+## Webhook / Callback Security
+
+- Trendyol inbound webhook secret her aktif hesapta tanimli
+- Inbound webhook istekleri `Content-Type: application/json` ile geliyor
+- Inbound webhook istekleri `X-Timestamp`, `X-Balina-Timestamp` veya `X-Trendyol-Timestamp` tasiyor
+- Timestamp toleransi `±5 dakika`
+- Eski veya ileri timestamp `expired_signature` olarak reddediliyor
+- Payload limiti `256 KB`
+- Duplicate veya replay delivery kayitlari tekrar order islemiyor
+- Odeme callback endpointi sadece `POST`
+- Production odeme hesaplarinda `webhook_secret` veya `api_secret` tanimli
+- Odeme callback imzasi raw body uzerinden dogrulaniyor
+- Odeme callback status degeri whitelist icinde: `paid`, `failed`, `pending`, `cancelled`, `refunded`
+- Odeme callback replay/idempotency log kaydiyla engelleniyor
+- Webhook ve callback loglarinda request/correlation id gorunur
+- Outbound webhook URL'leri HTTPS ve public hedef olmalidir; localhost/private/metadata hedefleri reddedilir
 
 ## Smoke Test
 
@@ -180,6 +200,8 @@ Local kalite zinciri deploy oncesi temiz olmali:
 ```bash
 ./scripts/quality-check.sh
 ```
+
+Release hardening detaylari icin `docs/RELEASE_HARDENING.md` izlenmelidir.
 
 ## Rollback Hazirligi
 

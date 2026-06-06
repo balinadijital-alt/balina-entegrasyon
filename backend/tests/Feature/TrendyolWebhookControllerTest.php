@@ -200,6 +200,7 @@ class TrendyolWebhookControllerTest extends TestCase
             'CONTENT_TYPE' => 'application/json',
             'HTTP_ACCEPT' => 'application/json',
             'HTTP_X_SIGNATURE' => $signature,
+            'HTTP_X_TIMESTAMP' => (string) now()->timestamp,
         ], $body);
     }
 }

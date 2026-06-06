@@ -19,6 +19,9 @@ class LogApiRequest
         if (! $request->is('api/api-logs*')) {
             ApiLog::create([
                 'company_id' => $request->integer('company_id') ?: null,
+                'user_id' => $request->user()?->id,
+                'request_id' => $request->attributes->get(RequestCorrelationMiddleware::REQUEST_ID_ATTRIBUTE),
+                'correlation_id' => $request->attributes->get(RequestCorrelationMiddleware::CORRELATION_ID_ATTRIBUTE),
                 'marketplace_code' => is_object($request->route('marketplace')) ? $request->route('marketplace')->code : null,
                 'direction' => 'inbound',
                 'method' => $request->method(),

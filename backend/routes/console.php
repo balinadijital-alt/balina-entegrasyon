@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('about:balina', function () {
@@ -33,5 +34,6 @@ Schedule::command('imports:dispatch-due-xml')
     ->onOneServer();
 
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
+Schedule::call(fn () => Cache::put('scheduler:last_run_at', now()->toISOString(), now()->addMinutes(10)))->everyMinute();
 Schedule::command('queue:prune-failed --hours=168')->daily();
 Schedule::command('balina:prune-logs --days=30')->daily();

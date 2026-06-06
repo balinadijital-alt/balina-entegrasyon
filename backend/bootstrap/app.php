@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsurePlanLimit;
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\EnsureTenantCompany;
+use App\Http\Middleware\RequestCorrelationMiddleware;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SanitizeInput;
 use Illuminate\Foundation\Application;
@@ -27,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->statefulApi();
         $middleware->api(append: [
+            RequestCorrelationMiddleware::class,
             SecurityHeaders::class,
             SanitizeInput::class,
             LogApiRequest::class,

@@ -47,9 +47,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
-Route::match(['get', 'post'], '/payment-callbacks/{payment}', [PaymentController::class, 'callback']);
+Route::post('/payment-callbacks/{payment}', [PaymentController::class, 'callback'])->middleware('throttle:30,1');
 Route::post('/webhooks/trendyol/packages', [TrendyolWebhookController::class, 'packages'])->middleware('throttle:30,1');
 Route::get('/health', HealthController::class);
+Route::get('/health/live', [HealthController::class, 'live']);
+Route::get('/health/ready', [HealthController::class, 'ready']);
 
 Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(function () {
     Route::get('/dashboard', DashboardController::class);
