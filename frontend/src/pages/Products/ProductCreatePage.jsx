@@ -184,19 +184,28 @@ export function ProductCreatePage() {
 
   const load = async () => {
     await run(async () => {
+      const safeList = async (params) => {
+        try {
+          return await api.catalogResources.list(params);
+        } catch {
+          return { data: [] };
+        }
+      };
+
       const [companyResponse, productResponse, categories, brands, attributes, tags, suppliers, taxRates, units, defaults] = await Promise.all([
         api.companies.list(),
         isEdit ? api.products.show(id) : Promise.resolve(null),
-        api.catalogResources.list({ type: 'categories', active: 1 }),
-        api.catalogResources.list({ type: 'brands', active: 1 }),
-        api.catalogResources.list({ type: 'attributes', active: 1 }),
-        api.catalogResources.list({ type: 'tags', active: 1 }),
-        api.catalogResources.list({ type: 'suppliers', active: 1 }),
-        api.catalogResources.list({ type: 'tax-rates', active: 1 }),
-        api.catalogResources.list({ type: 'units', active: 1 }),
-        api.catalogResources.list({ type: 'defaults', active: 1 }),
+        safeList({ type: 'categories', active: 1 }),
+        safeList({ type: 'brands', active: 1 }),
+        safeList({ type: 'attributes', active: 1 }),
+        safeList({ type: 'tags', active: 1 }),
+        safeList({ type: 'suppliers', active: 1 }),
+        safeList({ type: 'tax-rates', active: 1 }),
+        safeList({ type: 'units', active: 1 }),
+        safeList({ type: 'defaults', active: 1 }),
       ]);
       setCompanies(companyResponse.data || []);
+      setForm((current) => ({ ...current, company_id: current.company_id || companyResponse.data?.[0]?.id || '' }));
       setCatalog({
         categories: categories.data || [],
         brands: brands.data || [],
