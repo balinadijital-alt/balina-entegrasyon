@@ -25,7 +25,21 @@ class MarketplaceAccountController extends Controller
 
     public function store(Request $request, AuditLogger $audit): JsonResponse
     {
-        $account = MarketplaceAccount::create($this->validated($request));
+        $payload = $this->validated($request);
+        $account = MarketplaceAccount::query()
+            ->where('company_id', $payload['company_id'])
+            ->where('code', $payload['code'])
+            ->first();
+
+        if ($account) {
+            $old = $account->fresh()->makeVisible($this->secretFields())->toArray();
+            $account->update($audit->preserveBlankSecrets($account, $payload, $this->secretFields()));
+            $audit->logAction($request, 'credentials', 'marketplace_account.update', $account, ['marketplace_code' => $account->code], $old, $account->fresh()->makeVisible($this->secretFields())->toArray());
+
+            return response()->json($this->maskSecrets($account->load('company')));
+        }
+
+        $account = MarketplaceAccount::create($payload);
         $audit->logAction($request, 'credentials', 'marketplace_account.create', $account, ['marketplace_code' => $account->code], null, $account->toArray());
 
         return response()->json($this->maskSecrets($account->load('company')), 201);

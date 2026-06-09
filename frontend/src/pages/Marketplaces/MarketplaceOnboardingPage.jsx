@@ -130,7 +130,7 @@ export function MarketplaceOnboardingPage() {
           source: 'onboarding-wizard',
         },
       };
-      const existing = accounts.find((account) => account.code === form.code && String(account.company_id) === String(form.company_id) && account.name === form.name);
+      const existing = accounts.find((account) => account.code === form.code && String(account.company_id) === String(form.company_id));
       const account = existing ? await api.marketplaces.update(existing.id, payload) : await api.marketplaces.create(payload);
       setSavedAccount(account);
       notify('success', 'Pazaryeri hesabi kaydedildi.');
