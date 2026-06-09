@@ -9,7 +9,7 @@ import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { firstError, validateCompany } from '../../utils/validation.js';
 
-const initialForm = { name: '', tax_number: '', email: '', phone: '', address: '', is_active: true };
+const initialForm = { name: '', tax_number: '', email: '', phone: '', address: '', is_active: true, admin_username: '', admin_password: '' };
 
 export function CompaniesPage() {
   const { notify } = useApp();
@@ -56,6 +56,8 @@ export function CompaniesPage() {
           <Field label="Vergi No"><input value={form.tax_number} onChange={(event) => setForm({ ...form, tax_number: event.target.value })} /></Field>
           <Field label="E-posta" error={errors.email}><input value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></Field>
           <Field label="Telefon"><input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></Field>
+          <Field label="Yonetici kullanici adi" error={errors.admin_username}><input value={form.admin_username} onChange={(event) => setForm({ ...form, admin_username: event.target.value })} /></Field>
+          <Field label="Yonetici sifresi" error={errors.admin_password}><input type="password" value={form.admin_password} onChange={(event) => setForm({ ...form, admin_password: event.target.value })} /></Field>
           <Field label="Adres"><textarea value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} /></Field>
           <button disabled={loading}>{loading ? 'Kaydediliyor...' : 'Firma Ekle'}</button>
         </form>

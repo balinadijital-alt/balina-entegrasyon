@@ -26,7 +26,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'role.any' => EnsureRole::class,
             'tenant.company' => EnsureTenantCompany::class,
         ]);
-        $middleware->statefulApi();
         $middleware->api(append: [
             RequestCorrelationMiddleware::class,
             SecurityHeaders::class,

@@ -6,6 +6,9 @@ export function validateCompany(form) {
   const errors = {};
   if (!required(form.name)) errors.name = 'Firma adi zorunludur.';
   if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = 'Gecerli bir e-posta girin.';
+  if (form.admin_username && !required(form.admin_password)) errors.admin_password = 'Yonetici sifresi zorunludur.';
+  if (form.admin_password && !required(form.admin_username)) errors.admin_username = 'Yonetici kullanici adi zorunludur.';
+  if (form.admin_password && String(form.admin_password).length < 8) errors.admin_password = 'Sifre en az 8 karakter olmali.';
   return errors;
 }
 

@@ -10,13 +10,13 @@ export function LoginPage() {
   const navigate = useNavigate();
   const { login } = useApp();
   const { loading, error, setError, run } = useAsync();
-  const [form, setForm] = useState({ email: 'admin@balina.local', password: 'password' });
+  const [form, setForm] = useState({ email: 'balinaadmin', password: '' });
   const [errors, setErrors] = useState({});
 
   const submit = async (event) => {
     event.preventDefault();
     const validationErrors = {};
-    if (!required(form.email)) validationErrors.email = 'E-posta zorunludur.';
+    if (!required(form.email)) validationErrors.email = 'Kullanici adi zorunludur.';
     if (!required(form.password)) validationErrors.password = 'Sifre zorunludur.';
     setErrors(validationErrors);
 
@@ -37,7 +37,7 @@ export function LoginPage() {
         <h1>Balina Entegrasyon</h1>
         <p>Admin paneline giris yapin.</p>
         {error && <div className="alert">{error}</div>}
-        <Field label="E-posta" error={errors.email}>
+        <Field label="Kullanici adi" error={errors.email}>
           <input value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
         </Field>
         <Field label="Sifre" error={errors.password}>
