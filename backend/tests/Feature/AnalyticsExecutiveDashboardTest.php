@@ -16,6 +16,7 @@ use App\Models\UsageCounter;
 use App\Models\User;
 use App\Models\WebhookDeliveryLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
@@ -32,6 +33,13 @@ class AnalyticsExecutiveDashboardTest extends TestCase
         Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'company_admin', 'guard_name' => 'web']);
         Cache::flush();
+        Carbon::setTestNow('2026-06-01 12:00:00');
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     public function test_super_admin_sees_platform_wide_executive_dashboard(): void
