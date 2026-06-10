@@ -50,8 +50,13 @@ const OrderDetailPage = lazyPage(() => import('./pages/Orders/OrderDetailPage.js
 const OrdersPage = lazyPage(() => import('./pages/Orders/OrdersPage.jsx'), 'OrdersPage');
 const OperationsCenterPage = lazyPage(() => import('./pages/Operations/OperationsCenterPage.jsx'), 'OperationsCenterPage');
 const PaymentsPage = lazyPage(() => import('./pages/Payments/PaymentsPage.jsx'), 'PaymentsPage');
-const CategoryMappingPage = lazyPage(() => import('./pages/Products/CategoryMappingPage.jsx'), 'CategoryMappingPage');
 const CatalogResourcePage = lazyPage(() => import('./pages/Products/CatalogResourcePage.jsx'), 'CatalogResourcePage');
+const MarketplaceAttributeMappingPage = lazyPage(() => import('./pages/Products/MarketplaceAttributeMappingPage.jsx'), 'MarketplaceAttributeMappingPage');
+const MarketplaceBrandMappingPage = lazyPage(() => import('./pages/Products/MarketplaceBrandMappingPage.jsx'), 'MarketplaceBrandMappingPage');
+const MarketplaceCategoryMappingPage = lazyPage(() => import('./pages/Products/MarketplaceCategoryMappingPage.jsx'), 'MarketplaceCategoryMappingPage');
+const MarketplaceMappingCenterPage = lazyPage(() => import('./pages/Products/MarketplaceMappingCenterPage.jsx'), 'MarketplaceMappingCenterPage');
+const MarketplaceReadinessPage = lazyPage(() => import('./pages/Products/MarketplaceReadinessPage.jsx'), 'MarketplaceReadinessPage');
+const MarketplaceVariantMappingPage = lazyPage(() => import('./pages/Products/MarketplaceVariantMappingPage.jsx'), 'MarketplaceVariantMappingPage');
 const ProductCreatePage = lazyPage(() => import('./pages/Products/ProductCreatePage.jsx'), 'ProductCreatePage');
 const ProductDetailPage = lazyPage(() => import('./pages/Products/ProductDetailPage.jsx'), 'ProductDetailPage');
 const ProductPublishWizardPage = lazyPage(() => import('./pages/Products/ProductPublishWizardPage.jsx'), 'ProductPublishWizardPage');
@@ -96,7 +101,13 @@ function CustomerRoutes() {
       <Route path="operations" element={<OperationsCenterPage />} />
       <Route path="products" element={<ProductsPage />} />
       <Route path="products/new" element={<ProductCreatePage />} />
-      <Route path="products/category-mapping" element={<CategoryMappingPage />} />
+      <Route path="products/category-mapping" element={<Navigate to="/marketplace-mapping/categories" replace />} />
+      <Route path="marketplace-readiness" element={<MarketplaceReadinessPage />} />
+      <Route path="marketplace-mapping" element={<MarketplaceMappingCenterPage />} />
+      <Route path="marketplace-mapping/categories" element={<MarketplaceCategoryMappingPage />} />
+      <Route path="marketplace-mapping/brands" element={<MarketplaceBrandMappingPage />} />
+      <Route path="marketplace-mapping/attributes" element={<MarketplaceAttributeMappingPage />} />
+      <Route path="marketplace-mapping/variants" element={<MarketplaceVariantMappingPage />} />
       <Route path="products/publish-queue" element={<PublishQueuePage />} />
       <Route path="products/publish" element={<ProductPublishWizardPage />} />
       <Route path="products/:id" element={<ProductDetailPage />} />

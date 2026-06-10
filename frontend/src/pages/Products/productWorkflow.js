@@ -19,6 +19,9 @@ export const MISSING_FIELD_LABELS = {
   cargo: 'Kargo bilgisi',
   marketplace_category: 'Pazaryeri kategorisi',
   category_mapping: 'Kategori eslesmesi',
+  brand_mapping: 'Marka eslesmesi',
+  attribute_mappings: 'Nitelik eslesmesi',
+  variant_attribute_mappings: 'Varyant nitelik eslesmesi',
   required_attributes: 'Zorunlu pazaryeri ozelligi',
 };
 
@@ -83,6 +86,9 @@ export function isMarketplaceReady(product, code = null) {
 export function publishBlockReason(product, code = null) {
   const missing = missingFields(product, code);
   if (missing.includes('category_mapping')) return 'Eksik kategori eslesmesi';
+  if (missing.includes('brand_mapping')) return 'Eksik marka eslesmesi';
+  if (missing.includes('attribute_mappings')) return 'Eksik nitelik eslesmesi';
+  if (missing.includes('variant_attribute_mappings')) return 'Eksik varyant nitelik eslesmesi';
   if (missing.includes('marketplace_category')) return 'Eksik pazaryeri kategorisi';
   if (missing.includes('required_attributes')) return 'Eksik zorunlu ozellik';
   if (missing.includes('attributes')) return 'Eksik katalog niteligi';

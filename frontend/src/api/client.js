@@ -175,6 +175,34 @@ export const api = {
     update: (id, payload) => http.put(`/category-mappings/${id}`, payload).then((response) => response.data),
     remove: (id) => http.delete(`/category-mappings/${id}`),
   },
+  marketplaceMappings: {
+    summary: (params) => http.get('/marketplace-mappings/summary', { params }).then((response) => response.data),
+    readinessPreview: (params) => http.get('/marketplace-mappings/readiness-preview', { params }).then((response) => response.data),
+    categories: {
+      list: (params) => http.get('/marketplace-mappings/categories', { params }).then((response) => response.data),
+      create: (payload) => http.post('/marketplace-mappings/categories', payload).then((response) => response.data),
+      update: (id, payload) => http.put(`/marketplace-mappings/categories/${id}`, payload).then((response) => response.data),
+      remove: (id) => http.delete(`/marketplace-mappings/categories/${id}`),
+    },
+    brands: {
+      list: (params) => http.get('/marketplace-mappings/brands', { params }).then((response) => response.data),
+      create: (payload) => http.post('/marketplace-mappings/brands', payload).then((response) => response.data),
+      update: (id, payload) => http.put(`/marketplace-mappings/brands/${id}`, payload).then((response) => response.data),
+      remove: (id) => http.delete(`/marketplace-mappings/brands/${id}`),
+    },
+    attributes: {
+      list: (params) => http.get('/marketplace-mappings/attributes', { params }).then((response) => response.data),
+      create: (payload) => http.post('/marketplace-mappings/attributes', payload).then((response) => response.data),
+      update: (id, payload) => http.put(`/marketplace-mappings/attributes/${id}`, payload).then((response) => response.data),
+      remove: (id) => http.delete(`/marketplace-mappings/attributes/${id}`),
+    },
+    variants: {
+      list: (params) => http.get('/marketplace-mappings/variants', { params }).then((response) => response.data),
+      create: (payload) => http.post('/marketplace-mappings/variants', payload).then((response) => response.data),
+      update: (id, payload) => http.put(`/marketplace-mappings/variants/${id}`, payload).then((response) => response.data),
+      remove: (id) => http.delete(`/marketplace-mappings/variants/${id}`),
+    },
+  },
   orders: {
     list: (params) => http.get('/orders', { params }).then((response) => response.data),
     show: (id) => http.get(`/orders/${id}`).then((response) => response.data),

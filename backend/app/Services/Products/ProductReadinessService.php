@@ -3,6 +3,10 @@
 namespace App\Services\Products;
 
 use App\Models\CategoryMapping;
+use App\Models\MarketplaceAttributeMapping;
+use App\Models\MarketplaceBrandMapping;
+use App\Models\MarketplaceCategoryMapping;
+use App\Models\MarketplaceVariantAttributeMapping;
 use App\Models\Product;
 
 class ProductReadinessService
@@ -87,12 +91,14 @@ class ProductReadinessService
             $checks['marketplace_category'] = filled($resolver->value($product, 'trendyol_category_id'));
             $checks['category_mapping'] = $this->hasCategoryMapping($product, $marketplace, $resolver);
             $checks['required_attributes'] = count($resolver->marketplaceAttributes($product, 'trendyol')) > 0;
+            $this->appendMappingCenterChecks($checks, $product, $marketplace);
         }
 
         if ($marketplace === 'hepsiburada') {
             $checks['marketplace_category'] = filled($resolver->value($product, 'hepsiburada_category_id'));
             $checks['category_mapping'] = $this->hasCategoryMapping($product, $marketplace, $resolver);
             $checks['required_attributes'] = count($resolver->marketplaceAttributes($product, 'hepsiburada')) > 0;
+            $this->appendMappingCenterChecks($checks, $product, $marketplace);
         }
 
         $missing = collect($checks)
@@ -126,10 +132,105 @@ class ProductReadinessService
             return false;
         }
 
+        $mappingCenterMatch = MarketplaceCategoryMapping::query()
+            ->where('company_id', $product->company_id)
+            ->where('marketplace_code', $marketplace)
+            ->where('status', 'active')
+            ->where('local_category_name', $category)
+            ->exists();
+
+        if ($mappingCenterMatch) {
+            return true;
+        }
+
         return CategoryMapping::query()
             ->where('company_id', $product->company_id)
             ->where('marketplace_code', $marketplace)
             ->where('local_category', $category)
             ->exists();
+    }
+
+    private function appendMappingCenterChecks(array &$checks, Product $product, string $marketplace): void
+    {
+        $checks['brand_mapping'] = $this->hasBrandMapping($product, $marketplace);
+        $checks['attribute_mappings'] = $this->hasRequiredAttributeMappings($product, $marketplace);
+
+        if ($product->product_type === 'variant' || $product->parent_product_id) {
+            $checks['variant_attribute_mappings'] = $this->hasVariantAttributeMappings($product, $marketplace);
+        }
+    }
+
+    private function hasBrandMapping(Product $product, string $marketplace): bool
+    {
+        $hasConfiguredMappings = MarketplaceBrandMapping::query()
+            ->where('company_id', $product->company_id)
+            ->where('marketplace_code', $marketplace)
+            ->where('status', 'active')
+            ->exists();
+
+        if (! $hasConfiguredMappings) {
+            return true;
+        }
+
+        if (! filled($product->brand)) {
+            return false;
+        }
+
+        return MarketplaceBrandMapping::query()
+            ->where('company_id', $product->company_id)
+            ->where('marketplace_code', $marketplace)
+            ->where('status', 'active')
+            ->where('local_brand_name', $product->brand)
+            ->exists();
+    }
+
+    private function hasRequiredAttributeMappings(Product $product, string $marketplace): bool
+    {
+        $categoryId = $marketplace === 'trendyol' ? $product->trendyol_category_id : $product->hepsiburada_category_id;
+        $mappings = MarketplaceAttributeMapping::query()
+            ->where('company_id', $product->company_id)
+            ->where('marketplace_code', $marketplace)
+            ->where('status', 'active')
+            ->where('required', true)
+            ->where(fn ($query) => $query->whereNull('marketplace_category_id')->orWhere('marketplace_category_id', $categoryId))
+            ->get();
+
+        if ($mappings->isEmpty()) {
+            return true;
+        }
+
+        return $mappings->every(fn (MarketplaceAttributeMapping $mapping) => $this->mappingHasValue($mapping, $product));
+    }
+
+    private function hasVariantAttributeMappings(Product $product, string $marketplace): bool
+    {
+        $mappings = MarketplaceVariantAttributeMapping::query()
+            ->where('company_id', $product->company_id)
+            ->where('marketplace_code', $marketplace)
+            ->where('status', 'active')
+            ->get();
+
+        if ($mappings->isEmpty()) {
+            return true;
+        }
+
+        return $mappings->every(fn (MarketplaceVariantAttributeMapping $mapping) => $this->variantMappingHasValue($mapping, $product));
+    }
+
+    private function mappingHasValue(MarketplaceAttributeMapping $mapping, Product $product): bool
+    {
+        return filled(match ($mapping->source_type) {
+            'fixed_value' => $mapping->fixed_value,
+            'variant_field' => data_get($product->variant_attributes ?? [], $mapping->source_field),
+            'custom_json' => data_get($mapping->metadata ?? [], 'preview_value'),
+            default => data_get($product, $mapping->source_field),
+        });
+    }
+
+    private function variantMappingHasValue(MarketplaceVariantAttributeMapping $mapping, Product $product): bool
+    {
+        $source = $mapping->source_field ?: $mapping->variant_key;
+
+        return filled(data_get($product->variant_attributes ?? [], $source));
     }
 }

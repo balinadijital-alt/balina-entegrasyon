@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\InboundWebhookDeliveryController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MarketplaceSyncController;
 use App\Http\Controllers\Api\MarketplaceAccountController;
+use App\Http\Controllers\Api\MarketplaceMappingController;
 use App\Http\Controllers\Api\MarketingModuleController;
 use App\Http\Controllers\Api\ModuleCrudController;
 use App\Http\Controllers\Api\OrderController;
@@ -141,6 +142,30 @@ Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(fun
     Route::post('/shipments/{shipment}/return-code', [ShipmentController::class, 'returnCode'])->middleware('permission:shipping.manage');
     Route::post('/shipments/{shipment}/retry', [ShipmentController::class, 'retry'])->middleware('permission:shipping.manage');
     Route::apiResource('marketplaces', MarketplaceAccountController::class)->middleware(['plan.limit:marketplaces', 'permission:marketplaces.manage']);
+    Route::prefix('marketplace-mappings')->middleware('permission:marketplaces.manage')->group(function () {
+        Route::get('/summary', [MarketplaceMappingController::class, 'summary']);
+        Route::get('/readiness-preview', [MarketplaceMappingController::class, 'readinessPreview']);
+
+        Route::get('/categories', [MarketplaceMappingController::class, 'categories']);
+        Route::post('/categories', [MarketplaceMappingController::class, 'storeCategory']);
+        Route::put('/categories/{mapping}', [MarketplaceMappingController::class, 'updateCategory']);
+        Route::delete('/categories/{mapping}', [MarketplaceMappingController::class, 'destroyCategory']);
+
+        Route::get('/brands', [MarketplaceMappingController::class, 'brands']);
+        Route::post('/brands', [MarketplaceMappingController::class, 'storeBrand']);
+        Route::put('/brands/{mapping}', [MarketplaceMappingController::class, 'updateBrand']);
+        Route::delete('/brands/{mapping}', [MarketplaceMappingController::class, 'destroyBrand']);
+
+        Route::get('/attributes', [MarketplaceMappingController::class, 'attributes']);
+        Route::post('/attributes', [MarketplaceMappingController::class, 'storeAttribute']);
+        Route::put('/attributes/{mapping}', [MarketplaceMappingController::class, 'updateAttribute']);
+        Route::delete('/attributes/{mapping}', [MarketplaceMappingController::class, 'destroyAttribute']);
+
+        Route::get('/variants', [MarketplaceMappingController::class, 'variants']);
+        Route::post('/variants', [MarketplaceMappingController::class, 'storeVariant']);
+        Route::put('/variants/{mapping}', [MarketplaceMappingController::class, 'updateVariant']);
+        Route::delete('/variants/{mapping}', [MarketplaceMappingController::class, 'destroyVariant']);
+    });
     Route::get('/category-mappings', [CategoryMappingController::class, 'index']);
     Route::post('/category-mappings', [CategoryMappingController::class, 'store']);
     Route::put('/category-mappings/{categoryMapping}', [CategoryMappingController::class, 'update']);
