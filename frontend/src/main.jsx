@@ -68,6 +68,7 @@ const QueuePage = lazyPage(() => import('./pages/Queue/QueuePage.jsx'), 'QueuePa
 const ReportsPage = lazyPage(() => import('./pages/Reports/ReportsPage.jsx'), 'ReportsPage');
 const CustomerReportsPage = lazyPage(() => import('./pages/Reports/ReportsPage.jsx'), 'CustomerReportsPage');
 const ExecutiveDashboardPage = lazyPage(() => import('./pages/Analytics/ExecutiveDashboardPage.jsx'), 'ExecutiveDashboardPage');
+const ApiKnowledgeCenterPage = lazyPage(() => import('./pages/Resources/ApiKnowledgeCenterPage.jsx'), 'ApiKnowledgeCenterPage');
 const DeveloperCenterPage = lazyPage(() => import('./pages/Resources/DeveloperCenterPage.jsx'), 'DeveloperCenterPage');
 const HelpCenterPage = lazyPage(() => import('./pages/Resources/HelpCenterPage.jsx'), 'HelpCenterPage');
 const RolesPage = lazyPage(() => import('./pages/Roles/RolesPage.jsx'), 'RolesPage');
@@ -96,6 +97,7 @@ function CustomerRoutes() {
       <Route path="reports" element={<CustomerReportsPage />} />
       <Route path="help-center" element={<HelpCenterPage />} />
       <Route path="resources" element={<DeveloperCenterPage />} />
+      <Route path="resources/api-knowledge" element={<ApiKnowledgeCenterPage />} />
       <Route path="companies" element={<CompaniesPage />} />
       <Route path="accounting" element={<AccountingPage />} />
       <Route path="operations" element={<OperationsCenterPage />} />

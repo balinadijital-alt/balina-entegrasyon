@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { ResourceCard } from '../../components/ResourceCard.jsx';
+import { Link } from 'react-router-dom';
 
 const categories = [
   'Tum kaynaklar',
@@ -176,13 +177,14 @@ export function DeveloperCenterPage() {
       <PageHeader
         title="Kaynaklar / Developer Center"
         description="Pazaryeri, kargo, odeme, e-fatura, import ve platform API surecleri icin operasyon ekiplerinin kullanacagi bilgi merkezi."
+        actions={<Link className="button-link" to="/resources/api-knowledge"><ServerCog size={16} /> API Knowledge Center</Link>}
       />
 
       <section className="developer-hero panel">
         <div>
           <span className="eyebrow"><BookOpen size={15} /> Entegrasyon Bilgi Merkezi</span>
           <h2>Dokuman, kontrol listesi ve sik kullanilan endpointler tek yerde.</h2>
-          <p>Bu alan teknik detayi sade operasyon adimlarina ayirir; ekipler test/canli ayrimini, zorunlu hazirliklari ve dis kaynaklari hizlica bulur.</p>
+          <p>Bu alan genel kaynak girisidir. Endpoint, servis, queue ve readiness iliskileri icin yeni API Knowledge Center'i kullanin.</p>
         </div>
         <div className="developer-hero-stats">
           <div><strong>{resources.length}</strong><span>kaynak karti</span></div>
@@ -249,9 +251,9 @@ export function DeveloperCenterPage() {
 
         <div className="panel guide-card">
           <FileJson2 size={24} />
-          <strong>Sonraki kaynak paketi</strong>
-          <span>Webhook olay sozlugu, hata kodu sozlugu ve pazaryeri bazli zorunlu alan rehberi bu ekrana moduler olarak eklenebilir.</span>
-          <a href="/api-logs">Hata Merkezi'ne git</a>
+          <strong>API Knowledge Center</strong>
+          <span>Trendyol endpoint matrisi, kullanildigi ekranlar, queue iliskileri ve readiness etkileri yeni merkezde toplandi.</span>
+          <Link to="/resources/api-knowledge">Bilgi merkezini ac</Link>
         </div>
 
         <div className="panel guide-card">

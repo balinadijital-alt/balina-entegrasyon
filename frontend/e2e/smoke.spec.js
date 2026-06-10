@@ -22,6 +22,7 @@ const smokeRoutes = [
   { path: '/queue', title: 'Queue Retry Merkezi' },
   { path: '/api-logs', title: 'Hata Merkezi' },
   { path: '/resources', title: 'Kaynaklar / Developer Center' },
+  { path: '/resources/api-knowledge', title: 'API Knowledge Center' },
 ];
 
 async function authenticate(page) {

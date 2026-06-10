@@ -33,9 +33,9 @@ export const helpCenterArticles = [
     ],
     relatedLinks: [
       { label: 'Ürün Listesi', href: '/products' },
-      { label: 'Kategori Eşleştirme', href: '/products/category-mapping' },
+      { label: 'Kategori Eşleştirme', href: '/marketplace-mapping/categories' },
     ],
-    relatedScreens: ['/products', '/products/category-mapping', '/products/publish-queue'],
+    relatedScreens: ['/products', '/marketplace-mapping/categories', '/products/publish-queue'],
     difficulty: 'Başlangıç',
     updatedAt: '2026-05-19',
   },
