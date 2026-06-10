@@ -221,7 +221,7 @@ export function HepsiburadaPage() {
           <p className="muted-text">Hepsiburada kategori servisi mevcut endpoint uzerinden cagrilir. Gelen kategoriler onizleme olarak listelenir, eslestirme icin kategori eslestirme ekranini kullanin.</p>
           <div className="bulk-grid">
             {canManageMarketplaces && <button disabled={!accountId || loading} onClick={() => accountRequired() && execute('Kategori listesi', () => api.marketplaces.hepsiburadaCategories(accountId))}><RefreshCw size={16} /> Kategorileri Cek</button>}
-            <Link className="button-link secondary-link" to="/products/category-mapping">Kategori Eslestirme</Link>
+            <Link className="button-link secondary-link" to="/marketplace-mapping/categories">Kategori Eslestirme</Link>
           </div>
           {categories.length > 0 ? (
             <div className="category-list marketplace-preview-list">
@@ -238,7 +238,8 @@ export function HepsiburadaPage() {
           <h2>Urun Gonderme</h2>
           <p className="muted-text">Hazir urunleri aktarim listesinden kontrol edip Hepsiburada gonderim kuyruguna alabilirsiniz.</p>
           <div className="bulk-grid">
-            <Link className="button-link secondary-link" to="/products/publish-queue">Aktarim Listesini Ac</Link>
+            <Link className="button-link secondary-link" to="/products/publish-queue">Gonderim Kuyrugunu Ac</Link>
+            <Link className="button-link secondary-link" to="/products/publish-wizard">Urun Gonderme Sihirbazi</Link>
             {canSendMarketplaces && <button disabled={!accountId || loading} onClick={() => accountRequired() && execute('Hepsiburada urun gonderimi', () => api.marketplaces.hepsiburadaSendProducts(accountId))}><Send size={16} /> Urunleri Gonder</button>}
           </div>
         </section>

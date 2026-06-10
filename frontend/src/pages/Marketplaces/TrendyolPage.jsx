@@ -214,7 +214,7 @@ export function TrendyolPage() {
           <div className="bulk-grid">
             <input value={categoryId} onChange={(event) => setCategoryId(event.target.value)} placeholder="Kategori ID" />
             {canManageMarketplaces && <button disabled={!accountId || !categoryId} onClick={() => execute('Zorunlu ozellik kontrolu', () => api.marketplaces.trendyolCategoryAttributes(accountId, categoryId))}>Zorunlu Ozellikleri Kontrol Et</button>}
-            <Link className="button-link" to="/products/category-mapping">Kategori Esleme Sayfasina Git</Link>
+            <Link className="button-link" to="/marketplace-mapping/categories">Kategori Esleme Sayfasina Git</Link>
           </div>
         </section>
       )}
@@ -223,7 +223,8 @@ export function TrendyolPage() {
         <section className="panel">
           <h2>Urun Aktarim Listesi</h2>
           <div className="bulk-grid">
-            <Link className="button-link secondary-link" to="/products/publish-queue">Aktarim Listesini Ac</Link>
+            <Link className="button-link secondary-link" to="/products/publish-queue">Gonderim Kuyrugunu Ac</Link>
+            <Link className="button-link secondary-link" to="/products/publish-wizard">Urun Gonderme Sihirbazi</Link>
             {canSendMarketplaces && <button disabled={!accountId || loading} onClick={() => execute('Toplu urun gonderimi', () => api.marketplaces.trendyolSendProducts(accountId))}><Send size={16} /> Toplu Urun Gonder</button>}
             {canManageMarketplaces && <button disabled={!accountId || loading} onClick={() => execute('Onayli urunler', () => api.marketplaces.trendyolFilterProducts(accountId, { state: 'approved' }))}>Onayli Urunler</button>}
             {canManageMarketplaces && <button disabled={!accountId || loading} onClick={() => execute('Onaysiz urunler', () => api.marketplaces.trendyolFilterProducts(accountId, { state: 'unapproved' }))}>Onaysiz Urunler</button>}

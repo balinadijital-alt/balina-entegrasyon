@@ -171,9 +171,9 @@ export function ProductDetailPage() {
         actions={(
           <>
             <Link className="button-link secondary-link" to={`/products/${product.id}/edit`}><Edit3 size={16} /> Duzenle</Link>
-            <Link className="button-link secondary-link" to={`/products/category-mapping?category=${encodeURIComponent(product.category || '')}`}><Layers3 size={16} /> Gonderime Hazirla</Link>
-            {canSendMarketplaces && <Link className="button-link secondary-link" to="/products/publish-queue">Aktarim Listesine Ekle</Link>}
-            {canSendMarketplaces && <Link className="button-link" to={`/products/publish?product=${product.id}`}><Send size={16} /> Pazaryerine Gonder</Link>}
+            <Link className="button-link secondary-link" to={`/marketplace-mapping/categories?category=${encodeURIComponent(product.category || '')}`}><Layers3 size={16} /> Gonderime Hazirla</Link>
+            {canSendMarketplaces && <Link className="button-link secondary-link" to="/products/publish-queue">Gonderim Kuyrugu</Link>}
+            {canSendMarketplaces && <Link className="button-link" to={`/products/publish-wizard?product=${product.id}`}><Send size={16} /> Pazaryerine Gonder</Link>}
           </>
         )}
       />

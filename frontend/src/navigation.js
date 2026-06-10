@@ -68,7 +68,7 @@ export const appNavigationGroups = [
       { to: '/catalog/defaults', label: 'KDV / Birim / Desi', icon: Settings, permissions: ['products.manage'] },
       { to: '/pricing/bulk-operations', label: 'Toplu Urun Islemleri', icon: Workflow, permissions: ['products.manage'] },
       { to: '/imports', label: 'Toplu Urun Yukleme', icon: UploadCloud, permissions: ['imports.manage'] },
-      { to: '/products/publish-queue', label: 'Aktarim Listesi', icon: Send, permissions: ['marketplaces.send'] },
+      { to: '/products/publish-wizard', label: 'Urun Gonderme', icon: Send, permissions: ['marketplaces.send'] },
     ],
   },
   {
@@ -81,7 +81,8 @@ export const appNavigationGroups = [
       { to: '/marketplace-mapping/brands', label: 'Marka Eslestirme', icon: ShieldCheck, permissions: ['marketplaces.manage'] },
       { to: '/marketplace-mapping/attributes', label: 'Ozellik / Nitelik', icon: ClipboardCheck, permissions: ['marketplaces.manage'] },
       { to: '/marketplace-mapping/variants', label: 'Varyant Eslestirme', icon: Tags, permissions: ['marketplaces.manage'] },
-      { to: '/products/publish-queue', label: 'Urun Aktarim Listesi', icon: Send, permissions: ['marketplaces.send'] },
+      { to: '/products/publish-wizard', label: 'Urun Gonderme', icon: Send, permissions: ['marketplaces.send'] },
+      { to: '/products/publish-queue', label: 'Gonderim Kuyrugu', icon: ClipboardList, permissions: ['marketplaces.send'] },
       { to: '/marketplaces/trendyol', label: 'Trendyol', icon: ShoppingBag, permissions: ['marketplaces.manage'] },
       { to: '/marketplaces/hepsiburada', label: 'Hepsiburada', icon: ShoppingBag, permissions: ['marketplaces.manage'] },
       { to: '/marketplaces/batch-results', label: 'Batch Sonuclari', icon: ClipboardList, permissions: ['marketplaces.manage'] },

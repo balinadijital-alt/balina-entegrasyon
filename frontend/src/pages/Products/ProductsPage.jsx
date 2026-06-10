@@ -285,8 +285,8 @@ export function ProductsPage() {
         title="Urunler"
         actions={(
           <>
-            <Link className="button-link secondary-link" to="/products/category-mapping"><Layers3 size={16} /> Kategori Esle</Link>
-            <Link className="button-link secondary-link" to="/products/publish-queue"><ClipboardList size={16} /> Aktarim Listesi</Link>
+            <Link className="button-link secondary-link" to="/marketplace-mapping/categories"><Layers3 size={16} /> Kategori Esle</Link>
+            <Link className="button-link secondary-link" to="/products/publish-queue"><ClipboardList size={16} /> Gonderim Kuyrugu</Link>
             <Link className="button-link secondary-link" to="/products/import"><UploadCloud size={16} /> Toplu Urun Yukle</Link>
             <Link className="button-link" to="/products/new"><PackagePlus size={16} /> Urun Ekle</Link>
           </>
@@ -386,7 +386,7 @@ export function ProductsPage() {
           <input type="number" value={bulkEdit.price} onChange={(event) => setBulkEdit({ ...bulkEdit, price: event.target.value })} placeholder="Yeni fiyat" />
           <input type="number" value={bulkEdit.stock} onChange={(event) => setBulkEdit({ ...bulkEdit, stock: event.target.value })} placeholder="Yeni stok" />
           <button type="button" className="secondary-button" disabled={loading} onClick={applyBulkEdit}>Toplu guncelle</button>
-          <Link className="button-link secondary-link" to="/products/category-mapping"><Layers3 size={16} /> Kategori esle</Link>
+          <Link className="button-link secondary-link" to="/marketplace-mapping/categories"><Layers3 size={16} /> Kategori esle</Link>
           <button type="button" className="secondary-button" disabled={loading} onClick={() => addToPublishQueue(selected)}>Aktarim listesine ekle</button>
           <button type="button" disabled={loading} onClick={() => sendProducts(selected)}><Send size={16} /> Toplu Hazirla</button>
         </section>
@@ -465,7 +465,7 @@ export function ProductsPage() {
                   <div>
                     <Link to={`/products/${row.id}/edit`}><Edit3 size={15} /> Duzenle</Link>
                     <Link to={`/products/${row.id}`}><Eye size={15} /> Detay</Link>
-                    <Link to={`/products/category-mapping?category=${encodeURIComponent(row.category || '')}`}><Layers3 size={15} /> Kategori esle</Link>
+                    <Link to={`/marketplace-mapping/categories?category=${encodeURIComponent(row.category || '')}`}><Layers3 size={15} /> Kategori esle</Link>
                     <button type="button" onClick={() => startQuickEdit(row)}>Stok/fiyat duzenle</button>
                     <button type="button" disabled={loading || row.product_type === 'parent'} onClick={() => addToPublishQueue([row.id])}>Aktarima ekle</button>
                     <button type="button" disabled={loading || row.product_type === 'parent'} onClick={() => sendProducts([row.id])}><Send size={15} /> Hazirla</button>

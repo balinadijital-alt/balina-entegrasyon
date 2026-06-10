@@ -109,6 +109,7 @@ function CustomerRoutes() {
       <Route path="marketplace-mapping/attributes" element={<MarketplaceAttributeMappingPage />} />
       <Route path="marketplace-mapping/variants" element={<MarketplaceVariantMappingPage />} />
       <Route path="products/publish-queue" element={<PublishQueuePage />} />
+      <Route path="products/publish-wizard" element={<ProductPublishWizardPage />} />
       <Route path="products/publish" element={<ProductPublishWizardPage />} />
       <Route path="products/:id" element={<ProductDetailPage />} />
       <Route path="products/:id/edit" element={<ProductCreatePage />} />

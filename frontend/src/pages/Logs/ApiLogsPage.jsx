@@ -72,7 +72,7 @@ function dictionaryFor(log) {
 function fixLink(log) {
   const endpoint = String(log.endpoint || '').toLowerCase();
   const service = serviceType(log);
-  if (endpoint.includes('category')) return '/products/category-mapping';
+  if (endpoint.includes('category')) return '/marketplace-mapping/categories';
   if (endpoint.includes('product') || endpoint.includes('image')) return '/products';
   if (service === 'trendyol' || service === 'hepsiburada') return `/marketplaces/${service}`;
   if (service === 'import') return '/products/import';

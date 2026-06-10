@@ -33,7 +33,7 @@ import { useAsync } from '../../hooks/useAsync.js';
 const setupSteps = [
   { key: 'company', title: 'Firma bilgilerini tamamla', text: 'Fatura, kargo ve pazaryeri islemleri icin firma bilgilerini kontrol edin.', to: '/app/settings' },
   { key: 'marketplace', title: 'Pazaryeri hesabi bagla', text: 'Trendyol veya Hepsiburada hesap bilgilerinizi ekleyin.', to: '/app/marketplaces' },
-  { key: 'mapping', title: 'Kategori eslestirme yap', text: 'Kendi kategorilerinizi pazaryeri kategorileriyle eslestirin.', to: '/app/products/category-mapping' },
+  { key: 'mapping', title: 'Kategori eslestirme yap', text: 'Kendi kategorilerinizi pazaryeri kategorileriyle eslestirin.', to: '/app/marketplace-mapping/categories' },
   { key: 'products', title: 'Urun ekle veya toplu yukle', text: 'Urunleri tek tek ekleyin veya Excel/XML ile toplu yukleyin.', to: '/app/products/new' },
   { key: 'queue', title: 'Urunleri aktarim listesine ekle', text: 'Hazir urunleri pazaryerine gondermeden once listeye alin.', to: '/app/products/publish-queue' },
   { key: 'sync', title: 'Stok/fiyat senkronunu baslat', text: 'Fiyat ve stok bilgilerinin pazaryerlerinde guncellenmesini saglayin.', to: '/app/products/publish' },
@@ -385,7 +385,7 @@ export function CustomerDashboardPage() {
               <div className="quick-actions-grid">
                 <Link to="/app/products/new"><PackagePlus size={18} /> Urun ekle</Link>
                 <Link to="/app/products/import"><UploadCloud size={18} /> XML/Excel import</Link>
-                <Link to="/app/products/category-mapping"><Layers3 size={18} /> Kategori eslestir</Link>
+                <Link to="/app/marketplace-mapping/categories"><Layers3 size={18} /> Kategori eslestir</Link>
                 <Link to="/app/products/publish-queue"><Send size={18} /> Aktarim listesi</Link>
                 <Link to="/app/orders"><ClipboardList size={18} /> Siparisleri kontrol et</Link>
                 <Link to="/app/shipping"><Truck size={18} /> Kargo hazirla</Link>

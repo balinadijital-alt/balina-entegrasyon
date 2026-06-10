@@ -307,7 +307,7 @@ export function MarketplaceOnboardingPage() {
               </div>
               <div className="quick-actions-grid">
                 <Link className="button-link" to="/marketplaces">Pazaryeri Hesaplari</Link>
-                <Link className="button-link secondary-link" to="/products/category-mapping">Kategori Eslestirme</Link>
+                <Link className="button-link secondary-link" to="/marketplace-mapping/categories">Kategori Eslestirme</Link>
                 <Link className="button-link secondary-link" to="/products/publish-queue">Aktarim Listesi</Link>
                 <Link className="button-link secondary-link" to="/resources">Developer Center <ExternalLink size={14} /></Link>
               </div>
