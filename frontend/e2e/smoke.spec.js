@@ -135,6 +135,15 @@ test.describe('operasyon paneli smoke testleri', () => {
     await page.getByRole('button', { name: /Takip Numarasi/ }).click();
     await expect(page.locator('.api-doc-heading')).toContainText('Takip Numarasi');
 
+    await page.getByRole('button', { name: /Payments/ }).click();
+    await expect(page.locator('.api-doc-heading')).toContainText('Payments');
+    await expect(page.locator('.api-topic-list')).toContainText('Provider Kurulumu');
+    await expect(page.locator('.api-topic-list')).toContainText('Odeme Olusturma');
+    await page.getByPlaceholder('Endpoint, servis veya ekran ara').fill('callback');
+    await expect(page.locator('.api-topic-list')).toContainText('Callbackler');
+    await page.getByRole('button', { name: /Callbackler/ }).click();
+    await expect(page.locator('.api-doc-heading')).toContainText('Callbackler');
+
     await page.getByRole('button', { name: /Trendyol/ }).click();
     await expect(page.locator('.api-doc-heading')).toContainText('Trendyol');
     await expect(page.locator('.api-topic-list')).toContainText('Urunler');
