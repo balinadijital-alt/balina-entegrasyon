@@ -118,6 +118,14 @@ test.describe('operasyon paneli smoke testleri', () => {
     await expect(page.locator('.api-topic-list')).toContainText('Siparisler');
     await expect(page.locator('.api-doc-heading')).toContainText('Siparisler');
 
+    await page.getByRole('button', { name: /XML/ }).click();
+    await expect(page.locator('.api-doc-heading')).toContainText('XML');
+    await expect(page.locator('.api-topic-list')).toContainText('XML Kaynak Kurulumu');
+    await page.getByPlaceholder('Endpoint, servis veya ekran ara').fill('stok');
+    await expect(page.locator('.api-topic-list')).toContainText('Stok / Fiyat Kurallari');
+    await page.getByRole('button', { name: /Stok \/ Fiyat Kurallari/ }).click();
+    await expect(page.locator('.api-doc-heading')).toContainText('Stok / Fiyat Kurallari');
+
     await page.getByRole('button', { name: /Trendyol/ }).click();
     await expect(page.locator('.api-doc-heading')).toContainText('Trendyol');
     await expect(page.locator('.api-topic-list')).toContainText('Urunler');
