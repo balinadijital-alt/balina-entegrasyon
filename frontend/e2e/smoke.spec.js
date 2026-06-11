@@ -4,14 +4,14 @@ const smokeRoutes = [
   { path: '/dashboard', title: 'Baslangic' },
   { path: '/operations', title: 'Operasyon Merkezi' },
   { path: '/marketplaces', title: 'Pazaryerleri' },
-  { path: '/marketplace-mapping', title: 'Pazaryeri Eslestirme Merkezi' },
+  { path: '/marketplace-mapping', title: 'Pazaryeri Eslestirmeleri' },
   { path: '/marketplace-readiness', title: 'Pazaryeri Hazirlik Merkezi' },
   { path: '/marketplace-mapping/categories', title: 'Kategori Eslestirme' },
   { path: '/marketplace-mapping/brands', title: 'Marka Eslestirme' },
   { path: '/marketplace-mapping/attributes', title: 'Ozellik / Nitelik Eslestirme' },
   { path: '/marketplace-mapping/variants', title: 'Varyant Eslestirme' },
-  { path: '/products/publish-wizard', title: 'Urun Gonderme Sihirbazi' },
-  { path: '/products/publish-queue', title: 'Gonderim Kuyrugu' },
+  { path: '/products/publish-wizard', title: 'Toplu Pazaryeri Islemleri' },
+  { path: '/products/publish-queue', title: 'Pazaryeri Monitoru' },
   { path: '/imports', title: 'XML / Excel Import Merkezi' },
   { path: '/orders', title: 'Siparis Operasyon Merkezi' },
   { path: '/shipping', title: 'Kargo Operasyon Merkezi' },
@@ -85,13 +85,13 @@ test.describe('operasyon paneli smoke testleri', () => {
     await expect(page).toHaveURL(/\/operations$/);
     await expect(page.locator('.page-header h1')).toContainText('Operasyon Merkezi');
 
-    await sidebar.getByRole('button', { name: 'Pazaryeri Yonetimi' }).click();
-    await sidebar.getByRole('link', { name: 'Pazaryeri Hesaplari' }).click();
+    await sidebar.getByRole('button', { name: 'Entegrasyonlar' }).click();
+    await sidebar.getByRole('link', { name: 'Pazaryeri Entegrasyonlari' }).click();
     await expect(page).toHaveURL(/\/marketplaces$/);
     await expect(page.locator('.page-header h1')).toContainText('Pazaryerleri');
-    await sidebar.getByRole('link', { name: 'Pazaryeri Hazirlik' }).click();
-    await expect(page).toHaveURL(/\/marketplace-readiness$/);
-    await expect(page.locator('.page-header h1')).toContainText('Pazaryeri Hazirlik Merkezi');
+    await sidebar.getByRole('link', { name: 'Pazaryeri Monitoru' }).click();
+    await expect(page).toHaveURL(/\/products\/publish-queue$/);
+    await expect(page.locator('.page-header h1')).toContainText('Pazaryeri Monitoru');
 
     await sidebar.getByRole('button', { name: 'Genel' }).click();
     await sidebar.getByRole('link', { name: 'Kaynaklar' }).click();

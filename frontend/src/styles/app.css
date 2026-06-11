@@ -1155,6 +1155,402 @@ a {
   line-height: 1.45;
 }
 
+.marketplace-flow-tabs {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding: 10px;
+}
+
+.marketplace-flow-tabs button {
+  background: #f8fafc;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #475569;
+  flex: 0 0 auto;
+  font-weight: 900;
+  min-height: 40px;
+  padding: 0 14px;
+}
+
+.marketplace-flow-tabs button.active {
+  background: #0f172a;
+  color: #fff;
+}
+
+.marketplace-flow-alert,
+.workflow-modal-warning {
+  align-items: center;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-radius: 8px;
+  color: #b91c1c;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 13px 15px;
+}
+
+.marketplace-flow-alert strong,
+.workflow-modal-warning span {
+  font-weight: 900;
+}
+
+.marketplace-flow-kpis {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 18px;
+}
+
+.marketplace-flow-kpis div,
+.marketplace-flow-step-card,
+.marketplace-flow-advanced {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+}
+
+.marketplace-flow-kpis div {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+}
+
+.marketplace-flow-kpis span,
+.marketplace-flow-meta span,
+.marketplace-flow-fields span,
+.marketplace-flow-advanced span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.marketplace-flow-kpis strong {
+  color: #0f172a;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.marketplace-flow-steps {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.marketplace-flow-step-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.marketplace-flow-step-no {
+  align-items: center;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  color: #1d4ed8;
+  display: inline-flex;
+  font-size: 22px;
+  font-weight: 950;
+  height: 48px;
+  justify-content: center;
+  width: 48px;
+}
+
+.marketplace-flow-step-card h2 {
+  color: #0f172a;
+  font-size: 21px;
+  margin: 0 0 8px;
+}
+
+.marketplace-flow-step-card p {
+  color: #475569;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.marketplace-flow-fields {
+  display: grid;
+  gap: 8px;
+}
+
+.marketplace-flow-fields span {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.marketplace-flow-meta {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.marketplace-flow-meta strong {
+  color: #0f172a;
+}
+
+.warning-button {
+  background: #f59e0b;
+  box-shadow: 0 16px 32px rgb(245 158 11 / 18%);
+  width: 100%;
+}
+
+.marketplace-flow-advanced {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 16px;
+}
+
+.marketplace-flow-advanced strong {
+  color: #0f172a;
+}
+
+.marketplace-flow-advanced summary {
+  color: #334155;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.workflow-modal-backdrop {
+  align-items: start;
+  background: rgb(15 23 42 / 54%);
+  display: grid;
+  inset: 0;
+  overflow-y: auto;
+  padding: 32px;
+  position: fixed;
+  z-index: 60;
+}
+
+.workflow-modal {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 28px 80px rgb(15 23 42 / 28%);
+  display: grid;
+  gap: 16px;
+  margin: 0 auto;
+  max-width: 1180px;
+  padding: 20px;
+  width: min(1180px, 100%);
+}
+
+.workflow-modal-header {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.workflow-modal-header span {
+  color: #2563eb;
+  display: block;
+  font-size: 13px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.workflow-modal-header h2 {
+  color: #0f172a;
+  font-size: 24px;
+  margin: 4px 0 6px;
+}
+
+.workflow-modal-header p {
+  color: #64748b;
+  margin: 0;
+}
+
+.workflow-modal-toolbar {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 220px;
+}
+
+.workflow-modal-grid {
+  align-items: start;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+
+.workflow-modal-table,
+.workflow-modal-form {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.workflow-modal-form {
+  display: grid;
+  gap: 12px;
+  overflow: visible;
+  padding: 16px;
+}
+
+.customer-modal-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.customer-modal-count {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.customer-simple-table {
+  border: 1px solid var(--border);
+  border-collapse: separate;
+  border-radius: 8px;
+  border-spacing: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.customer-simple-table th {
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  text-align: left;
+}
+
+.customer-simple-table th,
+.customer-simple-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 12px;
+  vertical-align: middle;
+}
+
+.customer-simple-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.customer-simple-table td span {
+  color: #64748b;
+  display: block;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.customer-category-row {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(150px, 0.6fr) minmax(220px, 1fr) 96px;
+}
+
+.customer-sub-modal {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.customer-sub-modal h3 {
+  color: #0f172a;
+  font-size: 20px;
+  margin: 0;
+}
+
+.customer-sub-modal p {
+  color: #475569;
+  margin: 0;
+}
+
+.customer-field-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.customer-field-grid label {
+  display: grid;
+  gap: 6px;
+}
+
+.customer-field-grid span {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.customer-field-grid b {
+  color: #dc2626;
+  margin-left: 3px;
+}
+
+.bulk-operation-warning {
+  margin-bottom: 0;
+}
+
+.bulk-operation-shell,
+.bulk-operation-form-panel,
+.queue-monitor-simple {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.bulk-operation-form-panel {
+  margin-top: 18px;
+}
+
+.bulk-operation-toolbar {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+}
+
+.bulk-operation-form-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.bulk-operation-form-grid label {
+  color: #334155;
+  display: grid;
+  gap: 6px;
+  font-weight: 850;
+}
+
+.bulk-operation-form-grid label span {
+  color: #475569;
+  font-size: 13px;
+}
+
+.bulk-operation-form-grid .check-row {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  min-height: 44px;
+  padding: 0 12px;
+}
+
+.monitor-detail-line {
+  margin: 0;
+}
+
 .queue-status-grid {
   display: grid;
   gap: 12px;
@@ -8968,7 +9364,15 @@ tbody td:last-child .row-actions:focus-within {
   .executive-filter-bar,
   .executive-hero,
   .executive-command-grid,
-  .executive-growth-grid {
+  .executive-growth-grid,
+  .marketplace-flow-kpis,
+  .marketplace-flow-steps,
+  .workflow-modal-toolbar,
+  .workflow-modal-grid,
+  .bulk-operation-form-grid,
+  .bulk-operation-toolbar,
+  .customer-category-row,
+  .customer-field-grid {
     grid-template-columns: 1fr;
   }
 
@@ -9029,6 +9433,14 @@ tbody td:last-child .row-actions:focus-within {
   .wizard-steps {
     border-right: 0;
     border-bottom: 1px solid var(--border);
+  }
+
+  .workflow-modal-backdrop {
+    padding: 12px;
+  }
+
+  .marketplace-flow-tabs {
+    margin-inline: -2px;
   }
 
   .page-header {

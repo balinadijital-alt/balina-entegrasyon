@@ -102,12 +102,12 @@ export function PublishQueuePage() {
   return (
     <>
       <PageHeader
-        title="Gonderim Kuyrugu"
-        description="Bu ekran sadece kuyruk ve sonuc izleme icindir. Urun secimi ve mapping duzenleme urun gonderme sihirbazi ile mapping sayfalarinda yapilir."
+        title="Pazaryeri Monitoru"
+        description="Gonderim, guncelleme, batch sonucu, rejected/failed urunler ve pazaryeri hata mesajlari burada izlenir. Mapping islemi bu ekranda yapilmaz."
         actions={(
           <>
-            <Link className="button-link secondary-link" to="/marketplace-readiness"><CheckCircle2 size={16} /> Hazirlik Merkezi</Link>
-            {canSendMarketplaces && <Link className="button-link" to="/products/publish-wizard"><Send size={16} /> Urun Gonder</Link>}
+            <Link className="button-link secondary-link" to="/marketplace-mapping"><CheckCircle2 size={16} /> Pazaryeri Eslestirmeleri</Link>
+            {canSendMarketplaces && <Link className="button-link" to="/products/publish-wizard"><Send size={16} /> Yeni Pazaryeri Islemi</Link>}
           </>
         )}
       />
@@ -115,20 +115,11 @@ export function PublishQueuePage() {
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && drafts.length === 0 ? <LoadingState /> : null}
 
-      <section className="queue-status-grid">
-        {['queued', 'running', 'success', 'failed', 'rejected'].map((status) => (
-          <button type="button" className={statusFilter === status ? 'queue-status-card active' : 'queue-status-card'} key={status} onClick={() => setStatusFilter(statusFilter === status ? '' : status)}>
-            <span>{status}</span>
-            <strong>{statusCounts[status] || 0}</strong>
-          </button>
-        ))}
-      </section>
-
-      <section className="mapping-center-shell queue-monitor-shell">
-        <aside className="mapping-filter-panel">
+      <section className="queue-monitor-simple">
+        <header className="bulk-operation-toolbar">
           <div className="mapping-filter-heading">
             <ClipboardList size={18} />
-            <strong>Filtreler</strong>
+            <strong>Islem gecmisi</strong>
           </div>
           <select value={marketplaceFilter} onChange={(event) => setMarketplaceFilter(event.target.value)}>
             <option value="">Tum pazaryerleri</option>
@@ -144,68 +135,37 @@ export function PublishQueuePage() {
             <option value="rejected">rejected</option>
           </select>
           <button type="button" className="secondary-button" disabled={loading} onClick={load}><RefreshCw size={16} /> Yenile</button>
-          <div className="mapping-next-card">
-            <strong>Simdi ne yapmaliyim?</strong>
-            <span>Yeni urun gondermek icin wizard'a gidin; failed/rejected kayitlarda once hata mesajini okuyun.</span>
-            <Link className="button-link secondary-link" to="/products/publish-wizard">Urun gonderme sihirbazi</Link>
-          </div>
-        </aside>
+        </header>
 
-        <main className="mapping-table-panel">
-          <DataTable
-            rows={filteredDrafts}
-            emptyTitle="Gonderim kaydi yok"
-            emptyText="Kuyruga alinan urunler burada listelenir."
-            columns={[
-              { key: 'id', label: 'Kayit' },
-              { key: 'batch', label: 'Batch ID', render: (row) => row.result_summary?.batch_request_id || row.id || '-' },
-              { key: 'marketplace_code', label: 'Pazaryeri', render: (row) => row.marketplace_code || '-' },
-              { key: 'company', label: 'Firma', render: (row) => row.company?.name || '-' },
-              { key: 'status', label: 'Durum', render: (row) => <span className={statusClass(row.status)}>{statusLabel(row.status)}</span> },
-              { key: 'products', label: 'Urun', render: (row) => row.product_ids?.length || 0 },
-              { key: 'error', label: 'Hata mesaji', render: (row) => row.error_message || draftMissingText(row) || row.result_summary?.message || '-' },
-              {
-                key: 'actions',
-                label: 'Islem',
-                render: (row) => (
-                  <div className="row-actions">
-                    <button type="button" className="secondary-button" onClick={() => setSelectedDraft(row)}>Detay</button>
-                    {canSendMarketplaces && ['failed', 'rejected'].includes(statusLabel(row.status)) && <button type="button" onClick={() => retryDraft(row.id)}><Send size={15} /> Retry</button>}
-                  </div>
-                ),
-              },
-            ]}
-          />
-        </main>
-
-        <aside className="mapping-detail-panel">
-          <div className="mapping-detail-heading">
-            <div>
-              <span>Detay Paneli</span>
-              <strong>{selectedDraft ? `Kayit #${selectedDraft.id}` : 'Kayit secin'}</strong>
-            </div>
+        <DataTable
+          rows={filteredDrafts}
+          emptyTitle="Gonderim kaydi yok"
+          emptyText="Kuyruga alinan islemler burada listelenir."
+          columns={[
+            { key: 'id', label: 'Islem gecmisi', render: (row) => `#${row.id}` },
+            { key: 'batch', label: 'Batch ID', render: (row) => row.result_summary?.batch_request_id || row.id || '-' },
+            { key: 'status', label: 'Durum', render: (row) => <span className={statusClass(row.status)}>{statusLabel(row.status)}</span> },
+            { key: 'marketplace_code', label: 'Pazaryeri', render: (row) => row.marketplace_code || '-' },
+            { key: 'error', label: 'Hata mesaji', render: (row) => row.error_message || draftMissingText(row) || row.result_summary?.message || '-' },
+            { key: 'created_at', label: 'Islem zamani', render: (row) => row.created_at ? new Date(row.created_at).toLocaleString('tr-TR') : '-' },
+            {
+              key: 'actions',
+              label: 'Islem',
+              render: (row) => (
+                <div className="row-actions">
+                  <button type="button" className="secondary-button" onClick={() => setSelectedDraft(row)}>Detay</button>
+                  {canSendMarketplaces && ['failed', 'rejected'].includes(statusLabel(row.status)) && <button type="button" onClick={() => retryDraft(row.id)}><Send size={15} /> Tekrar dene</button>}
+                </div>
+              ),
+            },
+          ]}
+        />
+        {selectedDraft && (
+          <div className="soft-empty monitor-detail-line">
+            <strong>Detay #{selectedDraft.id}</strong>
+            <span>{selectedDraft.error_message || draftMissingText(selectedDraft) || selectedDraft.result_summary?.message || 'Hata mesaji yok.'}</span>
           </div>
-          {selectedDraft ? (
-            <div className="queue-detail-stack">
-              <div className="mapping-ready-card">
-                <strong>{['failed', 'rejected'].includes(statusLabel(selectedDraft.status)) ? <AlertTriangle size={28} /> : <CheckCircle2 size={28} />}</strong>
-                <span>{statusLabel(selectedDraft.status)}</span>
-              </div>
-              <div className="detail-grid compact-detail-grid">
-                <div className="detail-card"><span>Batch</span><strong>{selectedDraft.result_summary?.batch_request_id || selectedDraft.id || '-'}</strong></div>
-                <div className="detail-card"><span>Pazaryeri</span><strong>{selectedDraft.marketplace_code || '-'}</strong></div>
-                <div className="detail-card"><span>Urun</span><strong>{selectedDraft.product_ids?.length || 0}</strong></div>
-                <div className="detail-card"><span>Durum</span><strong>{statusLabel(selectedDraft.status)}</strong></div>
-              </div>
-              <div className="soft-empty"><strong>Hata / sonuc</strong><span>{selectedDraft.error_message || draftMissingText(selectedDraft) || selectedDraft.result_summary?.message || 'Hata mesaji yok.'}</span></div>
-              {draftMissingFields(selectedDraft).length > 0 && (
-                <Link className="button-link secondary-link" to={fixTarget(draftMissingFields(selectedDraft)).href}>{fixTarget(draftMissingFields(selectedDraft)).label}</Link>
-              )}
-            </div>
-          ) : (
-            <div className="soft-empty">Bir kuyruk kaydi secildiginde batch, durum ve hata detaylari burada gorunur.</div>
-          )}
-        </aside>
+        )}
       </section>
     </>
   );

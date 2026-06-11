@@ -130,7 +130,15 @@ export function TrendyolPage() {
 
   return (
     <>
-      <PageHeader title="Trendyol Yonetim Merkezi" />
+      <PageHeader
+        title="Trendyol Yonetim Merkezi"
+        actions={(
+          <>
+            <Link className="button-link secondary-link" to="/marketplace-mapping">Pazaryeri Eslestirmeleri</Link>
+            {canSendMarketplaces && <Link className="button-link" to="/products/publish-wizard">Toplu Pazaryeri Islemleri</Link>}
+          </>
+        )}
+      />
       <section className="queue-summary">
         <div className="stat-card"><span>Baglanti</span><strong>{selectedAccount?.connection_status || 'unknown'}</strong><small>{formatDate(selectedAccount?.connection_checked_at)}</small></div>
         <div className="stat-card"><span>Hazir Urun</span><strong>{selectedAccount?.metadata?.ready_product_count || 0}</strong><small>Aktarima uygun</small></div>

@@ -103,7 +103,7 @@ function CustomerRoutes() {
       <Route path="operations" element={<OperationsCenterPage />} />
       <Route path="products" element={<ProductsPage />} />
       <Route path="products/new" element={<ProductCreatePage />} />
-      <Route path="products/category-mapping" element={<Navigate to="/marketplace-mapping/categories" replace />} />
+      <Route path="products/category-mapping" element={<MarketplaceMappingCenterPage />} />
       <Route path="marketplace-readiness" element={<MarketplaceReadinessPage />} />
       <Route path="marketplace-mapping" element={<MarketplaceMappingCenterPage />} />
       <Route path="marketplace-mapping/categories" element={<MarketplaceCategoryMappingPage />} />

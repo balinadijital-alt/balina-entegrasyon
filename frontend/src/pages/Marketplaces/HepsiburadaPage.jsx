@@ -144,8 +144,8 @@ export function HepsiburadaPage() {
         title="Hepsiburada Yonetim Merkezi"
         actions={(
           <>
-            <Link className="button-link secondary-link" to="/marketplaces/onboarding">Kurulum Sihirbazi</Link>
-            <Link className="button-link secondary-link" to="/resources">Developer Center <ExternalLink size={14} /></Link>
+            <Link className="button-link secondary-link" to="/marketplace-mapping">Pazaryeri Eslestirmeleri</Link>
+            {canSendMarketplaces && <Link className="button-link" to="/products/publish-wizard">Toplu Pazaryeri Islemleri</Link>}
           </>
         )}
       />

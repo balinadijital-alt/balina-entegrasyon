@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Edit3, Layers3, Send, Tags } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Plus, Search, Send } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client.js';
 import { hasPermission } from '../../auth/permissions.js';
@@ -18,7 +18,7 @@ import {
   readinessScore,
 } from './productWorkflow.js';
 
-const steps = ['Pazaryeri Sec', 'Hazir Urunler', 'Eksik Urunler', 'Urun Sec', 'Son Kontrol', 'Kuyruga Al'];
+const steps = ['Yeni Islem', 'Hazir Urunler', 'Eksik Urunler', 'Urun Sec', 'Son Kontrol', 'Kuyruga Al'];
 
 function draftStatusLabel(status) {
   if (status === 'ready') return 'Hazir';
@@ -88,11 +88,29 @@ export function ProductPublishWizardPage() {
   const { loading, error, setError, run } = useAsync();
   const [products, setProducts] = useState([]);
   const [marketplaces, setMarketplaces] = useState([]);
+  const [drafts, setDrafts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [marketplaceId, setMarketplaceId] = useState('');
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState(null);
   const [search, setSearch] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [bulkForm, setBulkForm] = useState({
+    name: 'Toplu urun gonderimi',
+    operation: 'product_send',
+    schedule: 'manual',
+    category: '',
+    source: 'all_products',
+    brand: '',
+    includePassive: false,
+    includeOutOfStock: false,
+    priceRule: 'none',
+    priceValue: '',
+    cargoCompany: '',
+    shippingWarehouse: '',
+    returnWarehouse: '',
+    randomBarcode: false,
+  });
 
   const selectedMarketplace = useMemo(
     () => marketplaces.find((marketplace) => String(marketplace.id) === String(marketplaceId)),
@@ -104,6 +122,17 @@ export function ProductPublishWizardPage() {
   const readyProducts = useMemo(() => products.filter((product) => product.product_type !== 'parent' && isMarketplaceReady(product, marketplaceCode)), [products, marketplaceCode]);
   const blockedProducts = useMemo(() => products.filter((product) => product.product_type === 'parent' || !isMarketplaceReady(product, marketplaceCode)), [products, marketplaceCode]);
   const selectedRows = useMemo(() => readyProducts.filter((product) => selectedProducts.includes(product.id)), [readyProducts, selectedProducts]);
+  const filteredDrafts = useMemo(() => drafts.filter((item) => {
+    const query = search.trim().toLowerCase();
+    return !query || [
+      item.id,
+      item.marketplace_code,
+      item.status,
+      item.company?.name,
+      item.result_summary?.batch_request_id,
+      item.error_message,
+    ].some((value) => String(value || '').toLowerCase().includes(query));
+  }), [drafts, search]);
   const selectedAverageScore = selectedRows.length
     ? Math.round(selectedRows.reduce((sum, product) => sum + readinessScore(product, marketplaceCode), 0) / selectedRows.length)
     : 0;
@@ -115,9 +144,10 @@ export function ProductPublishWizardPage() {
 
   const load = async () => {
     await run(async () => {
-      const [productResponse, marketplaceResponse] = await Promise.all([api.products.list(), api.marketplaces.list()]);
+      const [productResponse, marketplaceResponse, draftResponse] = await Promise.all([api.products.list(), api.marketplaces.list(), api.productPublish.drafts()]);
       setProducts(productResponse.data || []);
       setMarketplaces(marketplaceResponse.data || []);
+      setDrafts(draftResponse.data || []);
       setMarketplaceId((current) => current || marketplaceResponse.data?.[0]?.id || '');
       const productId = Number(searchParams.get('product'));
       if (productId && (productResponse.data || []).some((product) => Number(product.id) === productId)) {
@@ -145,21 +175,22 @@ export function ProductPublishWizardPage() {
 
   const validateDraft = async () => {
     if (!canSendMarketplaces) return;
-    if (!marketplaceId || selectedProducts.length === 0) {
-      setError('Urun ve pazaryeri secimi zorunludur.');
+    const productIds = selectedProducts.length > 0 ? selectedProducts : readyProducts.map((product) => product.id);
+    if (!marketplaceId || productIds.length === 0) {
+      setError('Pazaryeri ve gonderilecek hazir urun zorunludur.');
       return;
     }
 
     await run(async () => {
       const response = await api.productPublish.validate({
         marketplace_account_id: marketplaceId,
-        product_ids: selectedProducts,
+        product_ids: productIds,
         mappings: {},
-        price_controls: { source: 'publish-wizard' },
+        price_controls: { source: 'bulk-marketplace-operation', filters: bulkForm },
       });
       setDraft(response);
-      setStep(4);
-      notify(response.status === 'blocked' ? 'error' : 'success', response.status === 'blocked' ? 'Eksik alanlar bulundu.' : 'Son kontrol hazir.');
+      setSelectedProducts(productIds);
+      notify(response.status === 'blocked' ? 'error' : 'success', response.status === 'blocked' ? 'Eksik alanlar bulundu.' : 'Islem kaydedildi.');
     }, { onError: (message) => notify('error', message) });
   };
 
@@ -168,195 +199,147 @@ export function ProductPublishWizardPage() {
     await run(async () => {
       const response = await api.productPublish.send(draft.id);
       setDraft(response);
-      setStep(5);
+      setShowForm(false);
       notify(response.status === 'blocked' ? 'error' : 'success', response.error_message || 'Urunler aktarim kuyruguna alindi.');
+      await load();
     }, { onError: (message) => notify('error', message) });
   };
 
   return (
     <>
       <PageHeader
-        title="Urun Gonderme Sihirbazi"
-        description="Bu ekranda mapping duzenlenmez; sadece hazir urunler secilir, son kontrol yapilir ve kuyruga alinir."
-        actions={<Link className="button-link secondary-link" to="/marketplace-readiness"><CheckCircle2 size={16} /> Hazirlik Merkezi</Link>}
+        title="Toplu Pazaryeri Islemleri"
+        description="Pazaryeri, magaza, islem ve filtreleri secerek urunlerinizi toplu gonderime alin."
+        actions={<Link className="button-link secondary-link" to="/marketplace-mapping"><CheckCircle2 size={16} /> Pazaryeri Eslestirmeleri</Link>}
       />
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && products.length === 0 ? <LoadingState /> : null}
 
-      <section className="panel wizard-panel publish-wizard-panel">
-        <div className="wizard-steps">
-          {steps.map((label, index) => (
-            <button type="button" className={index === step ? 'wizard-step active' : 'wizard-step'} key={label} onClick={() => setStep(index)}>
-              <span>{index + 1}</span>
-              {label}
+      <section className="bulk-operation-shell">
+        <header className="bulk-operation-toolbar">
+          <label className="resource-search compact-search">
+            <Search size={16} />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Islem, pazaryeri veya batch ara" />
+          </label>
+          {canSendMarketplaces && (
+            <button type="button" onClick={() => { setShowForm(true); setDraft(null); }}>
+              <Plus size={16} /> Yeni Pazaryeri Islemi
             </button>
-          ))}
-        </div>
-
-        <div className="publish-wizard-body">
-          {step === 0 && (
-            <>
-              <div className="wizard-step-header">
-                <span>Adim 1 / {steps.length}</span>
-                <h2>Pazaryeri sec</h2>
-                <p>Hazir urun listesi secilen pazaryerine gore hesaplanir.</p>
-              </div>
-              <div className="marketplace-card-grid compact-marketplace-grid">
-                {marketplaces.map((marketplace) => (
-                  <button type="button" className={String(marketplace.id) === String(marketplaceId) ? 'marketplace-select-card active' : 'marketplace-select-card'} key={marketplace.id} onClick={() => { setMarketplaceId(String(marketplace.id)); setSelectedProducts([]); setDraft(null); }}>
-                    <strong>{marketplace.name}</strong>
-                    <span>{marketplaceName(marketplace.code)} hesabi</span>
-                    <small>{marketplace.is_active === false ? 'Pasif hesap' : 'Aktif hesap'}</small>
-                  </button>
-                ))}
-              </div>
-              {marketplaces.length === 0 && <div className="soft-empty">Pazaryeri hesabi bulunamadi. Once pazaryeri hesabi baglayin.</div>}
-            </>
           )}
+        </header>
 
-          {step === 1 && (
-            <>
-              <div className="wizard-step-header">
-                <span>Adim 2 / {steps.length}</span>
-                <h2>Hazir urunleri goster</h2>
-                <p>{marketplaceName(marketplaceCode)} icin kategori, marka, nitelik ve varyant kontrollerinden gecen urunler burada secilebilir.</p>
-              </div>
-              <section className="panel compact-filter-panel nested-panel">
-                <div className="product-filter-row">
-                  <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Urun, SKU veya barkod ara" />
-                  <button type="button" className="secondary-button" onClick={toggleVisibleProducts}>Gorunen hazirlari sec</button>
+        <DataTable
+          rows={filteredDrafts}
+          emptyTitle="Toplu pazaryeri islemi yok"
+          emptyText="Yeni Pazaryeri Islemi butonu ile gonderim formunu acin."
+          columns={[
+            { key: 'id', label: 'Islem No', render: (row) => row.id || '-' },
+            { key: 'name', label: 'Adi', render: (row) => row.result_summary?.name || `Pazaryeri islemi #${row.id}` },
+            { key: 'operation', label: 'Islem', render: () => 'Urun gonder' },
+            { key: 'marketplace_code', label: 'Pazaryeri', render: (row) => row.marketplace_code || '-' },
+            { key: 'schedule', label: 'Zamanlama', render: () => 'Manuel' },
+            { key: 'status', label: 'Durum', render: (row) => <span className={row.status === 'blocked' ? 'status-pill blocked' : 'status-pill ready'}>{draftStatusLabel(row.status)}</span> },
+            {
+              key: 'actions',
+              label: 'Islemler',
+              render: (row) => (
+                <div className="row-actions">
+                  <Link className="table-action-link" to="/products/publish-queue">Detay</Link>
                 </div>
-              </section>
-              <DataTable
-                rows={filteredReadyProducts}
-                emptyTitle="Hazir urun yok"
-                emptyText="Hazir urun bulunamadi. Eksikleri tamamlamak icin Hazirlik Merkezi'ne gidin."
-                columns={[
-                  { key: 'select', label: '', render: (row) => <input type="checkbox" checked={selectedProducts.includes(row.id)} onChange={() => toggleProduct(row.id)} /> },
-                  { key: 'name', label: 'Urun', render: (row) => <div className="table-product-title"><strong>{row.name}</strong><span>{row.sku}</span>{row.parent ? <small>{row.parent.name || row.parent.sku} / {row.variant_group_key || '-'}</small> : null}</div> },
-                  { key: 'score', label: 'Hazirlik', render: (row) => <div className="score-cell"><strong>{readinessScore(row, marketplaceCode)}%</strong><span>Gonderime hazir</span></div> },
-                  { key: 'category', label: 'Kategori', render: (row) => row.category || '-' },
-                  { key: 'brand', label: 'Marka', render: (row) => row.brand || '-' },
-                  { key: 'status', label: 'Durum', render: () => <span className="status-pill ready">Hazir</span> },
-                ]}
-              />
-            </>
-          )}
-
-          {step === 2 && (
-            <>
-              <div className="wizard-step-header">
-                <span>Adim 3 / {steps.length}</span>
-                <h2>Eksik urunleri ayri goster</h2>
-                <p>Blocked urunler bu sihirbazda secilemez. Ilgili mapping sayfasinda eksik tamamlandiktan sonra tekrar hazir listeye duser.</p>
-              </div>
-              <div className="quick-fix-strip">
-                <Link className="button-link secondary-link" to="/marketplace-mapping/categories"><Layers3 size={16} /> Kategori eslestir</Link>
-                <Link className="button-link secondary-link" to="/marketplace-mapping/brands"><CheckCircle2 size={16} /> Marka eslestir</Link>
-                <Link className="button-link secondary-link" to="/marketplace-mapping/attributes"><Tags size={16} /> Nitelik eslestir</Link>
-                <Link className="button-link secondary-link" to="/marketplace-mapping/variants"><Tags size={16} /> Varyant eslestir</Link>
-              </div>
-              <DataTable
-                rows={blockedProducts}
-                emptyTitle="Eksik urun yok"
-                emptyText="Tum urunler bu pazaryeri icin hazir gorunuyor."
-                columns={[
-                  { key: 'name', label: 'Urun', render: (row) => <div className="table-product-title"><strong>{row.name}</strong><span>{row.sku}</span>{row.product_type === 'parent' ? <small>Parent urun dogrudan gonderilemez</small> : null}</div> },
-                  { key: 'score', label: 'Hazirlik', render: (row) => { const summary = productReadinessSummary(row, marketplaceCode); return <div className="score-cell"><strong>{summary.score}%</strong><span>{summary.reason}</span></div>; } },
-                  { key: 'missing', label: 'Eksikler', render: (row) => missingTextFromFields(missingFields(row, marketplaceCode)) || (row.product_type === 'parent' ? 'Child varyant secilmeli' : '-') },
-                  {
-                    key: 'fix',
-                    label: 'Yonlendirme',
-                    render: (row) => {
-                      const firstMissing = missingFields(row, marketplaceCode)[0];
-                      if (!firstMissing) return <Link className="table-action-link" to={`/products/${row.id}/edit`}><Edit3 size={14} /> Urunu incele</Link>;
-                      return <Link className="table-action-link" to={fieldFixTarget(row, firstMissing)}>{fixCta(firstMissing)}</Link>;
-                    },
-                  },
-                ]}
-              />
-            </>
-          )}
-
-          {step === 3 && (
-            <>
-              <div className="wizard-step-header">
-                <span>Adim 4 / {steps.length}</span>
-                <h2>Gonderilecek urunleri sec</h2>
-                <p>Secili urunler son kontrol icin validate edilir. Blocked urunler kuyruga alinmaz.</p>
-              </div>
-              <div className="publish-summary-grid">
-                <div className="soft-empty"><strong>{selectedRows.length}</strong><span>Secili hazir urun</span></div>
-                <div className="soft-empty"><strong>{readyProducts.length}</strong><span>Toplam hazir urun</span></div>
-                <div className="soft-empty"><strong>{blockedProducts.length}</strong><span>Eksik / blocked urun</span></div>
-                <div className="soft-empty"><strong>{selectedAverageScore}%</strong><span>Ortalama hazirlik</span></div>
-              </div>
-              <DataTable
-                rows={selectedRows}
-                emptyTitle="Urun secilmedi"
-                emptyText="Hazir urunler adimindan gonderilecek urunleri secin."
-                columns={[
-                  { key: 'name', label: 'Urun', render: (row) => <div className="table-product-title"><strong>{row.name}</strong><span>{row.sku}</span></div> },
-                  { key: 'category', label: 'Kategori', render: (row) => row.category || '-' },
-                  { key: 'brand', label: 'Marka', render: (row) => row.brand || '-' },
-                  { key: 'remove', label: 'Islem', render: (row) => <button type="button" className="table-action-link" onClick={() => toggleProduct(row.id)}>Cikar</button> },
-                ]}
-              />
-            </>
-          )}
-
-          {step === 4 && (
-            <>
-              <div className="wizard-step-header">
-                <span>Adim 5 / {steps.length}</span>
-                <h2>Son kontrol</h2>
-                <p>Mevcut endpointler ile son validate calisir. Bu ekrandan mapping duzenlenmez.</p>
-              </div>
-              <div className="publish-summary-grid">
-                <div className="soft-empty"><strong>{marketplaceName(marketplaceCode)}</strong><span>Pazaryeri</span></div>
-                <div className="soft-empty"><strong>{selectedRows.length}</strong><span>Secili urun</span></div>
-                <div className="soft-empty"><strong>{selectedAverageScore}%</strong><span>Ortalama hazirlik</span></div>
-              </div>
-              {draft ? (
-                <div className={draft.status === 'blocked' ? 'state-box workflow-warning' : 'state-box success-empty'}>
-                  <AlertTriangle size={18} />
-                  <span>Aktarim #{draft.id}: {draftStatusLabel(draft.status)}. {draftMissingText(draft) || 'Kritik eksik yok.'}</span>
-                </div>
-              ) : (
-                <div className="soft-empty">Kontrol et ve onizle ile secili hazir urunler icin draft olusturun.</div>
-              )}
-            </>
-          )}
-
-          {step === 5 && (
-            <>
-              <div className="wizard-step-header">
-                <span>Adim 6 / {steps.length}</span>
-                <h2>Kuyruga alindi</h2>
-                <p>Sonuclari gonderim kuyrugu ekraninda takip edin.</p>
-              </div>
-              <div className="preview-grid">
-                <div className="soft-empty"><strong>{draftStatusLabel(draft?.status)}</strong><span>Durum</span></div>
-                <div className="soft-empty"><strong>{draft?.result_summary?.queued_product_count || draft?.product_ids?.length || 0}</strong><span>Kuyruga alinan urun</span></div>
-                <div className="soft-empty"><strong>{draft?.result_summary?.batch_request_id || draft?.id || '-'}</strong><span>Batch / takip no</span></div>
-                <div className="soft-empty"><strong>{draft?.result_summary?.message || draft?.error_message || 'Sonuc bekleniyor.'}</strong><span>Sonuc mesaji</span></div>
-              </div>
-              <div className="quick-fix-strip">
-                <Link className="button-link secondary-link" to="/products/publish-queue">Gonderim kuyruguna git</Link>
-                <Link className="button-link secondary-link" to="/api-logs">Hata merkezi</Link>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="wizard-actions">
-          <button type="button" className="secondary-button" disabled={step === 0} onClick={() => setStep((current) => current - 1)}><ChevronLeft size={16} /> Geri</button>
-          {step < 3 && <button type="button" disabled={step === 0 && !marketplaceId} onClick={() => setStep((current) => current + 1)}>Ileri <ChevronRight size={16} /></button>}
-          {step === 3 && <button type="button" disabled={selectedProducts.length === 0} onClick={validateDraft}><CheckCircle2 size={16} /> Kontrol Et</button>}
-          {step === 4 && !draft && canSendMarketplaces && <button type="button" disabled={loading || selectedProducts.length === 0} onClick={validateDraft}><CheckCircle2 size={16} /> Kontrol Et</button>}
-          {step === 4 && draft && canSendMarketplaces && <button type="button" disabled={loading || draft?.status === 'blocked'} onClick={sendDraft}><Send size={16} /> Kuyruga Al</button>}
-        </div>
+              ),
+            },
+          ]}
+        />
       </section>
+
+      {showForm && (
+        <section className="bulk-operation-form-panel">
+          <div className="wizard-step-header">
+            <span>Yeni Islem</span>
+            <h2>Toplu Pazaryeri Islemleri</h2>
+            <p>Filtrelemeleri gerceklestirin ve kaydet butonuna tiklayin.</p>
+          </div>
+          <div className="workflow-modal-warning bulk-operation-warning">
+            <AlertTriangle size={17} />
+            <span>Filtrelemeleri gerceklestirin ve kaydet butonuna tiklayin.</span>
+          </div>
+          <div className="marketplace-card-grid compact-marketplace-grid">
+            {marketplaces.map((marketplace) => (
+              <button type="button" className={String(marketplace.id) === String(marketplaceId) ? 'marketplace-select-card active' : 'marketplace-select-card'} key={marketplace.id} onClick={() => { setMarketplaceId(String(marketplace.id)); setSelectedProducts([]); setDraft(null); }}>
+                <strong>{marketplace.name}</strong>
+                <span>{marketplaceName(marketplace.code)} hesabi</span>
+                <small>{marketplace.is_active === false ? 'Pasif hesap' : 'Aktif hesap'}</small>
+              </button>
+            ))}
+          </div>
+          {marketplaces.length === 0 && <div className="soft-empty">Pazaryeri hesabi bulunamadi. Once pazaryeri hesabi baglayin.</div>}
+          <section className="bulk-operation-form-grid">
+            <label><span>Adi</span><input value={bulkForm.name} onChange={(event) => setBulkForm((current) => ({ ...current, name: event.target.value }))} /></label>
+            <label><span>Pazaryeri</span><input value={marketplaceName(marketplaceCode)} readOnly /></label>
+            <label><span>Magaza</span><input value={selectedMarketplace?.name || ''} readOnly placeholder="Magaza seciniz" /></label>
+            <label>
+              <span>Islem</span>
+              <select value={bulkForm.operation} onChange={(event) => setBulkForm((current) => ({ ...current, operation: event.target.value }))}>
+                <option value="product_send">Urun gonder</option>
+                <option value="price_stock_update">Fiyat / stok guncelle</option>
+                <option value="product_status_check">Durum sorgula</option>
+              </select>
+            </label>
+            <label>
+              <span>Zamanlama</span>
+              <select value={bulkForm.schedule} onChange={(event) => setBulkForm((current) => ({ ...current, schedule: event.target.value }))}>
+                <option value="manual">Manuel</option>
+                <option value="daily">Gunde bir</option>
+                <option value="hourly">Saatlik</option>
+              </select>
+            </label>
+            <label><span>Kategoriler</span><input value={bulkForm.category} onChange={(event) => setBulkForm((current) => ({ ...current, category: event.target.value }))} placeholder="Kategori filtresi" /></label>
+            <label>
+              <span>Urun Kaynagi</span>
+              <select value={bulkForm.source} onChange={(event) => setBulkForm((current) => ({ ...current, source: event.target.value }))}>
+                <option value="ready_products">Hazir urunler</option>
+                <option value="all_products">Tum urunler</option>
+                <option value="selected_products">Secili urunler</option>
+              </select>
+            </label>
+            <label><span>Markalar</span><input value={bulkForm.brand} onChange={(event) => setBulkForm((current) => ({ ...current, brand: event.target.value }))} placeholder="Marka filtresi" /></label>
+            <label>
+              <span>Gonderilecek Urunler</span>
+              <select value={bulkForm.source} onChange={(event) => setBulkForm((current) => ({ ...current, source: event.target.value }))}>
+                <option value="ready_products">Hazir urunler</option>
+                <option value="selected_products">Elle secilen urunler</option>
+                <option value="all_products">Tum urunler</option>
+              </select>
+            </label>
+            <label>
+              <span>Fiyat Kisitlama</span>
+              <select value={bulkForm.priceRule} onChange={(event) => setBulkForm((current) => ({ ...current, priceRule: event.target.value }))}>
+                <option value="none">Yok</option>
+                <option value="min">Minimum fiyat</option>
+                <option value="max">Maksimum fiyat</option>
+              </select>
+            </label>
+            <label><span>Fiyat Degeri</span><input value={bulkForm.priceValue} onChange={(event) => setBulkForm((current) => ({ ...current, priceValue: event.target.value }))} placeholder="0.00" /></label>
+            <label><span>Varsayilan Kargo Firmasi</span><input value={bulkForm.cargoCompany} onChange={(event) => setBulkForm((current) => ({ ...current, cargoCompany: event.target.value }))} /></label>
+            <label><span>Sevkiyat Depo Adresi</span><input value={bulkForm.shippingWarehouse} onChange={(event) => setBulkForm((current) => ({ ...current, shippingWarehouse: event.target.value }))} /></label>
+            <label><span>Iade Depo Adresi</span><input value={bulkForm.returnWarehouse} onChange={(event) => setBulkForm((current) => ({ ...current, returnWarehouse: event.target.value }))} /></label>
+            <label className="check-row"><input type="checkbox" checked={bulkForm.includePassive} onChange={(event) => setBulkForm((current) => ({ ...current, includePassive: event.target.checked }))} /> Pasif urunler gonderilsin mi?</label>
+            <label className="check-row"><input type="checkbox" checked={bulkForm.includeOutOfStock} onChange={(event) => setBulkForm((current) => ({ ...current, includeOutOfStock: event.target.checked }))} /> Stokta olmayan urunler gonderilsin mi?</label>
+            <label className="check-row"><input type="checkbox" checked={bulkForm.randomBarcode} onChange={(event) => setBulkForm((current) => ({ ...current, randomBarcode: event.target.checked }))} /> Urunlere Rastgele Barkod Ata</label>
+          </section>
+          {draft && (
+            <div className={draft.status === 'blocked' ? 'state-box workflow-warning' : 'state-box success-empty'}>
+              <AlertTriangle size={18} />
+              <span>Islem #{draft.id}: {draftStatusLabel(draft.status)}. {draftMissingText(draft) || 'Gonderime hazir.'}</span>
+            </div>
+          )}
+          <div className="wizard-actions inline-actions">
+            <button type="button" className="secondary-button" onClick={() => setShowForm(false)}>Vazgec</button>
+            <button type="button" disabled={loading || !marketplaceId} onClick={validateDraft}><CheckCircle2 size={16} /> Kaydet</button>
+            {draft && canSendMarketplaces && <button type="button" disabled={loading || draft?.status === 'blocked'} onClick={sendDraft}><Send size={16} /> Kuyruga Al</button>}
+          </div>
+        </section>
+      )}
     </>
   );
 }
