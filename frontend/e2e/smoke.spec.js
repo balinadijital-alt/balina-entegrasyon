@@ -99,4 +99,28 @@ test.describe('operasyon paneli smoke testleri', () => {
     await expect(page.locator('.page-header h1')).toContainText('Kaynaklar / Developer Center');
     expect(consoleErrors).toEqual([]);
   });
+
+  test('api knowledge provider matrisleri ve arama calisir', async ({ page }) => {
+    const consoleErrors = collectConsoleErrors(page);
+    await authenticate(page);
+    await isolateBackendApi(page);
+
+    await page.goto('/resources/api-knowledge');
+    await expect(page.locator('.page-header h1')).toContainText('API Knowledge Center');
+    await expect(page.locator('.api-doc-heading')).toContainText('Trendyol');
+
+    await page.getByRole('button', { name: /Hepsiburada/ }).click();
+    await expect(page.locator('.api-doc-heading')).toContainText('Hepsiburada');
+    await expect(page.locator('.api-topic-list')).toContainText('Hesap Testi');
+    await expect(page.locator('.api-topic-list')).toContainText('Siparisler');
+
+    await page.getByPlaceholder('Endpoint, servis veya ekran ara').fill('orders');
+    await expect(page.locator('.api-topic-list')).toContainText('Siparisler');
+    await expect(page.locator('.api-doc-heading')).toContainText('Siparisler');
+
+    await page.getByRole('button', { name: /Trendyol/ }).click();
+    await expect(page.locator('.api-doc-heading')).toContainText('Trendyol');
+    await expect(page.locator('.api-topic-list')).toContainText('Urunler');
+    expect(consoleErrors).toEqual([]);
+  });
 });

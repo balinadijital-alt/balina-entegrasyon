@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Activity, BookOpen, CheckCircle2, ExternalLink, FileCode2, GitBranch, Link2, Search, ServerCog, Workflow } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { apiKnowledgeFoundations, apiKnowledgeProviders, trendyolKnowledgeTopics } from '../../data/apiKnowledgeContent.js';
+import { apiKnowledgeFoundations, apiKnowledgeProviders, apiKnowledgeTopicMap } from '../../data/apiKnowledgeContent.js';
 
 function badgeTone(value) {
   if (value === 'Tam matris') return 'ready';
@@ -52,8 +52,9 @@ export function ApiKnowledgeCenterPage() {
   const [provider, setProvider] = useState('trendyol');
   const [topicId, setTopicId] = useState('products');
   const [search, setSearch] = useState('');
+  const providerTopics = apiKnowledgeTopicMap[provider] || [];
 
-  const filteredTopics = useMemo(() => trendyolKnowledgeTopics.filter((topic) => {
+  const filteredTopics = useMemo(() => providerTopics.filter((topic) => {
     const query = search.trim().toLowerCase();
     if (!query) return true;
     return [
@@ -65,15 +66,18 @@ export function ApiKnowledgeCenterPage() {
       ...topic.frontendScreens,
       ...topic.usedIn,
       ...topic.affects,
+      ...topic.docs.map((doc) => doc.label),
     ].join(' ').toLowerCase().includes(query);
-  }), [search]);
+  }), [providerTopics, search]);
 
   const selectedTopic = useMemo(
-    () => filteredTopics.find((topic) => topic.id === topicId) || filteredTopics[0] || trendyolKnowledgeTopics[0],
-    [filteredTopics, topicId],
+    () => filteredTopics.find((topic) => topic.id === topicId) || filteredTopics[0] || providerTopics[0],
+    [filteredTopics, providerTopics, topicId],
   );
   const selectedProvider = apiKnowledgeProviders.find((item) => item.key === provider);
   const foundation = apiKnowledgeFoundations[provider];
+  const hasDetailedMatrix = providerTopics.length > 0;
+  const detailedTopicCount = Object.values(apiKnowledgeTopicMap).reduce((total, topics) => total + topics.length, 0);
 
   return (
     <>
@@ -90,7 +94,7 @@ export function ApiKnowledgeCenterPage() {
           <p>Bu merkez bilgi amaclidir; provider cagrisi yapmaz, backend is mantigini degistirmez ve operasyon yardim merkezinden ayri calisir.</p>
         </div>
         <div className="developer-hero-stats">
-          <div><strong>{trendyolKnowledgeTopics.length}</strong><span>Trendyol konu</span></div>
+          <div><strong>{detailedTopicCount}</strong><span>detay konu</span></div>
           <div><strong>8</strong><span>provider sekmesi</span></div>
           <div><strong>0</strong><span>canli provider cagrisi</span></div>
         </div>
@@ -104,7 +108,8 @@ export function ApiKnowledgeCenterPage() {
             key={item.key}
             onClick={() => {
               setProvider(item.key);
-              setTopicId('products');
+              setTopicId(apiKnowledgeTopicMap[item.key]?.[0]?.id || 'products');
+              setSearch('');
             }}
           >
             <span>{item.label}</span>
@@ -113,7 +118,7 @@ export function ApiKnowledgeCenterPage() {
         ))}
       </section>
 
-      {provider !== 'trendyol' ? (
+      {!hasDetailedMatrix ? (
         <FoundationPanel provider={foundation} />
       ) : (
         <section className="api-knowledge-layout">
@@ -134,41 +139,41 @@ export function ApiKnowledgeCenterPage() {
 
           <main className="panel api-doc-content">
             <div className="api-doc-heading">
-              <span className="badge ready">Trendyol</span>
-              <h2>{selectedTopic.title}</h2>
-              <p>{selectedTopic.summary}</p>
+              <span className="badge ready">{selectedProvider?.label}</span>
+              <h2>{selectedTopic?.title}</h2>
+              <p>{selectedTopic?.summary}</p>
             </div>
 
-            <MethodList title="Kullanilan dis endpointler" items={selectedTopic.externalEndpoints} />
-            <MethodList title="Backend service / kaynak" items={selectedTopic.backendServices} />
-            <MethodList title="Balina API endpointleri" items={selectedTopic.apiEndpoints} />
-            <MethodList title="Frontend ekranlari" items={selectedTopic.frontendScreens} />
+            <MethodList title="Kullanilan dis endpointler" items={selectedTopic?.externalEndpoints || []} />
+            <MethodList title="Backend service / kaynak" items={selectedTopic?.backendServices || []} />
+            <MethodList title="Balina API endpointleri" items={selectedTopic?.apiEndpoints || []} />
+            <MethodList title="Frontend ekranlari" items={selectedTopic?.frontendScreens || []} />
 
             <section className="api-doc-section">
               <h3>Tipik hata kodlari</h3>
               <div className="api-error-grid">
-                {selectedTopic.errors.map((error) => <span key={error}>{error}</span>)}
+                {(selectedTopic?.errors || []).map((error) => <span key={error}>{error}</span>)}
               </div>
             </section>
 
             <section className="api-doc-section">
               <h3>Rate limit bilgisi</h3>
-              <p className="api-note">{selectedTopic.rateLimit}</p>
+              <p className="api-note">{selectedTopic?.rateLimit}</p>
             </section>
 
             <section className="api-doc-section">
               <h3>Resmi dokumanlar</h3>
               <div className="resource-links">
-                {selectedTopic.docs.map((doc) => <a href={doc.href} key={doc.href} target="_blank" rel="noreferrer">{doc.label} <ExternalLink size={14} /></a>)}
+                {(selectedTopic?.docs || []).map((doc) => <a href={doc.href} key={doc.href} target="_blank" rel="noreferrer">{doc.label} <ExternalLink size={14} /></a>)}
               </div>
             </section>
           </main>
 
           <aside className="panel api-info-panel">
-            <ImpactList icon={Link2} title="Bu endpoint projede nerede kullaniliyor?" items={selectedTopic.usedIn} />
-            <ImpactList icon={Activity} title="Bu alan hangi ekrani etkiliyor?" items={selectedTopic.affects} />
-            <ImpactList icon={Workflow} title="Queue / sync iliskisi" items={selectedTopic.queueRelations} />
-            <ImpactList icon={CheckCircle2} title="Readiness etkisi" items={selectedTopic.readinessImpact} />
+            <ImpactList icon={Link2} title="Bu endpoint projede nerede kullaniliyor?" items={selectedTopic?.usedIn || []} />
+            <ImpactList icon={Activity} title="Bu alan hangi ekrani etkiliyor?" items={selectedTopic?.affects || []} />
+            <ImpactList icon={Workflow} title="Queue / sync iliskisi" items={selectedTopic?.queueRelations || []} />
+            <ImpactList icon={CheckCircle2} title="Readiness etkisi" items={selectedTopic?.readinessImpact || []} />
 
             <div className="api-impact-card">
               <div>
@@ -176,7 +181,7 @@ export function ApiKnowledgeCenterPage() {
                 <strong>Ilgili ekranlara git</strong>
               </div>
               <div className="api-route-list">
-                {selectedTopic.frontendScreens.map((screen) => <Link to={screen} key={screen}>{screen}</Link>)}
+                {(selectedTopic?.frontendScreens || []).map((screen) => <Link to={screen} key={screen}>{screen}</Link>)}
               </div>
             </div>
 
