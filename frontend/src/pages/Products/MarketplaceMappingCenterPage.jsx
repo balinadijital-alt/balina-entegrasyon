@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, ClipboardCheck, Layers3, RefreshCw, Save, Search, ShieldCheck, SlidersHorizontal, Tags, Trash2, X } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Layers3, RefreshCw, Save, Search, Send, ShieldCheck, SlidersHorizontal, Tags, Trash2, X } from 'lucide-react';
 import { api, asArray } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -811,7 +811,7 @@ function workflowModalTitle(tab, marketplaceCode) {
 function workflowModalInfo(tab) {
   if (tab === 'categories') {
     return {
-      info: 'Pazaryeri kategorisini doldurdugunuzda, eslestirme otomatik olarak kayit edilebilecek sekilde hazirlanir.',
+      info: 'Urunlerinizi gondereceginiz pazaryeri kategorilerini secin.',
       warning: 'Ilgili pazaryeri eslestirmelerini otomatik olarak kaydeder. Hangi kategoriye gondermek istediginizi secmeniz gerekir.',
     };
   }
@@ -859,6 +859,7 @@ function MarketplaceMappingWorkflow({
   setWorkflowDetail,
   switchWorkflowModal,
 }) {
+  const navigate = useNavigate();
   const modalCopy = workflowModalInfo(workflowModal);
   const modalRows = workflowModal ? visibleRows : [];
   const mappedCategories = rows.categories.filter(isMappedCategory);
@@ -878,12 +879,18 @@ function MarketplaceMappingWorkflow({
     attributes: !categoryStarted ? 'Kategori bekleniyor' : attributeStarted ? `${requiredAttributes.length} zorunlu alan tanimli` : 'Ozellik eslesmesi eksik',
     variants: !categoryStarted ? 'Kategori bekleniyor' : attributeStarted ? `${rows.variants.length} varyant eslesmesi` : 'Once ozellik eslestirmesi onerilir',
   };
+  const roadmapSteps = [
+    { key: 'categories', no: 1, title: 'Kategori', note: stepNotes.categories, action: 'Kategori eslestir' },
+    { key: 'attributes', no: 2, title: 'Ozellik', note: stepNotes.attributes, action: 'Ozellik eslestir' },
+    { key: 'variants', no: 3, title: 'Varyant', note: stepNotes.variants, action: 'Varyant eslestir' },
+    { key: 'publish', no: 4, title: 'Urun Gonder', note: variantComplete ? 'Gonderime hazir' : 'Eslesmeleri kontrol edin', action: 'Urun gonder' },
+  ];
 
   return (
     <>
       <PageHeader
         title="Pazaryeri Eslestirmeleri"
-        description="Urunlerinizi pazaryerlerine gönderebilmek için önce kategori, özellik ve varyant eşleştirmelerini sırayla tamamlayın."
+        description="Urunlerinizi pazaryerlerine gönderebilmek için aşağıdaki adımları sırayla tamamlayın."
         actions={(
           <>
             <select className="header-select" value={marketplaceCode} onChange={(event) => setMarketplaceCode(event.target.value)}>
@@ -898,38 +905,40 @@ function MarketplaceMappingWorkflow({
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && !summary ? <LoadingState /> : null}
 
-      <section className="marketplace-flow-tabs">
-        {workflowTabs.map((tab, index) => (
-          <button type="button" className={index === 0 ? 'active' : ''} key={tab}>{tab}</button>
-        ))}
-      </section>
-
-      <section className="marketplace-flow-alert">
-        <AlertTriangle size={18} />
-        <strong>Sirasiyla 1,2,3 adimlarini uygulayin.</strong>
-      </section>
-
-      <section className="marketplace-flow-steps">
-        {workflowSteps.map((step) => (
-          <article className={`marketplace-flow-step-card ${stepStatusClass(stepStates[step.key])}`} key={step.key}>
-            <div className="marketplace-flow-step-no">{step.no}</div>
-            <span className={`workflow-step-status ${stepStatusClass(stepStates[step.key])}`}>{stepStatusLabel(stepStates[step.key])}</span>
-            <div>
-              <h2>{step.title}</h2>
-              <p>{step.description}</p>
-            </div>
-            <div className="marketplace-flow-fields">
-              {step.fields.map((field) => <span key={field}>{field}</span>)}
-            </div>
-            <div className="marketplace-flow-meta">
-              <span>{marketplaceCode === 'hepsiburada' ? 'Hepsiburada' : 'Trendyol'}</span>
-              <strong>{stepNotes[step.key]}</strong>
-            </div>
-            {step.key !== 'categories' && !categoryStarted && <p className="workflow-step-helper">Bu adim kategori eslesmesi tamamlaninca aktif olur.</p>}
-            {step.key === 'variants' && categoryStarted && !attributeStarted && <p className="workflow-step-helper warning">Once ilgili kategorinin ozellik eslestirmesini tamamlamaniz onerilir.</p>}
-            <button type="button" className="warning-button" disabled={step.key !== 'categories' && !categoryStarted} onClick={() => openWorkflowModal(step.key)}>{step.button}</button>
-          </article>
-        ))}
+      <section className="marketplace-roadmap-shell">
+        <div className="marketplace-roadmap-heading">
+          <div>
+            <span>Siradaki is</span>
+            <strong>{!categoryStarted ? 'Kategori eslestirmeyi tamamlayin' : !attributeStarted ? 'Ozellikleri eslestirin' : !variantComplete ? 'Varyantlari kontrol edin' : 'Urunleri gonderime alin'}</strong>
+          </div>
+          <Link className="button-link" to="/products/publish-wizard"><Send size={16} /> Urun gonder</Link>
+        </div>
+        <div className="marketplace-workflow-roadmap">
+          {roadmapSteps.map((step, index) => {
+            const state = step.key === 'publish' ? (variantComplete ? 'complete' : 'pending') : stepStates[step.key];
+            const disabled = step.key !== 'categories' && step.key !== 'publish' && !categoryStarted;
+            return (
+              <div className="marketplace-roadmap-segment" key={step.key}>
+                <button
+                  type="button"
+                  className={`marketplace-roadmap-step ${stepStatusClass(state)}`}
+                  disabled={disabled}
+                  onClick={() => (step.key === 'publish' ? navigate('/products/publish-wizard') : openWorkflowModal(step.key))}
+                >
+                  <span>{step.no}</span>
+                  <strong>{step.title}</strong>
+                  <small>{stepStatusLabel(state)}</small>
+                  <em>{step.note}</em>
+                </button>
+                {index < roadmapSteps.length - 1 && <span className="roadmap-arrow">{'>'}</span>}
+              </div>
+            );
+          })}
+        </div>
+        <div className="marketplace-flow-alert compact">
+          <AlertTriangle size={18} />
+          <strong>Kategori tamamlanmadan ozellik ve varyant adimlari acilmaz.</strong>
+        </div>
       </section>
 
       <details className="marketplace-flow-advanced">
@@ -1065,6 +1074,8 @@ function CustomerMappingModalBody({
 
   if (tab === 'attributes') {
     const attributeCount = (category) => attributeRows.filter((row) => String(row.marketplace_category_id || '') === String(category.marketplace_category_id || '')).length;
+    const selectedAttributeRows = workflowDetail ? attributeRows.filter((row) => String(row.marketplace_category_id || '') === String(workflowDetail.marketplace_category_id || '')) : [];
+    const hasAttribute = (field) => selectedAttributeRows.some((row) => normalize(row.marketplace_attribute_name).includes(normalize(field.label)));
     return (
       <div className="customer-modal-stack">
         <table className="customer-simple-table">
@@ -1100,10 +1111,12 @@ function CustomerMappingModalBody({
               <AlertTriangle size={16} />
               <span>Varyant degerleriniz varsa renk/beden gibi alanlari burada degil, varyant eslestirme ekraninda birakin.</span>
             </div>
-            <div className="customer-field-grid">
+            <div className="customer-checklist">
               {customerAttributeFields.map((field) => (
-                <label key={field.key}>
-                  <span>{field.label}{field.required && <b>*</b>}</span>
+                <label className={hasAttribute(field) ? 'complete' : 'missing'} key={field.key}>
+                  <span>{hasAttribute(field) ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}</span>
+                  <strong>{field.label}{field.required && <b>*</b>}</strong>
+                  <small>{hasAttribute(field) ? 'Tamamlandi' : 'Eksik'}</small>
                   <input onChange={(event) => { setValue('marketplace_attribute_name', field.label); setValue('fixed_value', event.target.value); setValue('source_type', 'fixed_value'); }} placeholder={`${field.label} secin veya yazin`} />
                 </label>
               ))}
@@ -1157,18 +1170,20 @@ function CustomerMappingModalBody({
           <p><strong>Kategori:</strong> {workflowDetail.local_category_name || '-'}</p>
           <p><strong>Pazaryeri:</strong> {workflowDetail.marketplace_category_path || workflowDetail.marketplace_category_name || '-'}</p>
           <p>Secilen kategoriye ait tum varyantlar asagida listelenmektedir.</p>
-          <table className="customer-simple-table">
-            <thead><tr><th>No</th><th>Varyant 1</th><th>Varyant 2</th></tr></thead>
-            <tbody>
-              {['Boyut/Ebat', 'Renk'].map((label, index) => (
-                <tr key={label}>
-                  <td>{index + 1}</td>
-                  <td>{label}</td>
-                  <td><input onChange={(event) => { setValue('variant_key', label === 'Renk' ? 'renk' : 'beden'); setValue('marketplace_attribute_name', event.target.value || label); setValue('source_field', label === 'Renk' ? 'renk' : 'beden'); }} placeholder={`${provider} ${label} karsiligi`} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="variant-simple-list">
+            {['Boyut/Ebat', 'Renk'].map((label) => {
+              const key = label === 'Renk' ? 'renk' : 'beden';
+              const complete = variantStatus(key) === 'Tamam';
+              return (
+                <label className={complete ? 'complete' : 'missing'} key={label}>
+                  <span>{complete ? <CheckCircle2 size={20} /> : <AlertTriangle size={20} />}</span>
+                  <strong>{label}</strong>
+                  <small>{complete ? 'Tamamlandi' : 'Eksik'}</small>
+                  <input onChange={(event) => { setValue('variant_key', key); setValue('marketplace_attribute_name', event.target.value || label); setValue('source_field', key); }} placeholder={`${provider} ${label} karsiligi`} />
+                </label>
+              );
+            })}
+          </div>
           <div className="wizard-actions inline-actions">
             <button type="button" className="secondary-button" onClick={() => { setValue('variant_key', 'renk'); setValue('marketplace_attribute_name', 'Renk'); setValue('source_field', 'renk'); }}>Otomatik Eslestir</button>
             <button type="button" disabled={loading} onClick={save}><Save size={16} /> Kaydet</button>

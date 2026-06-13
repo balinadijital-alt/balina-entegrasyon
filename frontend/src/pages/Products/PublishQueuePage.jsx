@@ -112,7 +112,7 @@ export function PublishQueuePage() {
     <>
       <PageHeader
         title="Pazaryeri Monitoru"
-        description="Gonderim, guncelleme, batch sonucu, rejected/failed urunler ve pazaryeri hata mesajlari burada izlenir. Mapping islemi bu ekranda yapilmaz."
+        description="Pazaryeri gonderim hatalarini, bekleyen islemleri ve cozum adimlarini tek ekrandan takip edin."
         actions={(
           <>
             <Link className="button-link secondary-link" to="/marketplace-mapping"><CheckCircle2 size={16} /> Pazaryeri Eslestirmeleri</Link>
@@ -123,6 +123,12 @@ export function PublishQueuePage() {
 
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && drafts.length === 0 ? <LoadingState /> : null}
+
+      <section className="monitor-kpi-strip">
+        <div className="success"><span>Basarili</span><strong>{statusCounts.success || 0}</strong></div>
+        <div className="pending"><span>Bekleyen</span><strong>{(statusCounts.queued || 0) + (statusCounts.running || 0)}</strong></div>
+        <div className="danger"><span>Hatali</span><strong>{(statusCounts.failed || 0) + (statusCounts.rejected || 0)}</strong></div>
+      </section>
 
       <section className="queue-monitor-simple">
         <header className="bulk-operation-toolbar">

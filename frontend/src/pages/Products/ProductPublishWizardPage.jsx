@@ -94,7 +94,7 @@ export function ProductPublishWizardPage() {
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState(null);
   const [search, setSearch] = useState('');
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(true);
   const [bulkForm, setBulkForm] = useState({
     name: 'Toplu urun gonderimi',
     operation: 'product_send',
@@ -230,8 +230,12 @@ export function ProductPublishWizardPage() {
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && products.length === 0 ? <LoadingState /> : null}
 
-      <section className="bulk-operation-shell">
+      <section className={showForm ? 'bulk-operation-shell is-hidden-history' : 'bulk-operation-shell'}>
         <header className="bulk-operation-toolbar">
+          <div className="mapping-filter-heading">
+            <Send size={18} />
+            <strong>Son pazaryeri islemleri</strong>
+          </div>
           <label className="resource-search compact-search">
             <Search size={16} />
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Islem, pazaryeri veya batch ara" />
@@ -271,8 +275,8 @@ export function ProductPublishWizardPage() {
         <section className="bulk-operation-form-panel">
           <div className="wizard-step-header">
             <span>Yeni Islem</span>
-            <h2>Toplu Pazaryeri Islemleri</h2>
-            <p>Filtrelemeleri gerceklestirin ve kaydet butonuna tiklayin.</p>
+            <h2>Yeni Pazaryeri Islemi</h2>
+            <p>Pazaryeri, magaza ve urun filtresini secin. Kaydetmeden once eslestirme uyarilarini kontrol edin.</p>
           </div>
           <div className="workflow-modal-warning bulk-operation-warning">
             <AlertTriangle size={17} />
@@ -303,7 +307,6 @@ export function ProductPublishWizardPage() {
           </div>
           {marketplaces.length === 0 && <div className="soft-empty">Pazaryeri hesabi bulunamadi. Once pazaryeri hesabi baglayin.</div>}
           <section className="bulk-operation-form-grid">
-            <label><span>Adi</span><input value={bulkForm.name} onChange={(event) => setBulkForm((current) => ({ ...current, name: event.target.value }))} /></label>
             <label><span>Pazaryeri</span><input value={marketplaceName(marketplaceCode)} readOnly /></label>
             <label><span>Magaza</span><input value={selectedMarketplace?.name || ''} readOnly placeholder="Magaza seciniz" /></label>
             <label>
@@ -314,15 +317,8 @@ export function ProductPublishWizardPage() {
                 <option value="product_status_check">Durum sorgula</option>
               </select>
             </label>
-            <label>
-              <span>Zamanlama</span>
-              <select value={bulkForm.schedule} onChange={(event) => setBulkForm((current) => ({ ...current, schedule: event.target.value }))}>
-                <option value="manual">Manuel</option>
-                <option value="daily">Gunde bir</option>
-                <option value="hourly">Saatlik</option>
-              </select>
-            </label>
-            <label><span>Kategoriler</span><input value={bulkForm.category} onChange={(event) => setBulkForm((current) => ({ ...current, category: event.target.value }))} placeholder="Kategori filtresi" /></label>
+            <label><span>Kategori</span><input value={bulkForm.category} onChange={(event) => setBulkForm((current) => ({ ...current, category: event.target.value }))} placeholder="Kategori filtresi" /></label>
+            <label><span>Marka</span><input value={bulkForm.brand} onChange={(event) => setBulkForm((current) => ({ ...current, brand: event.target.value }))} placeholder="Marka filtresi" /></label>
             <label>
               <span>Urun Kaynagi</span>
               <select value={bulkForm.source} onChange={(event) => setBulkForm((current) => ({ ...current, source: event.target.value }))}>
@@ -331,30 +327,14 @@ export function ProductPublishWizardPage() {
                 <option value="selected_products">Secili urunler</option>
               </select>
             </label>
-            <label><span>Markalar</span><input value={bulkForm.brand} onChange={(event) => setBulkForm((current) => ({ ...current, brand: event.target.value }))} placeholder="Marka filtresi" /></label>
             <label>
-              <span>Gonderilecek Urunler</span>
-              <select value={bulkForm.source} onChange={(event) => setBulkForm((current) => ({ ...current, source: event.target.value }))}>
-                <option value="ready_products">Hazir urunler</option>
-                <option value="selected_products">Elle secilen urunler</option>
-                <option value="all_products">Tum urunler</option>
+              <span>Zamanlama</span>
+              <select value={bulkForm.schedule} onChange={(event) => setBulkForm((current) => ({ ...current, schedule: event.target.value }))}>
+                <option value="manual">Manuel</option>
+                <option value="daily">Gunde bir</option>
+                <option value="hourly">Saatlik</option>
               </select>
             </label>
-            <label>
-              <span>Fiyat Kisitlama</span>
-              <select value={bulkForm.priceRule} onChange={(event) => setBulkForm((current) => ({ ...current, priceRule: event.target.value }))}>
-                <option value="none">Yok</option>
-                <option value="min">Minimum fiyat</option>
-                <option value="max">Maksimum fiyat</option>
-              </select>
-            </label>
-            <label><span>Fiyat Degeri</span><input value={bulkForm.priceValue} onChange={(event) => setBulkForm((current) => ({ ...current, priceValue: event.target.value }))} placeholder="0.00" /></label>
-            <label><span>Varsayilan Kargo Firmasi</span><input value={bulkForm.cargoCompany} onChange={(event) => setBulkForm((current) => ({ ...current, cargoCompany: event.target.value }))} /></label>
-            <label><span>Sevkiyat Depo Adresi</span><input value={bulkForm.shippingWarehouse} onChange={(event) => setBulkForm((current) => ({ ...current, shippingWarehouse: event.target.value }))} /></label>
-            <label><span>Iade Depo Adresi</span><input value={bulkForm.returnWarehouse} onChange={(event) => setBulkForm((current) => ({ ...current, returnWarehouse: event.target.value }))} /></label>
-            <label className="check-row"><input type="checkbox" checked={bulkForm.includePassive} onChange={(event) => setBulkForm((current) => ({ ...current, includePassive: event.target.checked }))} /> Pasif urunler gonderilsin mi?</label>
-            <label className="check-row"><input type="checkbox" checked={bulkForm.includeOutOfStock} onChange={(event) => setBulkForm((current) => ({ ...current, includeOutOfStock: event.target.checked }))} /> Stokta olmayan urunler gonderilsin mi?</label>
-            <label className="check-row"><input type="checkbox" checked={bulkForm.randomBarcode} onChange={(event) => setBulkForm((current) => ({ ...current, randomBarcode: event.target.checked }))} /> Urunlere Rastgele Barkod Ata</label>
           </section>
           {draft && (
             <div className={draft.status === 'blocked' ? 'state-box workflow-warning' : 'state-box success-empty'}>
@@ -363,7 +343,7 @@ export function ProductPublishWizardPage() {
             </div>
           )}
           <div className="wizard-actions inline-actions">
-            <button type="button" className="secondary-button" onClick={() => setShowForm(false)}>Vazgec</button>
+            <button type="button" className="secondary-button" onClick={() => setShowForm(false)}>Son islemleri goster</button>
             <button type="button" disabled={loading || !marketplaceId} onClick={validateDraft}><CheckCircle2 size={16} /> Kaydet</button>
             {draft && canSendMarketplaces && <button type="button" disabled={loading || draft?.status === 'blocked'} onClick={sendDraft}><Send size={16} /> Kuyruga Al</button>}
           </div>

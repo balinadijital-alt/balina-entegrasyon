@@ -1201,6 +1201,10 @@ a {
   font-weight: 900;
 }
 
+.marketplace-flow-alert.compact {
+  margin-bottom: 0;
+}
+
 .marketplace-flow-kpis {
   display: grid;
   gap: 12px;
@@ -1236,6 +1240,129 @@ a {
   color: #0f172a;
   font-size: 26px;
   line-height: 1;
+}
+
+.marketplace-roadmap-shell {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 18px;
+  margin-bottom: 18px;
+  padding: 18px;
+}
+
+.marketplace-roadmap-heading {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.marketplace-roadmap-heading div {
+  display: grid;
+  gap: 4px;
+}
+
+.marketplace-roadmap-heading span {
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.marketplace-roadmap-heading strong {
+  color: #0f172a;
+  font-size: 22px;
+}
+
+.marketplace-workflow-roadmap {
+  align-items: stretch;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.marketplace-roadmap-segment {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.marketplace-roadmap-segment:last-child {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.roadmap-arrow {
+  color: #94a3b8;
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.marketplace-roadmap-step {
+  align-items: start;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: none;
+  color: #0f172a;
+  display: grid;
+  gap: 7px;
+  justify-items: start;
+  min-height: 144px;
+  padding: 14px;
+  text-align: left;
+  width: 100%;
+}
+
+.marketplace-roadmap-step.ready {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.marketplace-roadmap-step.blocked {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.marketplace-roadmap-step.pending {
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.marketplace-roadmap-step:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.marketplace-roadmap-step span {
+  align-items: center;
+  background: #eff6ff;
+  border-radius: 999px;
+  color: #1d4ed8;
+  display: inline-flex;
+  font-size: 18px;
+  font-weight: 950;
+  height: 36px;
+  justify-content: center;
+  width: 36px;
+}
+
+.marketplace-roadmap-step strong {
+  font-size: 19px;
+}
+
+.marketplace-roadmap-step small {
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.marketplace-roadmap-step em {
+  color: #64748b;
+  font-style: normal;
+  font-weight: 750;
 }
 
 .marketplace-flow-steps {
@@ -1560,6 +1687,52 @@ a {
   margin-left: 3px;
 }
 
+.customer-checklist,
+.variant-simple-list {
+  display: grid;
+  gap: 10px;
+}
+
+.customer-checklist label,
+.variant-simple-list label {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 28px minmax(130px, 0.8fr) 92px minmax(160px, 1fr);
+  padding: 12px;
+}
+
+.customer-checklist label.complete,
+.variant-simple-list label.complete {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.customer-checklist label.missing,
+.variant-simple-list label.missing {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.customer-checklist span,
+.variant-simple-list span {
+  color: #2563eb;
+}
+
+.customer-checklist strong,
+.variant-simple-list strong {
+  color: #0f172a;
+}
+
+.customer-checklist small,
+.variant-simple-list small {
+  color: #64748b;
+  font-weight: 900;
+}
+
 .bulk-operation-warning {
   margin-bottom: 0;
 }
@@ -1614,6 +1787,10 @@ a {
   padding: 18px;
 }
 
+.bulk-operation-shell.is-hidden-history {
+  display: none;
+}
+
 .bulk-operation-form-panel {
   margin-top: 18px;
 }
@@ -1655,6 +1832,46 @@ a {
 
 .monitor-detail-line {
   margin: 0;
+}
+
+.monitor-kpi-strip {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 18px;
+}
+
+.monitor-kpi-strip div {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.monitor-kpi-strip div.success {
+  border-color: #bbf7d0;
+}
+
+.monitor-kpi-strip div.pending {
+  border-color: #bfdbfe;
+}
+
+.monitor-kpi-strip div.danger {
+  border-color: #fecdd3;
+}
+
+.monitor-kpi-strip span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.monitor-kpi-strip strong {
+  color: #0f172a;
+  font-size: 30px;
 }
 
 .queue-status-grid {
@@ -9472,14 +9689,20 @@ tbody td:last-child .row-actions:focus-within {
   .executive-command-grid,
   .executive-growth-grid,
   .marketplace-flow-kpis,
+  .marketplace-workflow-roadmap,
   .marketplace-flow-steps,
   .workflow-modal-toolbar,
   .workflow-modal-grid,
   .bulk-operation-form-grid,
   .publish-mapping-check,
+  .monitor-kpi-strip,
   .bulk-operation-toolbar,
+  .marketplace-roadmap-heading,
+  .marketplace-roadmap-segment,
   .customer-category-row,
-  .customer-field-grid {
+  .customer-field-grid,
+  .customer-checklist label,
+  .variant-simple-list label {
     grid-template-columns: 1fr;
   }
 
