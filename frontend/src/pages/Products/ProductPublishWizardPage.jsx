@@ -45,25 +45,25 @@ function marketplaceName(code) {
 
 function fieldFixTarget(product, field) {
   if (field === 'category_mapping' || field === 'marketplace_category') {
-    return `/marketplace-mapping/categories?category=${encodeURIComponent(product.category || '')}`;
+    return `/marketplace-mapping?step=category&category_id=${encodeURIComponent(product.category_id || product.category || '')}`;
   }
-  if (field === 'brand') {
+  if (field === 'brand' || field === 'brand_mapping') {
     return '/marketplace-mapping/brands';
   }
-  if (field === 'attributes' || field === 'required_attributes') {
-    return '/marketplace-mapping/attributes';
+  if (field === 'attributes' || field === 'required_attributes' || field === 'attribute_mappings') {
+    return `/marketplace-mapping?step=attribute&category_id=${encodeURIComponent(product.category_id || product.category || '')}`;
   }
-  if (field === 'variant_attributes') {
-    return '/marketplace-mapping/variants';
+  if (field === 'variant_attributes' || field === 'variant_attribute_mappings') {
+    return `/marketplace-mapping?step=variant&category_id=${encodeURIComponent(product.category_id || product.category || '')}`;
   }
   return `/products/${product.id}/edit`;
 }
 
 function fixCta(field) {
   if (field === 'category_mapping' || field === 'marketplace_category') return 'Kategori eslestir';
-  if (field === 'brand') return 'Marka eslestir';
-  if (field === 'attributes' || field === 'required_attributes') return 'Nitelik eslestir';
-  if (field === 'variant_attributes') return 'Varyant eslestir';
+  if (field === 'brand' || field === 'brand_mapping') return 'Marka eslestir';
+  if (field === 'attributes' || field === 'required_attributes' || field === 'attribute_mappings') return 'Nitelik eslestir';
+  if (field === 'variant_attributes' || field === 'variant_attribute_mappings') return 'Varyant eslestir';
   return 'Urunu duzenle';
 }
 
@@ -136,6 +136,21 @@ export function ProductPublishWizardPage() {
   const selectedAverageScore = selectedRows.length
     ? Math.round(selectedRows.reduce((sum, product) => sum + readinessScore(product, marketplaceCode), 0) / selectedRows.length)
     : 0;
+  const mappingHealth = useMemo(() => {
+    const scanned = products.filter((product) => product.product_type !== 'parent');
+    const allMissing = scanned.flatMap((product) => missingFields(product, marketplaceCode));
+    const hasCategoryMissing = allMissing.some((field) => ['category_mapping', 'marketplace_category'].includes(field));
+    const hasBrandMissing = allMissing.some((field) => ['brand', 'brand_mapping'].includes(field));
+    const hasAttributeMissing = allMissing.some((field) => ['attributes', 'required_attributes', 'attribute_mappings'].includes(field));
+    const hasVariantMissing = allMissing.some((field) => ['variant_attributes', 'variant_attribute_mappings'].includes(field));
+
+    return {
+      category: { ok: !hasCategoryMissing, count: allMissing.filter((field) => ['category_mapping', 'marketplace_category'].includes(field)).length },
+      brand: { ok: !hasBrandMissing, count: allMissing.filter((field) => ['brand', 'brand_mapping'].includes(field)).length },
+      attributes: { ok: !hasAttributeMissing, count: allMissing.filter((field) => ['attributes', 'required_attributes', 'attribute_mappings'].includes(field)).length },
+      variants: { ok: !hasVariantMissing, count: allMissing.filter((field) => ['variant_attributes', 'variant_attribute_mappings'].includes(field)).length },
+    };
+  }, [products, marketplaceCode]);
 
   const filteredReadyProducts = useMemo(() => readyProducts.filter((product) => {
     const query = search.trim().toLowerCase();
@@ -261,8 +276,22 @@ export function ProductPublishWizardPage() {
           </div>
           <div className="workflow-modal-warning bulk-operation-warning">
             <AlertTriangle size={17} />
-            <span>Filtrelemeleri gerceklestirin ve kaydet butonuna tiklayin.</span>
+            <span>Eksik eslestirme varsa urunler pazaryerinde hatali listelenebilir veya reddedilebilir.</span>
           </div>
+          <section className="publish-mapping-check">
+            {[
+              ['Kategori eslesmeleri', mappingHealth.category, '/marketplace-mapping?step=category'],
+              ['Marka eslesmeleri', mappingHealth.brand, '/marketplace-mapping/brands'],
+              ['Ozellik eslesmeleri', mappingHealth.attributes, '/marketplace-mapping?step=attribute'],
+              ['Varyant eslesmeleri', mappingHealth.variants, '/marketplace-mapping?step=variant'],
+            ].map(([label, state, href]) => (
+              <div className={state.ok ? 'ready' : 'blocked'} key={label}>
+                <span>{state.ok ? <CheckCircle2 size={17} /> : <AlertTriangle size={17} />} {label}</span>
+                <strong>{state.ok ? 'Tamam' : `${state.count} eksik`}</strong>
+                {!state.ok && <Link className="table-action-link" to={href}>Eksikleri tamamla</Link>}
+              </div>
+            ))}
+          </section>
           <div className="marketplace-card-grid compact-marketplace-grid">
             {marketplaces.map((marketplace) => (
               <button type="button" className={String(marketplace.id) === String(marketplaceId) ? 'marketplace-select-card active' : 'marketplace-select-card'} key={marketplace.id} onClick={() => { setMarketplaceId(String(marketplace.id)); setSelectedProducts([]); setDraft(null); }}>

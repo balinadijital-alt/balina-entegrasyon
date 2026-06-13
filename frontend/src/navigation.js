@@ -59,7 +59,6 @@ export const appNavigationGroups = [
       { to: '/catalog/categories', label: 'Kategoriler', icon: Tags, permissions: ['products.manage'] },
       { to: '/catalog/brands', label: 'Markalar', icon: ShieldCheck, permissions: ['products.manage'] },
       { to: '/catalog/attributes', label: 'Nitelikler / Ozellikler', icon: ClipboardCheck, permissions: ['products.manage'] },
-      { to: '/marketplace-mapping', label: 'Pazaryeri Eslestirmeleri', icon: Tags, permissions: ['marketplaces.manage'] },
       { to: '/catalog/variants', label: 'Varyantlar', icon: ClipboardCheck, permissions: ['products.manage'] },
       { to: '/catalog/tags', label: 'Etiketler', icon: Percent, permissions: ['products.manage'] },
       { to: '/catalog/suppliers', label: 'Tedarikciler', icon: Building2, permissions: ['products.manage'] },
@@ -75,6 +74,7 @@ export const appNavigationGroups = [
     label: 'Entegrasyonlar',
     items: [
       { to: '/marketplaces', label: 'Pazaryeri Entegrasyonlari', icon: Link2, end: true, permissions: ['marketplaces.manage'] },
+      { to: '/marketplace-mapping', label: 'Pazaryeri Eslestirmeleri', icon: Tags, permissions: ['marketplaces.manage'] },
       { to: '/products/publish-wizard', label: 'Toplu Pazaryeri Islemleri', icon: Send, permissions: ['marketplaces.send'] },
       { to: '/products/publish-queue', label: 'Pazaryeri Monitoru', icon: ClipboardList, permissions: ['marketplaces.send'] },
       { to: '/marketplaces/onboarding', label: 'Kurulum Sihirbazi', icon: Rocket, permissions: ['marketplaces.manage'] },

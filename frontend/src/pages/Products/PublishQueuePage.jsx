@@ -43,18 +43,27 @@ function statusClass(status) {
 
 function fixTarget(missing = []) {
   if (missing.includes('category_mapping') || missing.includes('marketplace_category')) {
-    return { href: '/marketplace-mapping/categories', label: 'Kategori eslestir' };
+    return { href: '/marketplace-mapping?step=category', label: 'Kategori eslestir' };
   }
-  if (missing.includes('brand')) {
+  if (missing.includes('brand') || missing.includes('brand_mapping')) {
     return { href: '/marketplace-mapping/brands', label: 'Marka eslestir' };
   }
-  if (missing.includes('attributes') || missing.includes('required_attributes')) {
-    return { href: '/marketplace-mapping/attributes', label: 'Nitelik eslestir' };
+  if (missing.includes('attributes') || missing.includes('required_attributes') || missing.includes('attribute_mappings')) {
+    return { href: '/marketplace-mapping?step=attribute', label: 'Ozellik eslestir' };
   }
-  if (missing.includes('variant_attributes')) {
-    return { href: '/marketplace-mapping/variants', label: 'Varyant eslestir' };
+  if (missing.includes('variant_attributes') || missing.includes('variant_attribute_mappings')) {
+    return { href: '/marketplace-mapping?step=variant', label: 'Varyant eslestir' };
   }
   return { href: '/api-logs', label: 'Hata detaylari' };
+}
+
+function missingFromMessage(message = '') {
+  const text = String(message).toLocaleLowerCase('tr-TR');
+  if (text.includes('kategori')) return ['category_mapping'];
+  if (text.includes('varyant')) return ['variant_attribute_mappings'];
+  if (text.includes('marka')) return ['brand_mapping'];
+  if (text.includes('nitelik') || text.includes('ozellik') || text.includes('özellik') || text.includes('attribute')) return ['attribute_mappings'];
+  return [];
 }
 
 export function PublishQueuePage() {
@@ -154,6 +163,10 @@ export function PublishQueuePage() {
               render: (row) => (
                 <div className="row-actions">
                   <button type="button" className="secondary-button" onClick={() => setSelectedDraft(row)}>Detay</button>
+                  {['failed', 'rejected'].includes(statusLabel(row.status)) && (() => {
+                    const target = fixTarget([...draftMissingFields(row), ...missingFromMessage(row.error_message || row.result_summary?.message)]);
+                    return <Link className="table-action-link" to={target.href}>{target.label}</Link>;
+                  })()}
                   {canSendMarketplaces && ['failed', 'rejected'].includes(statusLabel(row.status)) && <button type="button" onClick={() => retryDraft(row.id)}><Send size={15} /> Tekrar dene</button>}
                 </div>
               ),

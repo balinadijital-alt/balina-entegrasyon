@@ -1247,7 +1247,16 @@ a {
 .marketplace-flow-step-card {
   display: grid;
   gap: 14px;
+  position: relative;
   padding: 18px;
+}
+
+.marketplace-flow-step-card.blocked {
+  border-color: #fecdd3;
+}
+
+.marketplace-flow-step-card.pending {
+  background: #f8fafc;
 }
 
 .marketplace-flow-step-no {
@@ -1276,6 +1285,47 @@ a {
   margin: 0;
 }
 
+.workflow-step-status {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 950;
+  justify-content: center;
+  padding: 6px 10px;
+  width: max-content;
+}
+
+.workflow-step-status.ready {
+  background: #dcfce7;
+  color: #047857;
+}
+
+.workflow-step-status.blocked {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.workflow-step-status.pending {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.workflow-step-helper {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  color: #9a3412 !important;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 10px 12px;
+}
+
+.workflow-step-helper.warning {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #b91c1c !important;
+}
+
 .marketplace-flow-fields {
   display: grid;
   gap: 8px;
@@ -1302,6 +1352,19 @@ a {
   background: #f59e0b;
   box-shadow: 0 16px 32px rgb(245 158 11 / 18%);
   width: 100%;
+}
+
+.warning-button:disabled {
+  background: #cbd5e1;
+  box-shadow: none;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.compact-warning-button {
+  min-height: 36px;
+  padding: 0 12px;
+  width: auto;
 }
 
 .marketplace-flow-advanced {
@@ -1450,6 +1513,11 @@ a {
   grid-template-columns: minmax(150px, 0.6fr) minmax(220px, 1fr) 96px;
 }
 
+.success-button {
+  background: #14b8a6;
+  box-shadow: 0 16px 32px rgb(20 184 166 / 18%);
+}
+
 .customer-sub-modal {
   background: #f8fafc;
   border: 1px solid var(--border);
@@ -1494,6 +1562,44 @@ a {
 
 .bulk-operation-warning {
   margin-bottom: 0;
+}
+
+.publish-mapping-check {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.publish-mapping-check div {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.publish-mapping-check div.ready {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.publish-mapping-check div.blocked {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.publish-mapping-check span {
+  align-items: center;
+  color: #334155;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 900;
+  gap: 7px;
+}
+
+.publish-mapping-check strong {
+  color: #0f172a;
 }
 
 .bulk-operation-shell,
@@ -9370,6 +9476,7 @@ tbody td:last-child .row-actions:focus-within {
   .workflow-modal-toolbar,
   .workflow-modal-grid,
   .bulk-operation-form-grid,
+  .publish-mapping-check,
   .bulk-operation-toolbar,
   .customer-category-row,
   .customer-field-grid {

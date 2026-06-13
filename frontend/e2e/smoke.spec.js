@@ -149,4 +149,20 @@ test.describe('operasyon paneli smoke testleri', () => {
     await expect(page.locator('.api-topic-list')).toContainText('Urunler');
     expect(consoleErrors).toEqual([]);
   });
+
+  test('marketplace mapping workflow query adimlari acilir', async ({ page }) => {
+    const consoleErrors = collectConsoleErrors(page);
+    await authenticate(page);
+    await isolateBackendApi(page);
+
+    await page.goto('/marketplace-mapping?step=attribute&marketplace=trendyol&category_id=demo');
+    await expect(page.locator('.page-header h1')).toContainText('Pazaryeri Eslestirmeleri');
+    await expect(page.locator('.workflow-modal')).toBeVisible();
+    await expect(page.locator('.workflow-modal h2')).toContainText('Ozellik Eslestirme');
+
+    await page.goto('/marketplace-mapping?step=variant&marketplace=trendyol');
+    await expect(page.locator('.workflow-modal')).toBeVisible();
+    await expect(page.locator('.workflow-modal h2')).toContainText('Varyant Eslestirme');
+    expect(consoleErrors).toEqual([]);
+  });
 });

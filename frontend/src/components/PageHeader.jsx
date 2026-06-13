@@ -27,7 +27,9 @@ const descriptions = {
 export function PageHeader({ title, actions, description }) {
   const location = useLocation();
   const normalizedPath = location.pathname.startsWith('/app') ? location.pathname.replace(/^\/app/, '') || '/' : location.pathname;
-  const current = flatNavigation.find((item) => item.to === normalizedPath || (item.to !== '/' && normalizedPath.startsWith(item.to)));
+  const current = flatNavigation
+    .filter((item) => item.to === normalizedPath || (item.to !== '/' && normalizedPath.startsWith(item.to)))
+    .sort((a, b) => b.to.length - a.to.length)[0];
   const fallbackDescription = description || descriptions[title] || 'Operasyonel kayitlari filtreleyin, durumlari izleyin ve gerekli aksiyonlari hizlica alin.';
   const homePath = location.pathname.startsWith('/app') ? '/app' : '/';
 

@@ -21,6 +21,14 @@ const tabs = [
 const statusOptions = ['active', 'passive', 'draft'];
 const sourceTypes = ['product_field', 'variant_field', 'fixed_value', 'custom_json'];
 const variantKeys = ['renk', 'beden', 'numara', 'desen', 'cinsiyet'];
+const workflowStepMap = {
+  category: 'categories',
+  categories: 'categories',
+  attribute: 'attributes',
+  attributes: 'attributes',
+  variant: 'variants',
+  variants: 'variants',
+};
 
 const pageCopy = {
   categories: {
@@ -172,6 +180,22 @@ function countBy(items, predicate) {
   return items.filter(predicate).length;
 }
 
+function isMappedCategory(row) {
+  return Boolean(row?.marketplace_category_id || row?.marketplace_category_name || row?.marketplace_category_path);
+}
+
+function stepStatusLabel(status) {
+  if (status === 'complete') return 'Tamamlandi';
+  if (status === 'missing') return 'Eksik';
+  return 'Bekliyor';
+}
+
+function stepStatusClass(status) {
+  if (status === 'complete') return 'ready';
+  if (status === 'missing') return 'blocked';
+  return 'pending';
+}
+
 function sourceTypeLabel(value) {
   if (value === 'product_field') return 'Urun alanindan';
   if (value === 'variant_field') return 'Varyant alanindan';
@@ -301,6 +325,26 @@ export function MarketplaceMappingCenterPage({
   }, [marketplaceCode]);
 
   useEffect(() => {
+    const stepParam = workflowStepMap[searchParams.get('step') || ''];
+    const marketplaceParam = searchParams.get('marketplace');
+    const categoryParam = searchParams.get('category_id') || searchParams.get('category') || searchParams.get('brand');
+
+    if (marketplaceParam && ['trendyol', 'hepsiburada'].includes(marketplaceParam)) {
+      setMarketplaceCode(marketplaceParam);
+    }
+    if (categoryParam) {
+      setSearch(categoryParam);
+    }
+    if (stepParam) {
+      setActiveTab(stepParam);
+      if (!singleTab) {
+        setWorkflowModal(stepParam);
+        setWorkflowDetail(null);
+      }
+    }
+  }, [searchParams, singleTab]);
+
+  useEffect(() => {
     resetForm(activeTab);
   }, [activeTab, marketplaceCode, defaultCompanyId]);
 
@@ -411,6 +455,13 @@ export function MarketplaceMappingCenterPage({
     resetForm(tab);
   };
 
+  const switchWorkflowModal = (tab) => {
+    setActiveTab(tab);
+    setWorkflowModal(tab);
+    setWorkflowDetail(null);
+    resetForm(tab);
+  };
+
   if (!singleTab) {
     return (
       <MarketplaceMappingWorkflow
@@ -429,6 +480,7 @@ export function MarketplaceMappingCenterPage({
         closeWorkflowModal={() => { setWorkflowModal(''); setWorkflowDetail(null); }}
         workflowDetail={workflowDetail}
         setWorkflowDetail={setWorkflowDetail}
+        switchWorkflowModal={switchWorkflowModal}
         activeTab={activeTab}
         visibleRows={visibleRows}
         selectRow={selectRow}
@@ -805,10 +857,27 @@ function MarketplaceMappingWorkflow({
   setValueMapText,
   workflowDetail,
   setWorkflowDetail,
+  switchWorkflowModal,
 }) {
   const modalCopy = workflowModalInfo(workflowModal);
   const modalRows = workflowModal ? visibleRows : [];
-  const workflowCategoryRows = rows.categories.length > 0 ? rows.categories : modalRows;
+  const mappedCategories = rows.categories.filter(isMappedCategory);
+  const workflowCategoryRows = mappedCategories.length > 0 ? mappedCategories : [];
+  const categoryComplete = mappedCategories.length > 0 && Number(summary?.unmapped_category_count || 0) === 0;
+  const categoryStarted = mappedCategories.length > 0;
+  const attributeComplete = categoryStarted && requiredAttributes.length > 0 && Number(summary?.missing_required_attribute_count || 0) === 0;
+  const attributeStarted = rows.attributes.length > 0;
+  const variantComplete = categoryStarted && rows.variants.length > 0 && Number(missingVariantCount || 0) === 0;
+  const stepStates = {
+    categories: categoryComplete ? 'complete' : 'missing',
+    attributes: !categoryStarted ? 'pending' : attributeComplete ? 'complete' : 'missing',
+    variants: !categoryStarted ? 'pending' : variantComplete ? 'complete' : 'missing',
+  };
+  const stepNotes = {
+    categories: categoryStarted ? `${mappedCategories.length} kategori eslesmis` : 'Once kategori secin',
+    attributes: !categoryStarted ? 'Kategori bekleniyor' : attributeStarted ? `${requiredAttributes.length} zorunlu alan tanimli` : 'Ozellik eslesmesi eksik',
+    variants: !categoryStarted ? 'Kategori bekleniyor' : attributeStarted ? `${rows.variants.length} varyant eslesmesi` : 'Once ozellik eslestirmesi onerilir',
+  };
 
   return (
     <>
@@ -842,8 +911,9 @@ function MarketplaceMappingWorkflow({
 
       <section className="marketplace-flow-steps">
         {workflowSteps.map((step) => (
-          <article className="marketplace-flow-step-card" key={step.key}>
+          <article className={`marketplace-flow-step-card ${stepStatusClass(stepStates[step.key])}`} key={step.key}>
             <div className="marketplace-flow-step-no">{step.no}</div>
+            <span className={`workflow-step-status ${stepStatusClass(stepStates[step.key])}`}>{stepStatusLabel(stepStates[step.key])}</span>
             <div>
               <h2>{step.title}</h2>
               <p>{step.description}</p>
@@ -853,9 +923,11 @@ function MarketplaceMappingWorkflow({
             </div>
             <div className="marketplace-flow-meta">
               <span>{marketplaceCode === 'hepsiburada' ? 'Hepsiburada' : 'Trendyol'}</span>
-              <strong>{step.key === 'categories' ? `${rows.categories.length} kayit` : step.key === 'attributes' ? `${requiredAttributes.length} zorunlu` : `${rows.variants.length} varyant`}</strong>
+              <strong>{stepNotes[step.key]}</strong>
             </div>
-            <button type="button" className="warning-button" onClick={() => openWorkflowModal(step.key)}>{step.button}</button>
+            {step.key !== 'categories' && !categoryStarted && <p className="workflow-step-helper">Bu adim kategori eslesmesi tamamlaninca aktif olur.</p>}
+            {step.key === 'variants' && categoryStarted && !attributeStarted && <p className="workflow-step-helper warning">Once ilgili kategorinin ozellik eslestirmesini tamamlamaniz onerilir.</p>}
+            <button type="button" className="warning-button" disabled={step.key !== 'categories' && !categoryStarted} onClick={() => openWorkflowModal(step.key)}>{step.button}</button>
           </article>
         ))}
       </section>
@@ -910,6 +982,8 @@ function MarketplaceMappingWorkflow({
               loading={loadingAction}
               marketplaceCode={marketplaceCode}
               closeWorkflowModal={closeWorkflowModal}
+              switchWorkflowModal={switchWorkflowModal}
+              attributeStarted={attributeStarted}
             />
           </section>
         </div>
@@ -944,9 +1018,11 @@ function CustomerMappingModalBody({
   loading,
   marketplaceCode,
   closeWorkflowModal,
+  switchWorkflowModal,
+  attributeStarted,
 }) {
   const provider = marketplaceCode === 'hepsiburada' ? 'Hepsiburada' : 'Trendyol';
-  const categoryRows = rows.slice(0, 10);
+  const categoryRows = rows.filter((row) => tab === 'categories' || isMappedCategory(row)).slice(0, 10);
 
   if (tab === 'categories') {
     return (
@@ -956,22 +1032,24 @@ function CustomerMappingModalBody({
           <thead>
             <tr>
               <th>Kat. No</th>
-              <th>Kategori Eslestirme</th>
+              <th>Kategori</th>
+              <th>Pazaryeri Kategorisi</th>
+              <th>Durum</th>
+              <th>Islem</th>
             </tr>
           </thead>
           <tbody>
             {categoryRows.length === 0 ? (
-              <tr><td colSpan="2">Kategori kaydi bulunamadi.</td></tr>
+              <tr><td colSpan="5">Kategori kaydi bulunamadi.</td></tr>
             ) : categoryRows.map((row, index) => (
               <tr key={row.id || row.local_category_name || index}>
                 <td>{row.local_category_id || row.id || index + 1}</td>
+                <td><strong>{row.local_category_name || row.category || '-'}</strong></td>
                 <td>
-                  <div className="customer-category-row">
-                    <strong>{row.local_category_name || row.category || '-'}</strong>
-                    <input value={selected?.id === row.id ? form.marketplace_category_path || form.marketplace_category_name || '' : row.marketplace_category_path || row.marketplace_category_name || ''} onChange={(event) => { if (selected?.id !== row.id) selectRow(row); setValue('marketplace_category_path', event.target.value); setValue('marketplace_category_name', event.target.value); }} placeholder={`${provider} kategori yolu secin`} />
-                    <button type="button" className="warning-button" onClick={() => selectRow(row)}>Sec</button>
-                  </div>
+                  <input value={selected?.id === row.id ? form.marketplace_category_path || form.marketplace_category_name || '' : row.marketplace_category_path || row.marketplace_category_name || ''} onChange={(event) => { if (selected?.id !== row.id) selectRow(row); setValue('marketplace_category_path', event.target.value); setValue('marketplace_category_name', event.target.value); }} placeholder={`${provider} kategori yolu secin`} />
                 </td>
+                <td><span className={`workflow-step-status ${isMappedCategory(row) ? 'ready' : 'blocked'}`}>{isMappedCategory(row) ? 'Tamamlandi' : 'Eksik'}</span></td>
+                <td><button type="button" className="warning-button compact-warning-button" onClick={() => selectRow(row)}>Sec</button></td>
               </tr>
             ))}
           </tbody>
@@ -979,6 +1057,7 @@ function CustomerMappingModalBody({
         <div className="wizard-actions inline-actions">
           <button type="button" className="secondary-button" onClick={closeWorkflowModal}>Kapat</button>
           <button type="button" disabled={loading || !selected} onClick={save}><Save size={16} /> Kaydet</button>
+          {selected && <button type="button" className="success-button" onClick={() => switchWorkflowModal('attributes')}>Ozellik eslestirmeye gec</button>}
         </div>
       </div>
     );
@@ -993,17 +1072,19 @@ function CustomerMappingModalBody({
             <tr>
               <th>Kat. No</th>
               <th>Kategori</th>
+              <th>Pazaryeri Kategorisi</th>
               <th>Eslesme Durumu</th>
               <th>Islem</th>
             </tr>
           </thead>
           <tbody>
             {categoryRows.length === 0 ? (
-              <tr><td colSpan="4">Eslesmis kategori bulunamadi.</td></tr>
+              <tr><td colSpan="5">Ozellik eslestirmek icin once kategori eslestirmesini tamamlayin.</td></tr>
             ) : categoryRows.map((row, index) => (
               <tr key={row.id || index}>
                 <td>{row.local_category_id || row.id || index + 1}</td>
-                <td><strong>{row.local_category_name || '-'}</strong><span>{row.marketplace_category_path || row.marketplace_category_name || '-'}</span></td>
+                <td><strong>{row.local_category_name || '-'}</strong></td>
+                <td><span>{row.marketplace_category_path || row.marketplace_category_name || '-'}</span></td>
                 <td>{attributeCount(row)} / {Math.max(attributeCount(row), customerAttributeFields.length)}</td>
                 <td><button type="button" className="warning-button" onClick={() => { setWorkflowDetail(row); setValue('local_category_id', row.local_category_id || ''); setValue('marketplace_category_id', row.marketplace_category_id || ''); }}>Eslestir</button></td>
               </tr>
@@ -1013,7 +1094,8 @@ function CustomerMappingModalBody({
         {workflowDetail && (
           <section className="customer-sub-modal">
             <h3>Ozellik Eslestir</h3>
-            <p><strong>{workflowDetail.local_category_name}</strong> / {workflowDetail.marketplace_category_path || workflowDetail.marketplace_category_name || '-'}</p>
+            <p><strong>Kategori:</strong> {workflowDetail.local_category_name}</p>
+            <p><strong>Pazaryeri:</strong> {workflowDetail.marketplace_category_path || workflowDetail.marketplace_category_name || '-'}</p>
             <div className="workflow-modal-warning">
               <AlertTriangle size={16} />
               <span>Varyant degerleriniz varsa renk/beden gibi alanlari burada degil, varyant eslestirme ekraninda birakin.</span>
@@ -1042,19 +1124,21 @@ function CustomerMappingModalBody({
       <table className="customer-simple-table">
         <thead>
           <tr>
-            <th>Kat. No</th>
-            <th>Kategori</th>
-            <th>Eslesme Durumu</th>
-            <th>Islem</th>
-          </tr>
-        </thead>
-        <tbody>
-          {categoryRows.length === 0 ? (
-            <tr><td colSpan="4">Varyant eslestirmesi icin kategori bulunamadi.</td></tr>
-          ) : categoryRows.map((row, index) => (
-            <tr key={row.id || index}>
-              <td>{row.local_category_id || row.id || index + 1}</td>
-              <td><strong>{row.local_category_name || '-'}</strong><span>{row.marketplace_category_path || row.marketplace_category_name || '-'}</span></td>
+              <th>Kat. No</th>
+              <th>Kategori</th>
+              <th>Pazaryeri Kategorisi</th>
+              <th>Eslesme Durumu</th>
+              <th>Islem</th>
+            </tr>
+          </thead>
+          <tbody>
+            {categoryRows.length === 0 ? (
+              <tr><td colSpan="5">Varyant eslestirmek icin once kategori eslestirmesini tamamlayin.</td></tr>
+            ) : categoryRows.map((row, index) => (
+              <tr key={row.id || index}>
+                <td>{row.local_category_id || row.id || index + 1}</td>
+              <td><strong>{row.local_category_name || '-'}</strong></td>
+              <td><span>{row.marketplace_category_path || row.marketplace_category_name || '-'}</span></td>
               <td>{variantStatus('beden')} / {variantStatus('renk')}</td>
               <td><button type="button" className="warning-button" onClick={() => setWorkflowDetail(row)}>Eslestir</button></td>
             </tr>
@@ -1064,6 +1148,14 @@ function CustomerMappingModalBody({
       {workflowDetail && (
         <section className="customer-sub-modal">
           <h3>Varyant Eslestir</h3>
+          {!attributeStarted && (
+            <div className="workflow-modal-warning">
+              <AlertTriangle size={16} />
+              <span>Once ilgili kategorinin ozellik eslestirmesini tamamlamaniz onerilir.</span>
+            </div>
+          )}
+          <p><strong>Kategori:</strong> {workflowDetail.local_category_name || '-'}</p>
+          <p><strong>Pazaryeri:</strong> {workflowDetail.marketplace_category_path || workflowDetail.marketplace_category_name || '-'}</p>
           <p>Secilen kategoriye ait tum varyantlar asagida listelenmektedir.</p>
           <table className="customer-simple-table">
             <thead><tr><th>No</th><th>Varyant 1</th><th>Varyant 2</th></tr></thead>
