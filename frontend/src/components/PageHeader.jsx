@@ -24,12 +24,20 @@ const descriptions = {
   'SaaS': 'Paket, abonelik, lisans ve kullanim limitlerini izleyin.',
 };
 
+const breadcrumbOverrides = {
+  '/marketplace-mapping': 'Pazaryeri Eslestirmeleri',
+  '/products/category-mapping': 'Pazaryeri Eslestirmeleri',
+  '/products/publish-wizard': 'Toplu Pazaryeri Islemleri',
+  '/products/publish-queue': 'Pazaryeri Monitoru',
+};
+
 export function PageHeader({ title, actions, description }) {
   const location = useLocation();
   const normalizedPath = location.pathname.startsWith('/app') ? location.pathname.replace(/^\/app/, '') || '/' : location.pathname;
   const current = flatNavigation
     .filter((item) => item.to === normalizedPath || (item.to !== '/' && normalizedPath.startsWith(item.to)))
     .sort((a, b) => b.to.length - a.to.length)[0];
+  const breadcrumbLabel = breadcrumbOverrides[normalizedPath] || current?.label;
   const fallbackDescription = description || descriptions[title] || 'Operasyonel kayitlari filtreleyin, durumlari izleyin ve gerekli aksiyonlari hizlica alin.';
   const homePath = location.pathname.startsWith('/app') ? '/app' : '/';
 
@@ -38,7 +46,7 @@ export function PageHeader({ title, actions, description }) {
       <div className="page-title-block">
         <div className="page-mini-breadcrumb">
           <Link to={homePath}>Panel</Link>
-          {current && <span>{current.label}</span>}
+          {breadcrumbLabel && <span>{breadcrumbLabel}</span>}
         </div>
         <h1>{title}</h1>
         <p>{fallbackDescription}</p>

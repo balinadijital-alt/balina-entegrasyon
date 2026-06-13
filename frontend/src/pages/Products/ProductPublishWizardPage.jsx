@@ -48,7 +48,7 @@ function fieldFixTarget(product, field) {
     return `/marketplace-mapping?step=category&category_id=${encodeURIComponent(product.category_id || product.category || '')}`;
   }
   if (field === 'brand' || field === 'brand_mapping') {
-    return '/marketplace-mapping/brands';
+    return '/marketplace-mapping?step=attribute';
   }
   if (field === 'attributes' || field === 'required_attributes' || field === 'attribute_mappings') {
     return `/marketplace-mapping?step=attribute&category_id=${encodeURIComponent(product.category_id || product.category || '')}`;
@@ -285,7 +285,7 @@ export function ProductPublishWizardPage() {
           <section className="publish-mapping-check">
             {[
               ['Kategori eslesmeleri', mappingHealth.category, '/marketplace-mapping?step=category'],
-              ['Marka eslesmeleri', mappingHealth.brand, '/marketplace-mapping/brands'],
+              ['Marka bilgisi', mappingHealth.brand, '/marketplace-mapping?step=attribute'],
               ['Ozellik eslesmeleri', mappingHealth.attributes, '/marketplace-mapping?step=attribute'],
               ['Varyant eslesmeleri', mappingHealth.variants, '/marketplace-mapping?step=variant'],
             ].map(([label, state, href]) => (

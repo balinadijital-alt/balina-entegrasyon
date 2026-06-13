@@ -1733,6 +1733,26 @@ a {
   font-weight: 900;
 }
 
+.brand-required-note {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
+.brand-required-note strong {
+  color: #9a3412;
+}
+
+.brand-required-note span {
+  color: #7c2d12;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
 .bulk-operation-warning {
   margin-bottom: 0;
 }

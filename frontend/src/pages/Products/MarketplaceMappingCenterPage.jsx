@@ -946,6 +946,7 @@ function MarketplaceMappingWorkflow({
         <div className="quick-fix-strip">
           <Link className="button-link secondary-link" to="/marketplace-readiness">Hazirlik</Link>
           <Link className="button-link secondary-link" to="/marketplace-mapping/categories">Kategori detay</Link>
+          <Link className="button-link secondary-link" to="/marketplace-mapping/brands">Marka detay</Link>
           <Link className="button-link secondary-link" to="/marketplace-mapping/attributes">Ozellik detay</Link>
           <Link className="button-link secondary-link" to="/marketplace-mapping/variants">Varyant detay</Link>
         </div>
@@ -1110,6 +1111,10 @@ function CustomerMappingModalBody({
             <div className="workflow-modal-warning">
               <AlertTriangle size={16} />
               <span>Varyant degerleriniz varsa renk/beden gibi alanlari burada degil, varyant eslestirme ekraninda birakin.</span>
+            </div>
+            <div className="brand-required-note">
+              <strong>Marka zorunludur</strong>
+              <span>Marka bilgisi urun listeleme icin zorunludur. Marka eslesmesi olmayan urunler pazaryerinde reddedilebilir.</span>
             </div>
             <div className="customer-checklist">
               {customerAttributeFields.map((field) => (

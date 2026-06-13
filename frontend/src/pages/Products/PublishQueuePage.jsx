@@ -46,7 +46,7 @@ function fixTarget(missing = []) {
     return { href: '/marketplace-mapping?step=category', label: 'Kategori eslestir' };
   }
   if (missing.includes('brand') || missing.includes('brand_mapping')) {
-    return { href: '/marketplace-mapping/brands', label: 'Marka eslestir' };
+    return { href: '/marketplace-mapping?step=attribute', label: 'Marka bilgisini tamamla' };
   }
   if (missing.includes('attributes') || missing.includes('required_attributes') || missing.includes('attribute_mappings')) {
     return { href: '/marketplace-mapping?step=attribute', label: 'Ozellik eslestir' };
