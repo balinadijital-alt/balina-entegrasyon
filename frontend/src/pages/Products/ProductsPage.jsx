@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, ClipboardList, Edit3, Eye, Layers3, MoreHorizontal, PackagePlus, Send, UploadCloud } from 'lucide-react';
+import { ClipboardList, Edit3, Eye, Layers3, MoreHorizontal, PackagePlus, Send, UploadCloud } from 'lucide-react';
 import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { marketplaceStatus, missingFields, productImage, publishBlockReason, readinessScore } from './productWorkflow.js';
@@ -292,28 +293,39 @@ export function ProductsPage() {
           </>
         )}
       />
-      <section className="reference-tabs">
-        {['Urun Yonetimi', 'Kategori Yonetimi', 'Marka Yonetimi', 'Nitelik Yonetimi', 'Pazaryeri Eslestirmeleri', 'Toplu Pazaryeri Islemleri'].map((item) => (
-          <Link
-            className={item === 'Urun Yonetimi' ? 'active' : ''}
-            to={item === 'Kategori Yonetimi' ? '/catalog/categories' : item === 'Marka Yonetimi' ? '/catalog/brands' : item === 'Nitelik Yonetimi' ? '/catalog/attributes' : item === 'Pazaryeri Eslestirmeleri' ? '/marketplace-mapping' : item === 'Toplu Pazaryeri Islemleri' ? '/products/publish-wizard' : '/products'}
-            key={item}
-          >
-            {item}
-          </Link>
-        ))}
-      </section>
-      <section className="reference-info-strip">
-        <CheckCircle2 size={18} />
+      <ReferenceModuleNav
+        section="products"
+        note="Urun listesi ana calisma alanidir; kategori, marka, nitelik ve pazaryeri islemleri ust sekmelerden devam eder."
+        next="Siradaki islem: urunu filtreleyin, eksigi olanlari eslestirin veya secili urunleri aktarim listesine alin."
+      />
+
+      <section className="product-reference-summary">
         <div>
-          <strong>Ürün yönetiminde ürünlerinizi arayabilir, eksik kategori/marka/nitelik durumlarını görüp pazaryeri işlemine gönderebilirsiniz.</strong>
-          <span>Referans paneldeki gibi ürün listesi ana çalışma alanıdır; eşleştirme ve toplu gönderim üst sekmelerden devam eder.</span>
+          <span>Toplam Urun</span>
+          <strong>{products.length}</strong>
+          <small>Katalog kaydi</small>
+        </div>
+        <div>
+          <span>Pazaryerine Hazir</span>
+          <strong>{products.filter((product) => product.marketplace_ready).length}</strong>
+          <small>Eksiksiz urun</small>
+        </div>
+        <div>
+          <span>Eksik Alan</span>
+          <strong>{products.filter((product) => !product.marketplace_ready).length}</strong>
+          <small>Kontrol gerekli</small>
+        </div>
+        <div>
+          <span>Secili</span>
+          <strong>{selected.length}</strong>
+          <small>Toplu aksiyon</small>
         </div>
       </section>
-      <section className="panel compact-filter-panel">
-        <div className="compact-filter-heading">
-          <strong>Filtreler</strong>
-          <span>Urunleri ada, stok durumuna veya pazaryeri hazirligina gore daraltin.</span>
+
+      <section className="product-reference-filter">
+        <div className="product-reference-filter-title">
+          <strong>Filtreleme Secenekleri</strong>
+          <span>Urunleri firma, kategori, marka, stok ve pazaryeri hazirligina gore daraltin.</span>
         </div>
         <div className="product-filter-row">
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Urun, SKU veya barkod ara" />
@@ -380,11 +392,15 @@ export function ProductsPage() {
           </select>
         </div>
       </section>
-      <section className="kpi-grid compact-kpis">
-        <div className="kpi-card"><span>Toplam Urun</span><strong>{products.length}</strong><small>Katalog kaydi</small></div>
-        <div className="kpi-card"><span>Pazaryerine Hazir</span><strong>{products.filter((product) => product.marketplace_ready).length}</strong><small>Eksiksiz urun</small></div>
-        <div className="kpi-card"><span>Eksik Alan</span><strong>{products.filter((product) => !product.marketplace_ready).length}</strong><small>Kontrol gerekli</small></div>
-        <div className="kpi-card"><span>Secili</span><strong>{selected.length}</strong><small>Toplu aksiyon</small></div>
+      <section className="product-list-command-row">
+        <div>
+          <strong>Urun Listesi</strong>
+          <span>{filteredProducts.length} urun goruntuleniyor. Secim yaparak toplu duzenleme veya pazaryeri aktarimi baslatabilirsiniz.</span>
+        </div>
+        <div>
+          <Link className="button-link secondary-link" to="/marketplace-mapping"><Layers3 size={16} /> Eksikleri Tamamla</Link>
+          <Link className="button-link" to="/products/new"><PackagePlus size={16} /> Yeni Urun</Link>
+        </div>
       </section>
       {selected.length > 0 && (
         <section className="state-box bulk-action-bar">
