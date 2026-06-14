@@ -127,6 +127,16 @@ export function OperationsCenterPage() {
     const counts = failedLogs.reduce((carry, log) => ({ ...carry, [serviceName(log)]: (carry[serviceName(log)] || 0) + 1 }), {});
     return Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
   }, [failedLogs]);
+  const failedJobCount = Number(queueStats.failed_jobs || queueStats.failed || 0);
+  const runningJobCount = Number(queueStats.running || 0);
+  const pendingQueueCount = Number(queueStats.queued || 0);
+  const operationSteps = [
+    { number: 1, title: 'Sistem Sagligi', value: data.health?.status === 'healthy' ? 'Saglikli' : 'Kontrol', text: 'API, Redis ve servis kontrolu' },
+    { number: 2, title: 'Pazaryeri', value: `${data.marketplaces.length} hesap`, text: 'Baglanti ve sync durumu' },
+    { number: 3, title: 'Queue', value: `${pendingQueueCount + runningJobCount} islem`, text: 'Bekleyen ve calisan joblar' },
+    { number: 4, title: 'Hata Merkezi', value: `${failedLogs.length + failedJobCount} uyari`, text: 'Mudahale bekleyen hatalar' },
+    { number: 5, title: 'Modul Gecisi', value: 'Yonlendir', text: 'Ilgili ekranda tamamla' },
+  ];
 
   const recentTimeline = [
     ...asArray(data.dashboard?.recent_activity?.orders).map((order) => ({
@@ -154,16 +164,41 @@ export function OperationsCenterPage() {
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && !data.dashboard ? <LoadingState /> : null}
 
-      <section className="operations-hero">
+      <section className="operations-hero reference-flow-hero">
         <div>
-          <span className="eyebrow"><RadioTower size={15} /> Live Monitoring</span>
-          <h2>Platform operasyonlari canli izleniyor.</h2>
-          <p>Health check, queue, pazaryeri senkronizasyonlari ve API loglari mevcut endpointlerden toplanir. Veri yoksa aksiyon alinacak alanlar bos durumlarla ayrilir.</p>
+          <span className="eyebrow"><RadioTower size={15} /> Operasyon Akisi</span>
+          <h2>Once durumu gorun, sonra ilgili ekrana gecin.</h2>
+          <p>Bu ekran pazaryeri, import, queue, siparis ve API hata sinyallerini sirali bir is akisi gibi ozetler. Sorun varsa hangi module gitmeniz gerektigini hemen gosterir.</p>
         </div>
         <div className="operations-hero-status">
-          <strong>{data.health?.status === 'healthy' ? 'Healthy' : 'Degraded'}</strong>
-          <span>Son kontrol: {formatDate(data.health?.checked_at)}</span>
+          <span>Genel durum</span>
+          <strong>{alerts.length === 0 ? 'Aksiyon yok' : `${alerts.length} aksiyon`}</strong>
+          <small>Son kontrol: {formatDate(data.health?.checked_at)}</small>
           <div className="operation-progress"><span style={{ width: data.health?.status === 'healthy' ? '100%' : '62%' }} /></div>
+        </div>
+      </section>
+
+      <section className="operations-reference-flow" aria-label="Operasyon akis ozeti">
+        {operationSteps.map((step) => (
+          <div key={step.title}>
+            <em>{step.number}</em>
+            <strong>{step.title}</strong>
+            <span>{step.value}</span>
+            <small>{step.text}</small>
+          </div>
+        ))}
+      </section>
+
+      <section className={`operations-command-row ${alerts.length > 0 ? 'needs-action' : 'is-clear'}`}>
+        <div>
+          <span>{alerts.length > 0 ? 'Mudahale gerekli' : 'Bugun ne yapmaliyim?'}</span>
+          <strong>{alerts.length > 0 ? alerts[0].title : 'Operasyon akisinda kritik bir uyari yok.'}</strong>
+          <small>{alerts.length > 0 ? alerts[0].message : 'Siparis, queue, pazaryeri ve API sinyalleri normal gorunuyor; yine de son aktiviteleri kontrol edebilirsiniz.'}</small>
+        </div>
+        <div>
+          <Link to="/api-logs" className="button-link secondary-link"><FileWarning size={16} /> Hata Merkezi</Link>
+          <Link to="/queue" className="button-link secondary-link"><ServerCog size={16} /> Queue Merkezi</Link>
+          <Link to="/marketplaces" className="button-link"><RadioTower size={16} /> Pazaryerleri</Link>
         </div>
       </section>
 
