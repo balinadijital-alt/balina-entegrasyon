@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { AlertTriangle, Edit3, ImagePlus, Layers3, Send, Upload } from 'lucide-react';
+import { AlertTriangle, Edit3, ImagePlus, Info, Layers3, PackageCheck, Search, Send, Tags, Upload } from 'lucide-react';
 import { api } from '../../api/client.js';
 import { hasPermission } from '../../auth/permissions.js';
 import { DataTable } from '../../components/DataTable.jsx';
@@ -14,12 +14,12 @@ import { marketplaceStatus, missingFields, productImage, publishBlockReason, rea
 
 const tabs = [
   ['general', 'Genel Bilgiler'],
-  ['variants', 'Varyantlar'],
-  ['images', 'Gorseller'],
-  ['seo', 'Aciklama/SEO'],
-  ['readiness', 'Pazaryeri Hazirligi'],
-  ['history', 'Gonderim Gecmisi'],
-  ['errors', 'Pazaryeri Hatalari'],
+  ['seo', 'S.E.O Bilgileri'],
+  ['pricing', 'Fiyat, Kargo'],
+  ['variants', 'Stok, Varyant'],
+  ['images', 'Resimler'],
+  ['attributes', 'Ozellikler'],
+  ['other', 'Diger'],
 ];
 
 const missingLabels = {
@@ -164,6 +164,26 @@ export function ProductDetailPage() {
   }));
   const problemChildren = batchRows.flatMap((row) => row.problem_children || []);
   const canSendMarketplaces = hasPermission(user, 'marketplaces.send');
+  const productAttributes = product.attributes && typeof product.attributes === 'object' && !Array.isArray(product.attributes)
+    ? Object.entries(product.attributes).map(([key, value]) => ({ id: key, key, value }))
+    : [];
+  const marketplacePriceRows = [
+    { id: 'purchase', label: 'Alis Fiyati', raw: product.purchase_price || product.buying_price || product.cost_price || 0 },
+    { id: 'list', label: 'Piyasa Fiyati', raw: product.list_price || product.market_price || product.price || 0 },
+    { id: 'sale', label: 'Satis Fiyati', raw: product.price || 0 },
+    { id: 'dealer_1', label: 'Bayi Fiyati 1', raw: product.dealer_price_1 || 0 },
+    { id: 'dealer_2', label: 'Bayi Fiyati 2', raw: product.dealer_price_2 || 0 },
+  ].map((row) => {
+    const raw = Number(row.raw || 0);
+    const vatRate = Number(product.vat_rate || 0);
+    const withoutVat = vatRate > 0 ? raw / (1 + (vatRate / 100)) : raw;
+    return {
+      ...row,
+      withoutVat,
+      withVat: raw,
+      profit: Math.max(0, raw - Number(product.purchase_price || product.buying_price || product.cost_price || 0)),
+    };
+  });
 
   return (
     <>
@@ -207,8 +227,19 @@ export function ProductDetailPage() {
         </div>
       </section>
 
-      <div className="tabs">
-        {tabs.map(([key, label]) => <button type="button" className={activeTab === key ? 'tab active' : 'tab'} key={key} onClick={() => setActiveTab(key)}>{label}</button>)}
+      <div className="product-reference-tabs" aria-label="Urun detay bolumleri">
+        {tabs.map(([key, label]) => (
+          <button type="button" className={activeTab === key ? 'active' : ''} key={key} onClick={() => setActiveTab(key)}>
+            {key === 'general' && <Info size={18} />}
+            {key === 'seo' && <Search size={18} />}
+            {key === 'pricing' && <Tags size={18} />}
+            {key === 'variants' && <Layers3 size={18} />}
+            {key === 'images' && <ImagePlus size={18} />}
+            {key === 'attributes' && <PackageCheck size={18} />}
+            {key === 'other' && <Edit3 size={18} />}
+            {label}
+          </button>
+        ))}
       </div>
 
       {activeTab === 'general' && (
@@ -223,17 +254,6 @@ export function ProductDetailPage() {
             <div className="detail-card"><span>Durum</span><strong>{product.status}</strong></div>
             <div className="detail-card"><span>Parent</span><strong>{product.parent?.sku || '-'}</strong></div>
             <div className="detail-card"><span>Varyant grubu</span><strong>{product.variant_group_key || product.variant_group || '-'}</strong></div>
-          </div>
-        </section>
-      )}
-
-      {activeTab === 'general' && (
-        <section className="panel">
-          <h2>Urun Kaynagi</h2>
-          <div className="detail-grid">
-            <div className="detail-card"><span>XML Source</span><strong>{product.xml_source?.name || '-'}</strong></div>
-            <div className="detail-card"><span>Source product code</span><strong>{product.source_product_code || '-'}</strong></div>
-            <div className="detail-card"><span>Last XML sync</span><strong>{formatDateTime(product.last_xml_sync_at)}</strong></div>
           </div>
         </section>
       )}
@@ -320,8 +340,18 @@ export function ProductDetailPage() {
       )}
 
       {activeTab === 'variants' && (
-        <section className="panel">
-          <h2>Varyantlar</h2>
+        <section className="panel product-reference-panel">
+          <div className="product-reference-note">
+            <Info size={18} />
+            <span>Stok ve varyant bilgileri pazaryeri gonderiminden once kontrol edilmelidir. Varyant listesini olusturduktan sonra barkod ve fiyat alanlarini tamamlayin.</span>
+          </div>
+          <div className="product-reference-grid">
+            <div><span>Stok Miktari</span><strong>{product.stock || 0}</strong></div>
+            <div><span>Miktar Birimi</span><strong>{product.unit || 'Adet'}</strong></div>
+            <div><span>Desi</span><strong>{product.dimensional_weight || '-'}</strong></div>
+            <div><span>Varyant grubu</span><strong>{product.variant_group_key || product.variant_group || '-'}</strong></div>
+          </div>
+          <h2>Stok, Varyant</h2>
           {product.parent ? (
             <div className="state-box">
               <span>Bu urun {product.parent.sku} parent urununun child varyantidir.</span>
@@ -376,47 +406,93 @@ export function ProductDetailPage() {
       )}
 
       {activeTab === 'seo' && (
-        <section className="panel compact-panel">
-          <div className="soft-empty"><strong>Kisa Aciklama</strong><span>{product.short_description || '-'}</span></div>
-          <div className="soft-empty"><strong>Detayli Aciklama</strong><span>{product.description || '-'}</span></div>
-          <div className="soft-empty"><strong>SEO</strong><span>{product.seo_title || '-'} · {product.seo_description || '-'}</span></div>
+        <section className="panel product-reference-panel">
+          <div className="product-reference-two">
+            <div className="product-reference-form">
+              <label><span>SEO Basligi</span><textarea readOnly value={product.seo_title || ''} /></label>
+              <label><span>SEO Aciklamasi</span><textarea readOnly value={product.seo_description || ''} /></label>
+              <label><span>SEO Anahtar Kelimeleri</span><textarea readOnly value={product.seo_keywords || ''} /></label>
+              <label><span>Canonical URL</span><input readOnly value={product.canonical_url || ''} /></label>
+            </div>
+            <aside className="product-reference-preview">
+              <span>Arama Onizlemesi</span>
+              <strong>{product.seo_title || product.name}</strong>
+              <p>{product.seo_description || product.short_description || 'SEO aciklamasi girilmemis.'}</p>
+              <small>{product.slug || product.sku || product.id}</small>
+            </aside>
+          </div>
+          <div className="product-reference-note">
+            <Info size={18} />
+            <span>Kullanilabilir etiketler: {'{urun_adi}'}, {'{urun_kodu}'}, {'{urun_barkodu}'}, {'{kategori_adi}'}, {'{marka_adi}'}.</span>
+          </div>
         </section>
       )}
 
-      {activeTab === 'readiness' && (
-        <DataTable
-          rows={statusRows}
-          columns={[
-            { key: 'marketplace', label: 'Pazaryeri' },
-            { key: 'readiness', label: 'Hazirlik' },
-            { key: 'missing', label: 'Eksikler' },
-            { key: 'status', label: 'Gonderim Durumu' },
-          ]}
-        />
+      {activeTab === 'pricing' && (
+        <section className="panel product-reference-panel">
+          <div className="product-reference-grid">
+            <div><span>Para Birimi</span><strong>{product.currency || 'TL'}</strong></div>
+            <div><span>KDV Orani</span><strong>%{product.vat_rate || 0}</strong></div>
+            <div><span>Kargo Odemesi</span><strong>{product.cargo_payment || product.shipping_payer || 'Satici Oder'}</strong></div>
+            <div><span>Kapida Odeme</span><strong>{product.cash_on_delivery || 'Varsayilan'}</strong></div>
+          </div>
+          <DataTable
+            rows={marketplacePriceRows}
+            columns={[
+              { key: 'label', label: '#' },
+              { key: 'withoutVat', label: 'KDV Haric (TL)', render: (row) => formatPrice(row.withoutVat) },
+              { key: 'withVat', label: 'KDV Dahil (TL)', render: (row) => formatPrice(row.withVat) },
+              { key: 'profit', label: 'Kar (TL)', render: (row) => formatPrice(row.profit) },
+            ]}
+          />
+        </section>
       )}
 
-      {activeTab === 'history' && (
-        <DataTable
-          rows={statusRows}
-          columns={[
-            { key: 'marketplace', label: 'Pazaryeri' },
-            { key: 'status', label: 'Durum' },
-            { key: 'last_sent_at', label: 'Son Gonderim' },
-          ]}
-        />
+      {activeTab === 'attributes' && (
+        <>
+          <DataTable
+            rows={productAttributes}
+            emptyTitle="Urun ozelligi yok"
+            emptyText="Bu urune ait katalog ozelligi veya nitelik bulunmuyor."
+            columns={[
+              { key: 'key', label: 'Ozellik' },
+              { key: 'value', label: 'Deger', render: (row) => Array.isArray(row.value) ? row.value.join(', ') : String(row.value ?? '-') },
+            ]}
+          />
+          <DataTable
+            rows={statusRows}
+            columns={[
+              { key: 'marketplace', label: 'Pazaryeri' },
+              { key: 'readiness', label: 'Hazirlik' },
+              { key: 'missing', label: 'Eksikler' },
+              { key: 'status', label: 'Gonderim Durumu' },
+            ]}
+          />
+        </>
       )}
 
-      {activeTab === 'errors' && (
-        <DataTable
-          rows={statusRows.filter((row) => row.error !== '-')}
-          emptyTitle="Pazaryeri hatasi yok"
-          emptyText="Bu urune ait pazaryeri hatasi bulunmuyor."
-          columns={[
-            { key: 'marketplace', label: 'Pazaryeri' },
-            { key: 'error', label: 'Hata' },
-          ]}
-        />
+      {activeTab === 'other' && (
+        <>
+          <section className="panel">
+            <h2>Urun Kaynagi</h2>
+            <div className="detail-grid">
+              <div className="detail-card"><span>XML Source</span><strong>{product.xml_source?.name || '-'}</strong></div>
+              <div className="detail-card"><span>Source product code</span><strong>{product.source_product_code || '-'}</strong></div>
+              <div className="detail-card"><span>Last XML sync</span><strong>{formatDateTime(product.last_xml_sync_at)}</strong></div>
+            </div>
+          </section>
+          <DataTable
+            rows={statusRows}
+            columns={[
+              { key: 'marketplace', label: 'Pazaryeri' },
+              { key: 'status', label: 'Durum' },
+              { key: 'last_sent_at', label: 'Son Gonderim' },
+              { key: 'error', label: 'Hata' },
+            ]}
+          />
+        </>
       )}
+
     </>
   );
 }

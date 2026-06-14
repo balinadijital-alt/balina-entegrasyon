@@ -5582,6 +5582,146 @@ a {
   margin: 0;
 }
 
+.product-reference-tabs {
+  align-items: center;
+  background: #eef2f7;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+  overflow-x: auto;
+  padding: 12px;
+}
+
+.product-reference-tabs button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #64748b;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 15px;
+  font-weight: 900;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+}
+
+.product-reference-tabs button.active {
+  background: #fff;
+  border-color: #e2e8f0;
+  box-shadow: var(--shadow-soft);
+  color: #0f172a;
+}
+
+.product-reference-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.product-reference-note {
+  align-items: center;
+  background: #eef6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  color: #334155;
+  display: flex;
+  gap: 12px;
+  line-height: 1.45;
+  padding: 14px 16px;
+}
+
+.product-reference-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.product-reference-grid div {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  min-height: 78px;
+  padding: 12px;
+}
+
+.product-reference-grid span,
+.product-reference-preview span,
+.product-reference-form span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.product-reference-grid strong {
+  color: #0f172a;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.product-reference-two {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.75fr);
+}
+
+.product-reference-form {
+  display: grid;
+  gap: 12px;
+}
+
+.product-reference-form label {
+  display: grid;
+  gap: 7px;
+}
+
+.product-reference-form input,
+.product-reference-form textarea {
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: #0f172a;
+  font: inherit;
+  min-height: 46px;
+  padding: 10px 12px;
+}
+
+.product-reference-form textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.product-reference-preview {
+  align-self: start;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.product-reference-preview strong {
+  color: #1d4ed8;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.product-reference-preview p {
+  color: #475569;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.product-reference-preview small {
+  color: #64748b;
+  overflow-wrap: anywhere;
+}
+
 .product-image-grid {
   display: grid;
   gap: 14px;
@@ -12254,6 +12394,8 @@ tbody td:last-child .row-actions:focus-within {
   .order-command-strip,
   .order-operation-grid,
   .product-detail-hero,
+  .product-reference-grid,
+  .product-reference-two,
   .product-image-grid,
   .mapping-grid,
   .stats-grid,
