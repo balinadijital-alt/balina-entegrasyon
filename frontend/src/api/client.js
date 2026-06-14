@@ -205,13 +205,13 @@ export const api = {
   },
   marketplaceCatalog: {
     categories: (marketplace, params) => http.get(`/marketplace-catalog/${marketplace}/categories`, { params }).then((response) => response.data),
-    syncCategories: (marketplace, payload) => http.post(`/marketplace-catalog/${marketplace}/categories/sync`, payload).then((response) => response.data),
+    syncCategories: (marketplace, accountId) => http.post(`/marketplace-catalog/${marketplace}/categories/sync`, { marketplace_account_id: accountId }).then((response) => response.data),
     brands: (marketplace, params) => http.get(`/marketplace-catalog/${marketplace}/brands`, { params }).then((response) => response.data),
-    syncBrands: (marketplace, payload) => http.post(`/marketplace-catalog/${marketplace}/brands/sync`, payload).then((response) => response.data),
+    syncBrands: (marketplace, accountId) => http.post(`/marketplace-catalog/${marketplace}/brands/sync`, { marketplace_account_id: accountId }).then((response) => response.data),
     attributes: (marketplace, categoryId, params) => http.get(`/marketplace-catalog/${marketplace}/categories/${categoryId}/attributes`, { params }).then((response) => response.data),
-    syncAttributes: (marketplace, categoryId, payload) => http.post(`/marketplace-catalog/${marketplace}/categories/${categoryId}/attributes/sync`, payload).then((response) => response.data),
+    syncAttributes: (marketplace, categoryId, accountId) => http.post(`/marketplace-catalog/${marketplace}/categories/${categoryId}/attributes/sync`, { marketplace_account_id: accountId }).then((response) => response.data),
     attributeValues: (marketplace, categoryId, attributeId, params) => http.get(`/marketplace-catalog/${marketplace}/categories/${categoryId}/attributes/${attributeId}/values`, { params }).then((response) => response.data),
-    syncAttributeValues: (marketplace, categoryId, attributeId, payload) => http.post(`/marketplace-catalog/${marketplace}/categories/${categoryId}/attributes/${attributeId}/values/sync`, payload).then((response) => response.data),
+    syncAttributeValues: (marketplace, categoryId, attributeId, accountId) => http.post(`/marketplace-catalog/${marketplace}/categories/${categoryId}/attributes/${attributeId}/values/sync`, { marketplace_account_id: accountId }).then((response) => response.data),
   },
   orders: {
     list: (params) => http.get('/orders', { params }).then((response) => response.data),

@@ -62,7 +62,7 @@ class MarketplaceCatalogCacheTest extends TestCase
 
         $this->postJson('/api/marketplace-catalog/trendyol/categories/sync', [
             'marketplace_account_id' => $this->account->id,
-        ])->assertOk()->assertJsonCount(2, 'data');
+        ])->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('count', 2)->assertJsonStructure(['last_synced_at']);
 
         $this->assertDatabaseHas('marketplace_catalog_categories', [
             'marketplace_code' => 'trendyol',
@@ -75,6 +75,7 @@ class MarketplaceCatalogCacheTest extends TestCase
         $this->getJson('/api/marketplace-catalog/trendyol/categories?search=Kanvas')
             ->assertOk()
             ->assertJsonCount(1, 'data')
+            ->assertJsonPath('count', 1)
             ->assertJsonPath('data.0.external_id', '11');
     }
 

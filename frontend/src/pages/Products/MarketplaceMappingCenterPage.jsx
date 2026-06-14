@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, ClipboardCheck, Layers3, RefreshCw, Save, Search, Send, ShieldCheck, SlidersHorizontal, Tags, Trash2, X } from 'lucide-react';
-import { api, asArray } from '../../api/client.js';
+import { api, apiErrorMessage, asArray } from '../../api/client.js';
+import { hasPermission } from '../../auth/permissions.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
@@ -149,6 +150,19 @@ function jsonText(value) {
   return JSON.stringify(value, null, 2);
 }
 
+function latestSyncedAt(items = []) {
+  return items
+    .map((item) => item.last_synced_at)
+    .filter(Boolean)
+    .sort()
+    .at(-1) || null;
+}
+
+function formatCacheDate(value) {
+  if (!value) return 'Henuz yok';
+  return new Intl.DateTimeFormat('tr-TR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
+}
+
 function mappingStatusLabel(value) {
   if (value === 'active') return 'Aktif';
   if (value === 'passive') return 'Pasif';
@@ -216,8 +230,9 @@ export function MarketplaceMappingCenterPage({
   pageDescription,
 }) {
   const [searchParams] = useSearchParams();
-  const { notify } = useApp();
+  const { notify, user } = useApp();
   const { loading, error, setError, run } = useAsync();
+  const canManageCatalog = hasPermission(user, 'marketplaces.manage');
   const [activeTab, setActiveTab] = useState(initialTab);
   const [marketplaceCode, setMarketplaceCode] = useState('trendyol');
   const [statusFilter, setStatusFilter] = useState('');
@@ -225,6 +240,7 @@ export function MarketplaceMappingCenterPage({
   const [onlyUnmapped, setOnlyUnmapped] = useState(false);
   const [onlyRequiredMissing, setOnlyRequiredMissing] = useState(false);
   const [companies, setCompanies] = useState([]);
+  const [marketplaceAccounts, setMarketplaceAccounts] = useState([]);
   const [products, setProducts] = useState([]);
   const [catalog, setCatalog] = useState({ categories: [], brands: [], attributes: [] });
   const [providerCatalog, setProviderCatalog] = useState({ categories: [], brands: [], attributesByCategory: {} });
@@ -236,6 +252,7 @@ export function MarketplaceMappingCenterPage({
   const [valueMapText, setValueMapText] = useState('');
   const [workflowModal, setWorkflowModal] = useState('');
   const [workflowDetail, setWorkflowDetail] = useState(null);
+  const [syncLoading, setSyncLoading] = useState('');
 
   const defaultCompanyId = companies[0]?.id || products[0]?.company_id || '';
   const localCategories = useMemo(() => {
@@ -269,6 +286,24 @@ export function MarketplaceMappingCenterPage({
   const brandMappedNames = useMemo(() => new Set(rows.brands.map((row) => row.local_brand_name).filter(Boolean)), [rows.brands]);
   const requiredAttributes = useMemo(() => rows.attributes.filter((row) => row.required), [rows.attributes]);
   const missingVariantCount = summary?.missing_variant_attribute_count ?? rows.readiness.reduce((sum, row) => sum + (row.missing_variant_attributes?.length || 0), 0);
+  const selectedMarketplaceAccount = useMemo(() => marketplaceAccounts.find((account) => account.code === marketplaceCode), [marketplaceAccounts, marketplaceCode]);
+  const selectedCategoryId = String(workflowDetail?.marketplace_category_id || form.marketplace_category_id || selected?.marketplace_category_id || '');
+  const selectedCategoryAttributes = selectedCategoryId ? providerCatalog.attributesByCategory[selectedCategoryId] || [] : [];
+  const cacheStatus = useMemo(() => ({
+    categories: {
+      count: providerCatalog.categories.length,
+      lastSyncedAt: latestSyncedAt(providerCatalog.categories),
+    },
+    brands: {
+      count: providerCatalog.brands.length,
+      lastSyncedAt: latestSyncedAt(providerCatalog.brands),
+    },
+    attributes: {
+      count: selectedCategoryAttributes.length,
+      lastSyncedAt: latestSyncedAt(selectedCategoryAttributes),
+      categoryId: selectedCategoryId,
+    },
+  }), [providerCatalog.categories, providerCatalog.brands, selectedCategoryAttributes, selectedCategoryId]);
 
   const tableRows = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('tr-TR');
@@ -304,8 +339,9 @@ export function MarketplaceMappingCenterPage({
   const load = async () => {
     await run(async () => {
       const params = { marketplace_code: marketplaceCode };
-      const [companyResponse, productResponse, categoryResource, brandResource, attributeResource, catalogCategories, catalogBrands, summaryResponse, categories, brands, attributes, variants, preview] = await Promise.allSettled([
+      const [companyResponse, accountResponse, productResponse, categoryResource, brandResource, attributeResource, catalogCategories, catalogBrands, summaryResponse, categories, brands, attributes, variants, preview] = await Promise.allSettled([
         api.companies.list(),
+        canManageCatalog ? api.marketplaces.list() : Promise.resolve([]),
         api.products.list(),
         api.catalogResources.list({ type: 'categories', active: 1 }),
         api.catalogResources.list({ type: 'brands', active: 1 }),
@@ -320,6 +356,7 @@ export function MarketplaceMappingCenterPage({
         api.marketplaceMappings.readinessPreview(params),
       ]);
       setCompanies(companyResponse.status === 'fulfilled' ? asArray(companyResponse.value) : []);
+      setMarketplaceAccounts(accountResponse.status === 'fulfilled' ? asArray(accountResponse.value) : []);
       setProducts(productResponse.status === 'fulfilled' ? asArray(productResponse.value) : []);
       setCatalog({
         categories: categoryResource.status === 'fulfilled' ? asArray(categoryResource.value) : [],
@@ -344,7 +381,7 @@ export function MarketplaceMappingCenterPage({
 
   useEffect(() => {
     load();
-  }, [marketplaceCode]);
+  }, [marketplaceCode, canManageCatalog]);
 
   useEffect(() => {
     const stepParam = workflowStepMap[searchParams.get('step') || ''];
@@ -485,6 +522,61 @@ export function MarketplaceMappingCenterPage({
     }));
   };
 
+  const refreshProviderAttributes = async (categoryId) => {
+    if (!categoryId) return;
+
+    const response = await api.marketplaceCatalog.attributes(marketplaceCode, categoryId);
+    setProviderCatalog((current) => ({
+      ...current,
+      attributesByCategory: {
+        ...current.attributesByCategory,
+        [categoryId]: asArray(response),
+      },
+    }));
+  };
+
+  const syncProviderCatalog = async (type, categoryId = selectedCategoryId) => {
+    if (!canManageCatalog) return;
+    if (marketplaceCode !== 'trendyol') {
+      notify('error', 'Katalog cache sync bu sprintte yalnizca Trendyol icin aktif.');
+      return;
+    }
+    if (!selectedMarketplaceAccount?.id) {
+      notify('error', 'Sync icin aktif Trendyol pazaryeri hesabi bulunamadi.');
+      return;
+    }
+    if (type === 'attributes' && !categoryId) {
+      notify('error', 'Ozellikleri guncellemek icin once bir pazaryeri kategorisi secin.');
+      return;
+    }
+
+    setSyncLoading(type);
+    try {
+      const response = type === 'categories'
+        ? await api.marketplaceCatalog.syncCategories(marketplaceCode, selectedMarketplaceAccount.id)
+        : type === 'brands'
+          ? await api.marketplaceCatalog.syncBrands(marketplaceCode, selectedMarketplaceAccount.id)
+          : await api.marketplaceCatalog.syncAttributes(marketplaceCode, categoryId, selectedMarketplaceAccount.id);
+
+      if (type === 'attributes') {
+        setProviderCatalog((current) => ({
+          ...current,
+          attributesByCategory: {
+            ...current.attributesByCategory,
+            [categoryId]: asArray(response),
+          },
+        }));
+      } else {
+        await load();
+      }
+      notify('success', `${response.count ?? asArray(response).length} kayit cache'e alindi.`);
+    } catch (syncError) {
+      notify('error', apiErrorMessage(syncError));
+    } finally {
+      setSyncLoading('');
+    }
+  };
+
   const bulkApplySuggestions = () => {
     notify('success', 'Toplu oneriler foundation modunda hazirlandi; bu sprintte otomatik provider yazimi yapilmaz.');
   };
@@ -538,6 +630,11 @@ export function MarketplaceMappingCenterPage({
         providerBrands={providerCatalog.brands}
         providerAttributesByCategory={providerCatalog.attributesByCategory}
         loadProviderAttributes={loadProviderAttributes}
+        refreshProviderAttributes={refreshProviderAttributes}
+        cacheStatus={cacheStatus}
+        canManageCatalog={canManageCatalog}
+        syncLoading={syncLoading}
+        syncProviderCatalog={syncProviderCatalog}
         valueMapText={valueMapText}
         setValueMapText={setValueMapText}
       />
@@ -716,6 +813,78 @@ function MappingOperationSummary({ activeTab, rows, products, visibleRows, requi
         </div>
       ))}
     </section>
+  );
+}
+
+function CatalogCacheStatusPanel({
+  marketplaceCode,
+  cacheStatus,
+  canManageCatalog,
+  syncLoading,
+  onSyncCategories,
+  onSyncBrands,
+  onSyncAttributes,
+}) {
+  const isTrendyol = marketplaceCode === 'trendyol';
+  const categoryEmpty = cacheStatus.categories.count === 0;
+  const brandEmpty = cacheStatus.brands.count === 0;
+  const attributeEmpty = Boolean(cacheStatus.attributes.categoryId) && cacheStatus.attributes.count === 0;
+
+  return (
+    <section className="catalog-cache-panel">
+      <div className="catalog-cache-intro">
+        <div>
+          <span>Katalog Cache Durumu</span>
+          <strong>{isTrendyol ? 'Trendyol kategori, marka ve nitelik verileri' : 'Cache sync yalnizca Trendyol icin aktif'}</strong>
+        </div>
+        <p>Pazaryeri kategori, marka ve özellik verileri güncel değilse eşleştirme eksik görünebilir.</p>
+      </div>
+      <div className="catalog-cache-grid">
+        <CatalogCacheMetric title="Kategori cache" count={cacheStatus.categories.count} lastSyncedAt={cacheStatus.categories.lastSyncedAt} empty={categoryEmpty} />
+        <CatalogCacheMetric title="Marka cache" count={cacheStatus.brands.count} lastSyncedAt={cacheStatus.brands.lastSyncedAt} empty={brandEmpty} />
+        <CatalogCacheMetric
+          title="Seçili kategori özellik cache"
+          count={cacheStatus.attributes.categoryId ? cacheStatus.attributes.count : '-'}
+          lastSyncedAt={cacheStatus.attributes.lastSyncedAt}
+          empty={attributeEmpty}
+          note={cacheStatus.attributes.categoryId ? `Kategori ID: ${cacheStatus.attributes.categoryId}` : 'Kategori secilmedi'}
+        />
+      </div>
+      {(categoryEmpty || brandEmpty || attributeEmpty) && (
+        <div className="catalog-cache-empty">
+          <AlertTriangle size={17} />
+          <div>
+            {categoryEmpty && <p>Henüz pazaryeri kategori verisi bulunmuyor. Kategorileri Güncelle butonuyla Trendyol’dan kategori listesini çekin.</p>}
+            {brandEmpty && <p>Henüz marka verisi bulunmuyor. Markaları Güncelle butonuyla marka listesini çekin.</p>}
+            {attributeEmpty && <p>Bu kategori için özellik verisi bulunmuyor. Özellikleri Güncelle butonuyla zorunlu nitelikleri çekin.</p>}
+          </div>
+        </div>
+      )}
+      {canManageCatalog && isTrendyol && (
+        <div className="catalog-cache-actions">
+          <button type="button" className="secondary-button" disabled={Boolean(syncLoading)} onClick={onSyncCategories}>
+            <RefreshCw size={16} /> {syncLoading === 'categories' ? 'Guncelleniyor...' : 'Kategorileri Guncelle'}
+          </button>
+          <button type="button" className="secondary-button" disabled={Boolean(syncLoading)} onClick={onSyncBrands}>
+            <RefreshCw size={16} /> {syncLoading === 'brands' ? 'Guncelleniyor...' : 'Markalari Guncelle'}
+          </button>
+          <button type="button" className="secondary-button" disabled={Boolean(syncLoading) || !cacheStatus.attributes.categoryId} onClick={onSyncAttributes}>
+            <RefreshCw size={16} /> {syncLoading === 'attributes' ? 'Guncelleniyor...' : 'Secili Kategori Ozelliklerini Guncelle'}
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CatalogCacheMetric({ title, count, lastSyncedAt, empty, note }) {
+  return (
+    <div className={`catalog-cache-metric ${empty ? 'empty' : 'ready'}`}>
+      <span>{title}</span>
+      <strong>{count}</strong>
+      <small>Son guncelleme: {formatCacheDate(lastSyncedAt)}</small>
+      {note && <em>{note}</em>}
+    </div>
   );
 }
 
@@ -904,6 +1073,11 @@ function MarketplaceMappingWorkflow({
   providerBrands,
   providerAttributesByCategory,
   loadProviderAttributes,
+  refreshProviderAttributes,
+  cacheStatus,
+  canManageCatalog,
+  syncLoading,
+  syncProviderCatalog,
   valueMapText,
   setValueMapText,
   workflowDetail,
@@ -955,6 +1129,16 @@ function MarketplaceMappingWorkflow({
 
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && !summary ? <LoadingState /> : null}
+
+      <CatalogCacheStatusPanel
+        marketplaceCode={marketplaceCode}
+        cacheStatus={cacheStatus}
+        canManageCatalog={canManageCatalog}
+        syncLoading={syncLoading}
+        onSyncCategories={() => syncProviderCatalog('categories')}
+        onSyncBrands={() => syncProviderCatalog('brands')}
+        onSyncAttributes={() => syncProviderCatalog('attributes')}
+      />
 
       <section className="marketplace-roadmap-shell">
         <div className="marketplace-roadmap-heading">
@@ -1046,6 +1230,11 @@ function MarketplaceMappingWorkflow({
               providerBrands={providerBrands}
               providerAttributesByCategory={providerAttributesByCategory}
               loadProviderAttributes={loadProviderAttributes}
+              refreshProviderAttributes={refreshProviderAttributes}
+              cacheStatus={cacheStatus}
+              canManageCatalog={canManageCatalog}
+              syncLoading={syncLoading}
+              syncProviderCatalog={syncProviderCatalog}
               closeWorkflowModal={closeWorkflowModal}
               switchWorkflowModal={switchWorkflowModal}
               attributeStarted={attributeStarted}
@@ -1086,6 +1275,11 @@ function CustomerMappingModalBody({
   providerBrands = [],
   providerAttributesByCategory = {},
   loadProviderAttributes,
+  refreshProviderAttributes,
+  cacheStatus,
+  canManageCatalog,
+  syncLoading,
+  syncProviderCatalog,
   closeWorkflowModal,
   switchWorkflowModal,
   attributeStarted,
@@ -1104,6 +1298,12 @@ function CustomerMappingModalBody({
   if (tab === 'categories') {
     return (
       <div className="customer-modal-stack">
+        {providerCategories.length === 0 && (
+          <div className="catalog-cache-empty inline">
+            <AlertTriangle size={16} />
+            <p>Henüz pazaryeri kategori verisi bulunmuyor. Kategorileri Güncelle butonuyla Trendyol’dan kategori listesini çekin.</p>
+          </div>
+        )}
         <div className="customer-modal-count">Sayfada {categoryRows.length || 0} kayit gosteriliyor.</div>
         <table className="customer-simple-table">
           <thead>
@@ -1151,6 +1351,7 @@ function CustomerMappingModalBody({
     const selectedCategoryId = workflowDetail?.marketplace_category_id ? String(workflowDetail.marketplace_category_id) : '';
     const selectedAttributeRows = workflowDetail ? attributeRows.filter((row) => String(row.marketplace_category_id || '') === selectedCategoryId) : [];
     const providerAttributeRows = selectedCategoryId ? providerAttributesByCategory[selectedCategoryId] || [] : [];
+    const attributeCacheLastSyncedAt = selectedCategoryId === cacheStatus?.attributes.categoryId ? cacheStatus.attributes.lastSyncedAt : latestSyncedAt(providerAttributeRows);
     const checklistFields = providerAttributeRows.length > 0
       ? providerAttributeRows
         .map((attribute) => ({
@@ -1205,6 +1406,28 @@ function CustomerMappingModalBody({
             <p><strong>Pazaryeri:</strong> {workflowDetail.marketplace_category_path || workflowDetail.marketplace_category_name || '-'}</p>
             {providerAttributeRows.length > 0 && (
               <p><strong>Cache:</strong> {providerAttributeRows.filter((item) => item.required).length} zorunlu / {providerAttributeRows.length} toplam nitelik</p>
+            )}
+            <div className="catalog-cache-modal-note">
+              <div>
+                <strong>{providerAttributeRows.length > 0 ? 'Zorunlu nitelikler Trendyol katalog cache’den gelir.' : 'Ornek alanlar gosteriliyor.'}</strong>
+                <span>Son guncelleme: {formatCacheDate(attributeCacheLastSyncedAt)}</span>
+              </div>
+              {canManageCatalog && marketplaceCode === 'trendyol' && (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={Boolean(syncLoading)}
+                  onClick={() => syncProviderCatalog('attributes', selectedCategoryId)}
+                >
+                  <RefreshCw size={16} /> {syncLoading === 'attributes' ? 'Guncelleniyor...' : 'Ozellikleri Guncelle'}
+                </button>
+              )}
+            </div>
+            {providerAttributeRows.length === 0 && (
+              <div className="catalog-cache-empty inline">
+                <AlertTriangle size={16} />
+                <p>Bu kategori için özellik verisi bulunmuyor. Özellikleri Güncelle butonuyla zorunlu nitelikleri çekin.</p>
+              </div>
             )}
             <div className="workflow-modal-warning">
               <AlertTriangle size={16} />

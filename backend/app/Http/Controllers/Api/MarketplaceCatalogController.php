@@ -17,72 +17,73 @@ class MarketplaceCatalogController extends Controller
     public function categories(Request $request, string $marketplace): JsonResponse
     {
         $this->authorizeRead($request);
+        $items = $this->catalog->cachedCategories($marketplace, $request->query('search'));
 
-        return response()->json([
-            'data' => $this->catalog->cachedCategories($marketplace, $request->query('search'))->values(),
-        ]);
+        return $this->catalogResponse($items);
     }
 
     public function syncCategories(Request $request, string $marketplace): JsonResponse
     {
         $account = $this->syncAccount($request, $marketplace);
+        $items = $this->catalog->syncTrendyolCategories($account);
 
-        return response()->json([
-            'data' => $this->catalog->syncTrendyolCategories($account)->values(),
-        ]);
+        return $this->catalogResponse($items);
     }
 
     public function brands(Request $request, string $marketplace): JsonResponse
     {
         $this->authorizeRead($request);
+        $items = $this->catalog->cachedBrands($marketplace, $request->query('search'));
 
-        return response()->json([
-            'data' => $this->catalog->cachedBrands($marketplace, $request->query('search'))->values(),
-        ]);
+        return $this->catalogResponse($items);
     }
 
     public function syncBrands(Request $request, string $marketplace): JsonResponse
     {
         $account = $this->syncAccount($request, $marketplace);
+        $items = $this->catalog->syncTrendyolBrands($account);
 
-        return response()->json([
-            'data' => $this->catalog->syncTrendyolBrands($account)->values(),
-        ]);
+        return $this->catalogResponse($items);
     }
 
     public function attributes(Request $request, string $marketplace, string $categoryId): JsonResponse
     {
         $this->authorizeRead($request);
+        $items = $this->catalog->cachedAttributes($marketplace, $categoryId);
 
-        return response()->json([
-            'data' => $this->catalog->cachedAttributes($marketplace, $categoryId)->values(),
-        ]);
+        return $this->catalogResponse($items);
     }
 
     public function syncAttributes(Request $request, string $marketplace, string $categoryId): JsonResponse
     {
         $account = $this->syncAccount($request, $marketplace);
+        $items = $this->catalog->syncTrendyolCategoryAttributes($account, $categoryId);
 
-        return response()->json([
-            'data' => $this->catalog->syncTrendyolCategoryAttributes($account, $categoryId)->values(),
-        ]);
+        return $this->catalogResponse($items);
     }
 
     public function attributeValues(Request $request, string $marketplace, string $categoryId, string $attributeId): JsonResponse
     {
         $this->authorizeRead($request);
+        $items = $this->catalog->cachedAttributeValues($marketplace, $categoryId, $attributeId);
 
-        return response()->json([
-            'data' => $this->catalog->cachedAttributeValues($marketplace, $categoryId, $attributeId)->values(),
-        ]);
+        return $this->catalogResponse($items);
     }
 
     public function syncAttributeValues(Request $request, string $marketplace, string $categoryId, string $attributeId): JsonResponse
     {
         $account = $this->syncAccount($request, $marketplace);
+        $items = $this->catalog->syncTrendyolAttributeValues($account, $categoryId, $attributeId);
 
+        return $this->catalogResponse($items);
+    }
+
+    private function catalogResponse($items): JsonResponse
+    {
         return response()->json([
-            'data' => $this->catalog->syncTrendyolAttributeValues($account, $categoryId, $attributeId)->values(),
+            'data' => $items->values(),
+            'count' => $items->count(),
+            'last_synced_at' => optional($items->max('last_synced_at'))->toISOString(),
         ]);
     }
 
