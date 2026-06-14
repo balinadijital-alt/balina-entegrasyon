@@ -4149,6 +4149,167 @@ a {
   margin-bottom: 18px;
 }
 
+.import-reference-hero {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  padding: 22px;
+}
+
+.import-reference-hero h2 {
+  color: #0f172a;
+  font-size: 28px;
+  line-height: 1.12;
+  margin: 8px 0;
+}
+
+.import-reference-hero p {
+  color: #64748b;
+  margin: 0;
+  max-width: 820px;
+}
+
+.import-reference-status {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-left: 4px solid #2563eb;
+  border-radius: 16px;
+  display: grid;
+  gap: 7px;
+  padding: 16px;
+}
+
+.import-reference-status.warning {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  border-left-color: #f97316;
+}
+
+.import-reference-status span,
+.import-reference-status small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.import-reference-status strong {
+  color: #0f172a;
+  font-size: 30px;
+}
+
+.import-reference-flow {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  overflow: hidden;
+}
+
+.import-reference-flow button {
+  background: #fff;
+  border: 0;
+  border-left: 1px solid var(--border);
+  box-shadow: none;
+  color: #334155;
+  display: grid;
+  gap: 6px;
+  justify-items: flex-start;
+  min-height: 122px;
+  padding: 16px;
+  text-align: left;
+}
+
+.import-reference-flow button:first-child {
+  border-left: 0;
+}
+
+.import-reference-flow button.active {
+  background: #eff6ff;
+  box-shadow: inset 0 -3px 0 #2563eb;
+  color: #2563eb;
+}
+
+.import-reference-flow em {
+  align-items: center;
+  background: #dbeafe;
+  border-radius: 999px;
+  color: #1d4ed8;
+  display: inline-flex;
+  font-style: normal;
+  font-weight: 900;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+
+.import-reference-flow strong {
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.import-reference-flow span {
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.import-reference-flow small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.import-reference-summary {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.import-reference-summary div {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 5px;
+  min-height: 96px;
+  padding: 14px 16px;
+  position: relative;
+}
+
+.import-reference-summary div::after {
+  background: #2563eb;
+  border-radius: 999px;
+  content: "";
+  height: 4px;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  width: 42px;
+}
+
+.import-reference-summary span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.import-reference-summary strong {
+  color: #0f172a;
+  font-size: 27px;
+}
+
+.import-reference-summary small {
+  color: #64748b;
+  font-weight: 800;
+}
+
 .import-wizard-panel {
   grid-template-columns: 220px minmax(0, 1fr);
 }
@@ -8322,12 +8483,13 @@ tbody td:last-child .row-actions:focus-within {
 .xml-source-dashboard {
   display: grid;
   gap: 16px;
-  grid-template-columns: minmax(0, 1.5fr) minmax(340px, 0.9fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .xml-source-list {
   display: grid;
   gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .xml-source-card {
@@ -8359,12 +8521,14 @@ tbody td:last-child .row-actions:focus-within {
 .xml-source-run-item div {
   display: grid;
   gap: 3px;
+  min-width: 0;
 }
 
 .xml-source-card-head strong,
 .xml-source-detail-head h3,
 .xml-source-run-item strong {
   color: var(--text);
+  overflow-wrap: anywhere;
 }
 
 .xml-source-card-head span,
@@ -8377,7 +8541,7 @@ tbody td:last-child .row-actions:focus-within {
 .xml-source-detail-grid {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .xml-source-card-grid div,
@@ -8438,10 +8602,6 @@ tbody td:last-child .row-actions:focus-within {
 
 .xml-source-detail-head h3 {
   margin: 3px 0;
-}
-
-.xml-source-detail-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .xml-source-actions {
@@ -12065,6 +12225,9 @@ tbody td:last-child .row-actions:focus-within {
   .catalog-admin-layout,
   .catalog-shell,
   .publish-columns,
+  .import-reference-hero,
+  .import-reference-flow,
+  .import-reference-summary,
   .import-wizard-panel,
   .import-source-cards,
   .import-check-grid,
@@ -12102,6 +12265,7 @@ tbody td:last-child .row-actions:focus-within {
   .import-run-summary-grid,
   .xml-source-kpis,
   .xml-source-dashboard,
+  .xml-source-list,
   .xml-source-card-grid,
   .xml-source-detail-grid,
   .xml-mapping-kpis,

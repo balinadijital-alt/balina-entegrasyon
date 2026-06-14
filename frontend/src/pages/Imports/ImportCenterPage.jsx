@@ -695,11 +695,74 @@ export function ImportCenterPage() {
       errors: stats.errors + (status === 'error' ? 1 : 0),
     };
   }, { total: 0, active: 0, due: 0, busy: 0, errors: 0 });
+  const completedRuns = runs.filter((run) => ['completed', 'completed_with_errors'].includes(run.status)).length;
+  const failedRuns = runs.filter((run) => run.status === 'failed').length;
+  const importFlow = [
+    { title: 'Kaynak', value: sourceTypeLabel(sourceType), text: 'XML URL veya Excel dosyasi' },
+    { title: 'On Kontrol', value: preview ? 'Hazir' : 'Bekliyor', text: 'Kolon ve veri okuma' },
+    { title: 'Eslestirme', value: `${mappedFieldCount}/${requiredFields.length}`, text: 'SKU, barkod, fiyat, stok' },
+    { title: 'Import', value: importReady ? 'Baslatilabilir' : 'Eksik var', text: 'Kuyruga alma adimi' },
+    { title: 'Sonuc', value: `${completedRuns} tamam`, text: `${failedRuns} hatali import` },
+  ];
 
   return (
     <>
-      <PageHeader title="XML / Excel Import Merkezi" />
-      <ReferenceModuleNav section="imports" />
+      <PageHeader
+        title="XML / Excel Import Merkezi"
+        description="XML URL veya Excel dosyasi ile urunleri onizleyin, alanlari eslestirin ve import sonucunu takip edin."
+      />
+      <ReferenceModuleNav
+        section="imports"
+        note="Import merkezi kaynak secimi, on kontrol, alan eslestirme, validasyon ve sonuc takibi adimlarindan olusur."
+        next="Siradaki islem: once kaynak tipini secin, sonra on kontrol calistirip eksik eslestirmeleri tamamlayin."
+      />
+
+      <section className="import-reference-hero">
+        <div>
+          <span className="eyebrow">Toplu Urun Aktarim Akisi</span>
+          <h2>Once kaynagi kontrol edin, sonra alanlari eslestirip importu baslatin.</h2>
+          <p>Zip referanslarindaki XML ve Excel islem mantigina uygun olarak import sureci parcalara ayrildi. Kullanici hangi adimda oldugunu ust akistan takip eder.</p>
+        </div>
+        <div className={sourceAutomationStats.errors > 0 ? 'import-reference-status warning' : 'import-reference-status'}>
+          <span>XML otomasyon</span>
+          <strong>{sourceAutomationStats.active}/{sourceAutomationStats.total}</strong>
+          <small>{sourceAutomationStats.errors > 0 ? `${sourceAutomationStats.errors} kaynak hata veriyor` : 'Aktif kaynaklar izleniyor'}</small>
+        </div>
+      </section>
+
+      <section className="import-reference-flow" aria-label="Import akis ozeti">
+        {importFlow.map((item, index) => (
+          <button type="button" key={item.title} className={index === Math.min(step, importFlow.length - 1) ? 'active' : ''} onClick={() => setStep(Math.min(index, wizardSteps.length - 1))}>
+            <em>{index + 1}</em>
+            <strong>{item.title}</strong>
+            <span>{item.value}</span>
+            <small>{item.text}</small>
+          </button>
+        ))}
+      </section>
+
+      <section className="import-reference-summary">
+        <div>
+          <span>XML Kaynak</span>
+          <strong>{sourceAutomationStats.total}</strong>
+          <small>{sourceAutomationStats.active} aktif kaynak</small>
+        </div>
+        <div>
+          <span>Bekleyen</span>
+          <strong>{sourceAutomationStats.due + sourceAutomationStats.busy}</strong>
+          <small>Calisma veya kuyruk</small>
+        </div>
+        <div>
+          <span>Tamamlanan</span>
+          <strong>{completedRuns}</strong>
+          <small>Import gecmisi</small>
+        </div>
+        <div>
+          <span>Hatali</span>
+          <strong>{failedRuns + sourceAutomationStats.errors}</strong>
+          <small>Kontrol gerekli</small>
+        </div>
+      </section>
 
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && <LoadingState label="Import islemi hazirlaniyor..." />}
