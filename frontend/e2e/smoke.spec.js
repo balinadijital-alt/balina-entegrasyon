@@ -13,7 +13,7 @@ const smokeRoutes = [
   { path: '/products/publish-wizard', title: 'Toplu Pazaryeri Islemleri' },
   { path: '/products/publish-queue', title: 'Pazaryeri Monitoru' },
   { path: '/imports', title: 'XML / Excel Import Merkezi' },
-  { path: '/orders', title: 'Siparis Operasyon Merkezi' },
+  { path: '/orders', title: 'Siparisler' },
   { path: '/shipping', title: 'Kargo Operasyon Merkezi' },
   { path: '/payments', title: 'Odeme Operasyon Merkezi' },
   { path: '/accounting', title: 'Muhasebe Operasyon Merkezi' },

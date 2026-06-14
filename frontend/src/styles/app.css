@@ -2663,6 +2663,178 @@ a {
   gap: 10px;
 }
 
+.orders-reference-flow {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(8, minmax(92px, 1fr));
+  overflow-x: auto;
+  padding: 10px;
+}
+
+.orders-reference-flow button {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #dbe3ef;
+  border-radius: 5px;
+  color: #334155;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.orders-reference-flow button.active {
+  background: #1f5bbf;
+  border-color: #1f5bbf;
+  color: #fff;
+}
+
+.orders-reference-flow span {
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.orders-reference-flow strong {
+  align-items: center;
+  background: #fff;
+  border-radius: 999px;
+  color: #1f5bbf;
+  display: inline-flex;
+  font-size: 13px;
+  justify-content: center;
+  min-width: 28px;
+  padding: 5px 8px;
+}
+
+.orders-reference-flow button.active strong {
+  color: #0f172a;
+}
+
+.orders-reference-summary {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.orders-reference-summary div {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: grid;
+  gap: 5px;
+  min-height: 92px;
+  padding: 14px 16px;
+  position: relative;
+}
+
+.orders-reference-summary div::after {
+  background: #1f5bbf;
+  border-radius: 999px;
+  content: '';
+  height: 4px;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  width: 42px;
+}
+
+.orders-reference-summary span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.orders-reference-summary strong {
+  color: #0f172a;
+  font-size: 27px;
+  line-height: 1;
+}
+
+.orders-reference-summary small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.orders-reference-filter {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.orders-reference-filter-title {
+  align-items: center;
+  background: #1259b8;
+  color: #fff;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+
+.orders-reference-filter-title strong {
+  color: #fff;
+  font-size: 17px;
+}
+
+.orders-reference-filter-title span {
+  color: #dbeafe;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.orders-reference-filter .orders-filter-row {
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  padding: 16px 18px 18px;
+}
+
+.orders-reference-filter .orders-filter-row label {
+  border-radius: 4px;
+}
+
+.orders-command-row {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+
+.orders-command-row h2,
+.orders-command-row p {
+  margin: 0;
+}
+
+.orders-command-row h2 {
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.orders-command-row p {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.orders-command-row > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .catalog-admin-layout {
   align-items: start;
   display: grid;
@@ -10247,8 +10419,10 @@ tbody td:last-child .row-actions:focus-within {
   .accounting-form-grid,
   .orders-hero,
   .orders-stat-grid,
+  .orders-reference-summary,
   .orders-filter-panel,
   .orders-filter-row,
+  .orders-reference-filter .orders-filter-row,
   .orders-layout,
   .orders-detail-grid,
   .orders-detail-actions,
@@ -10513,15 +10687,20 @@ tbody td:last-child .row-actions:focus-within {
   }
 
   .product-reference-filter-title,
+  .orders-reference-filter-title,
+  .orders-command-row,
   .product-list-command-row {
     align-items: flex-start;
     flex-direction: column;
   }
 
+  .orders-command-row > div:last-child,
   .product-list-command-row > div:last-child {
     width: 100%;
   }
 
+  .orders-command-row .button-link,
+  .orders-command-row button,
   .product-list-command-row .button-link {
     justify-content: center;
     width: 100%;

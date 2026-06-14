@@ -22,7 +22,6 @@ import { DataTable } from '../../components/DataTable.jsx';
 import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
-import { MetricCard } from '../../components/MetricCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { SoftEmpty } from '../../components/SoftEmpty.jsx';
@@ -343,45 +342,66 @@ export function OrdersPage({ initialStatus = '' }) {
   return (
     <div className="orders-page">
       <PageHeader
-        title="Siparis Operasyon Merkezi"
-        description="Trendyol, Hepsiburada ve manuel siparislerin odeme, kargo, fatura ve operasyon akislarini tek ekrandan yonetin."
+        title="Siparisler"
+        description="Pazaryerlerinden gelen siparisleri filtreleyin, durumunu guncelleyin, kargo ve fatura islemlerini takip edin."
         actions={<button type="button" className="secondary" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
-      <ReferenceModuleNav section="orders" />
+      <ReferenceModuleNav
+        section="orders"
+        note="Siparis listesi ana operasyon alanidir; durum takibi, kargo, fatura ve iade islemleri buradan baslar."
+        next="Siradaki islem: siparisi durumuna gore filtreleyin, kaydi secin ve sag panelden gerekli aksiyonu tamamlayin."
+      />
 
-      <section className="orders-hero">
+      <section className="orders-reference-flow" aria-label="Siparis durum akisi">
+        {statusTabs.map((tab) => (
+          <button
+            key={tab.key || 'all'}
+            type="button"
+            className={filters.status === tab.key ? 'active' : ''}
+            onClick={() => setFilter('status', tab.key)}
+          >
+            <span>{tab.label}</span>
+            <strong>
+              {tab.key === '' && rows.length}
+              {tab.key === 'new' && metrics.newOrders}
+              {tab.key === 'preparing' && metrics.preparing}
+              {tab.key === 'ready_to_ship' && metrics.readyToShip}
+              {tab.key === 'shipped' && metrics.shipped}
+              {tab.key === 'delivered' && metrics.delivered}
+              {tab.key === 'cancel_returned' && metrics.cancelReturn}
+              {tab.key === 'problematic' && rows.filter((order) => order.status === 'problematic').length}
+            </strong>
+          </button>
+        ))}
+      </section>
+
+      <section className="orders-reference-summary">
         <div>
-          <span className="eyebrow">Canli siparis akisi</span>
-          <h2>Siparisten teslimata kadar tum operasyon tek merkezde.</h2>
-          <p>Odeme hatasi, kargo bekleyen, fatura bekleyen ve iade/iptal sureclerini pazaryeri bazinda takip edin.</p>
-          <div className="orders-hero-actions">
-            <button type="button" onClick={() => setFilter('payment_status', 'failed')}><AlertTriangle size={16} /> Odeme Hatalari</button>
-            <Link className="button-link secondary-link" to="/api-logs">API Loglari</Link>
-          </div>
-        </div>
-        <div className="orders-hero-status">
-          <ShoppingBag size={28} />
+          <span>Toplam Siparis</span>
           <strong>{rows.length}</strong>
-          <span>Aktif siparis kaydi</span>
-          <small>{metrics.readyToShip} kargoya hazir, {metrics.invoicePending} fatura bekliyor.</small>
+          <small>Listelenen kayit</small>
+        </div>
+        <div>
+          <span>Kargoya Hazir</span>
+          <strong>{metrics.readyToShip}</strong>
+          <small>Aksiyon bekliyor</small>
+        </div>
+        <div>
+          <span>Odeme Hatali</span>
+          <strong>{metrics.paymentFailed}</strong>
+          <small>Kontrol gerekli</small>
+        </div>
+        <div>
+          <span>Fatura Bekleyen</span>
+          <strong>{metrics.invoicePending}</strong>
+          <small>Muhasebe islemi</small>
         </div>
       </section>
 
-      <section className="orders-stat-grid">
-        <MetricCard className="orders-stat-card" icon={<ShoppingBag size={18} />} label="Yeni siparisler" value={metrics.newOrders} tone="blue" />
-        <MetricCard className="orders-stat-card" icon={<ClipboardList size={18} />} label="Hazirlaniyor" value={metrics.preparing} tone="orange" />
-        <MetricCard className="orders-stat-card" icon={<PackageCheck size={18} />} label="Kargoya hazir" value={metrics.readyToShip} tone="purple" />
-        <MetricCard className="orders-stat-card" icon={<Truck size={18} />} label="Kargoda" value={metrics.shipped} tone="blue" />
-        <MetricCard className="orders-stat-card" icon={<CheckCircle2 size={18} />} label="Teslim edildi" value={metrics.delivered} tone="green" />
-        <MetricCard className="orders-stat-card" icon={<Undo2 size={18} />} label="Iptal/iade" value={metrics.cancelReturn} tone="red" />
-        <MetricCard className="orders-stat-card" icon={<Banknote size={18} />} label="Odeme hatali" value={metrics.paymentFailed} tone="red" />
-        <MetricCard className="orders-stat-card" icon={<FileText size={18} />} label="Fatura bekleyen" value={metrics.invoicePending} tone="orange" />
-      </section>
-
-      <section className="panel orders-filter-panel">
-        <div>
-          <h2>Siparis kayitlari</h2>
-          <p>Pazaryeri, durum, odeme, kargo, fatura veya tarih araligina gore filtreleyin.</p>
+      <section className="orders-reference-filter">
+        <div className="orders-reference-filter-title">
+          <strong>Filtreleme Secenekleri</strong>
+          <span>Pazaryeri, siparis durumu, odeme, kargo ve fatura bilgisine gore kayitlari daraltin.</span>
         </div>
         <div className="orders-filter-row">
           <label>
@@ -429,6 +449,17 @@ export function OrdersPage({ initialStatus = '' }) {
         </div>
       </section>
 
+      <section className="orders-command-row">
+        <div>
+          <h2>Siparis Listesi</h2>
+          <p>{rows.length} siparis goruntuleniyor. Secim yaparak toplu kargo, fatura veya durum islemi baslatabilirsiniz.</p>
+        </div>
+        <div>
+          <button type="button" className="secondary" onClick={() => setFilter('payment_status', 'failed')}><AlertTriangle size={16} /> Odeme Hatalari</button>
+          <Link className="button-link secondary-link" to="/api-logs">API Loglari</Link>
+        </div>
+      </section>
+
       <section className="orders-bulk-bar">
         <strong>{selectedOrderIds.length || 0} siparis secildi</strong>
         <select value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)}>
@@ -453,8 +484,8 @@ export function OrdersPage({ initialStatus = '' }) {
           <div className="panel orders-table-panel">
             <div className="orders-table-header">
               <div>
-                <h2>Siparis listesi</h2>
-                <p>{rows.length} siparis kaydi goruntuleniyor.</p>
+                <h2>Operasyon Tablosu</h2>
+                <p>Siparis satirina tiklayarak sag panelde musteri, urun, odeme, kargo ve fatura detayini gorun.</p>
               </div>
               <button type="button" className="secondary" onClick={toggleAllRows} disabled={rows.length === 0}>Tumunu Sec</button>
             </div>
