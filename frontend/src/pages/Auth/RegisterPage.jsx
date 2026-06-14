@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { CheckCircle2, KeyRound, ShieldCheck, Store, Workflow } from 'lucide-react';
 import { Field } from '../../components/Field.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
@@ -34,24 +35,42 @@ export function RegisterPage() {
 
   return (
     <div className="auth-page">
-      <form className="auth-card" onSubmit={submit}>
-        <h1>Hesap Olustur</h1>
-        {error && <div className="alert">{error}</div>}
-        <Field label="Ad Soyad" error={errors.name}>
-          <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
-        </Field>
-        <Field label="E-posta" error={errors.email}>
-          <input value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
-        </Field>
-        <Field label="Sifre" error={errors.password}>
-          <input type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
-        </Field>
-        <Field label="Sifre Tekrar" error={errors.password_confirmation}>
-          <input type="password" value={form.password_confirmation} onChange={(event) => setForm({ ...form, password_confirmation: event.target.value })} />
-        </Field>
-        <button disabled={loading}>{loading ? 'Kaydediliyor...' : 'Kayit Ol'}</button>
-        <Link to="/login">Giris ekranina don</Link>
-      </form>
+      <section className="auth-shell">
+        <aside className="auth-story">
+          <div className="auth-brand-mark"><KeyRound size={24} /></div>
+          <span>Balina Entegrasyon</span>
+          <h1>Yeni firma operasyonunu pazaryeri hazirlik akisiyle baslatin.</h1>
+          <p>Hesap olusturduktan sonra urun, siparis, entegrasyon ve raporlama modulleri ayni panel deneyimi icinde acilir.</p>
+          <div className="auth-story-grid">
+            <div><Store size={18} /><strong>Firma</strong><small>Tek merkezden yonetim</small></div>
+            <div><Workflow size={18} /><strong>Kurulum</strong><small>Adim adim ilerleme</small></div>
+            <div><ShieldCheck size={18} /><strong>Yetki</strong><small>Rol bazli erisim</small></div>
+          </div>
+        </aside>
+
+        <form className="auth-card" onSubmit={submit}>
+          <div className="auth-card-heading">
+            <span><CheckCircle2 size={16} /> Yeni hesap</span>
+            <h2>Hesap olustur</h2>
+            <p>Panel kullanimi icin temel kullanici bilgilerini girin.</p>
+          </div>
+          {error && <div className="alert">{error}</div>}
+          <Field label="Ad Soyad" error={errors.name}>
+            <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+          </Field>
+          <Field label="E-posta" error={errors.email}>
+            <input value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+          </Field>
+          <Field label="Sifre" error={errors.password}>
+            <input type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+          </Field>
+          <Field label="Sifre Tekrar" error={errors.password_confirmation}>
+            <input type="password" value={form.password_confirmation} onChange={(event) => setForm({ ...form, password_confirmation: event.target.value })} />
+          </Field>
+          <button disabled={loading}>{loading ? 'Kaydediliyor...' : 'Kayit Ol'}</button>
+          <Link to="/login">Giris ekranina don</Link>
+        </form>
+      </section>
     </div>
   );
 }
