@@ -1467,12 +1467,26 @@ export function CustomerReportsPage() {
   }, []);
 
   const totals = useMemo(() => {
-    if (!report) return { orders: 0, products: 0, shipments: 0 };
+    if (!report) return { orders: 0, products: 0, shipments: 0, sales: 0, weeklyOrders: 0, problemOrders: 0, problemShipments: 0 };
+
+    const orderBreakdown = report.breakdowns?.orders || [];
+    const productBreakdown = report.breakdowns?.products || [];
+    const shippingBreakdown = report.breakdowns?.shipping || [];
+    const salesTrend = report.charts?.sales || [];
+    const orderTrend = report.charts?.orders || [];
 
     return {
-      orders: report.breakdowns.orders.reduce((sum, item) => sum + Number(item.value || 0), 0),
-      products: report.breakdowns.products.reduce((sum, item) => sum + Number(item.value || 0), 0),
-      shipments: report.breakdowns.shipping.reduce((sum, item) => sum + Number(item.value || 0), 0),
+      orders: orderBreakdown.reduce((sum, item) => sum + Number(item.value || 0), 0),
+      products: productBreakdown.reduce((sum, item) => sum + Number(item.value || 0), 0),
+      shipments: shippingBreakdown.reduce((sum, item) => sum + Number(item.value || 0), 0),
+      sales: salesTrend.reduce((sum, item) => sum + Number(item.value || 0), 0),
+      weeklyOrders: orderTrend.reduce((sum, item) => sum + Number(item.value || 0), 0),
+      problemOrders: orderBreakdown
+        .filter((item) => ['cancelled', 'failed'].includes(item.label))
+        .reduce((sum, item) => sum + Number(item.value || 0), 0),
+      problemShipments: shippingBreakdown
+        .filter((item) => ['failed', 'cancelled'].includes(item.label))
+        .reduce((sum, item) => sum + Number(item.value || 0), 0),
     };
   }, [report]);
 
@@ -1480,36 +1494,77 @@ export function CustomerReportsPage() {
     <>
       <PageHeader
         title="Raporlar"
-        description="Satis, siparis, kargo ve urun durumlarinizi sade grafiklerle takip edin."
+        description="Satis, siparis, urun ve kargo durumlarini tek bakista okuyun."
         actions={<button type="button" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
-      <ReferenceModuleNav section="resources" />
+      <ReferenceModuleNav
+        section="resources"
+        note="Raporlar ekraninda musteri icin en onemli sinyaller one alinir: satis, siparis, urun, kargo ve aksiyon gerektiren problemler."
+        next="Siradaki islem: once ustteki akisi kontrol edin, sorun varsa ilgili siparis, urun veya kargo ekranina gecin."
+      />
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && !report ? <LoadingState /> : null}
       {report && (
         <>
-          <section className="customer-kpis">
-            <div className="kpi-card"><span>Toplam Siparis</span><strong>{totals.orders}</strong><small>Tum siparisler</small></div>
-            <div className="kpi-card"><span>Toplam Urun</span><strong>{totals.products}</strong><small>Katalog kaydi</small></div>
-            <div className="kpi-card"><span>Kargo Kaydi</span><strong>{totals.shipments}</strong><small>Hazirlanan gonderiler</small></div>
-            <div className="kpi-card"><span>Son 7 Gun Siparis</span><strong>{report.charts.orders.reduce((sum, item) => sum + Number(item.value || 0), 0)}</strong><small>Haftalik hareket</small></div>
+          <section className="reports-reference-flow" aria-label="Rapor akis ozeti">
+            {[
+              ['1', 'Satis', formatMoney(totals.sales), 'Gelir hareketini izleyin'],
+              ['2', 'Siparis', formatNumber(totals.orders), 'Bekleyen ve teslim edilenler'],
+              ['3', 'Urun', formatNumber(totals.products), 'Katalog sagligini kontrol edin'],
+              ['4', 'Kargo', formatNumber(totals.shipments), 'Gonderi ve teslimat durumu'],
+              ['5', 'Aksiyon', formatNumber(totals.problemOrders + totals.problemShipments), 'Sorunlu kayitlari temizleyin'],
+            ].map(([step, label, value, help]) => (
+              <div key={step}>
+                <strong>{step}</strong>
+                <span>{label}</span>
+                <small>{value}</small>
+                <em>{help}</em>
+              </div>
+            ))}
           </section>
 
-          <div className="split">
-            <section className="panel">
-              <h2>7 Gunluk Satis</h2>
-              <TrendBars series={report.charts.sales} />
+          <section className="reports-reference-summary" aria-label="Rapor kisa ozet">
+            <div><span>Toplam Satis</span><strong>{formatMoney(totals.sales)}</strong><small>Secili rapor donemi</small></div>
+            <div><span>Toplam Siparis</span><strong>{formatNumber(totals.orders)}</strong><small>Tum siparisler</small></div>
+            <div><span>Aktif Urun</span><strong>{formatNumber(totals.products)}</strong><small>Katalog kaydi</small></div>
+            <div><span>Son 7 Gun</span><strong>{formatNumber(totals.weeklyOrders)}</strong><small>Haftalik siparis</small></div>
+          </section>
+
+          <section className="reports-command-row">
+            <div>
+              <h2>Ne yapmaliyim?</h2>
+              <p>Raporlar size sorunlu alani gosterir. Detay icin ilgili operasyon ekranina gecin.</p>
+            </div>
+            <div>
+              <Link className="button-link secondary-link" to="/orders">Siparisleri Ac</Link>
+              <Link className="button-link secondary-link" to="/products">Urunleri Ac</Link>
+              <Link className="button-link secondary-link" to="/shipping">Kargolari Ac</Link>
+            </div>
+          </section>
+
+          <div className="reports-reference-visual-grid">
+            <section className="panel reports-chart-panel">
+              <div className="reports-panel-heading">
+                <span>Trend</span>
+                <h2>7 Gunluk Satis</h2>
+                <p>Gunluk satis hareketini hizli okuyun.</p>
+              </div>
+              <TrendBars series={report.charts?.sales || []} />
             </section>
-            <section className="panel">
-              <h2>7 Gunluk Siparis</h2>
-              <TrendBars series={report.charts.orders} tone="secondary" />
+            <section className="panel reports-chart-panel">
+              <div className="reports-panel-heading">
+                <span>Trend</span>
+                <h2>7 Gunluk Siparis</h2>
+                <p>Siparis yogunlugunu kargo ve stok akisi icin izleyin.</p>
+              </div>
+              <TrendBars series={report.charts?.orders || []} tone="secondary" />
             </section>
           </div>
 
-          <div className="dashboard-grid">
-            <Breakdown title="Siparis Durumu" items={report.breakdowns.orders} />
-            <Breakdown title="Kargo Durumu" items={report.breakdowns.shipping} />
-            <Breakdown title="Urun Durumu" items={report.breakdowns.products} />
+          <div className="reports-reference-breakdowns">
+            <Breakdown title="Siparis Durumu" items={report.breakdowns?.orders || []} />
+            <Breakdown title="Kargo Durumu" items={report.breakdowns?.shipping || []} />
+            <Breakdown title="Urun Durumu" items={report.breakdowns?.products || []} />
           </div>
         </>
       )}

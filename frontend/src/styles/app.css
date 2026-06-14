@@ -3491,6 +3491,194 @@ a {
   justify-content: flex-end;
 }
 
+.reports-reference-flow {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
+  display: grid;
+  gap: 0;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+.reports-reference-flow div {
+  border-right: 1px solid #e2e8f0;
+  display: grid;
+  gap: 7px;
+  min-height: 132px;
+  padding: 18px;
+}
+
+.reports-reference-flow div:last-child {
+  border-right: 0;
+}
+
+.reports-reference-flow strong {
+  align-items: center;
+  background: #e8f1ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  color: #1259b8;
+  display: inline-flex;
+  font-size: 15px;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.reports-reference-flow span {
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.reports-reference-flow small {
+  color: #1f5bbf;
+  font-size: 13px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.reports-reference-flow em {
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.reports-reference-summary {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 18px;
+}
+
+.reports-reference-summary div {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  display: grid;
+  gap: 5px;
+  overflow: hidden;
+  padding: 16px;
+  position: relative;
+}
+
+.reports-reference-summary div::after {
+  background: #1f5bbf;
+  content: '';
+  height: 100%;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 4px;
+}
+
+.reports-reference-summary span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.reports-reference-summary strong {
+  color: #0f172a;
+  font-size: 24px;
+  overflow-wrap: anywhere;
+}
+
+.reports-reference-summary small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.reports-command-row {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding: 14px 18px;
+}
+
+.reports-command-row h2,
+.reports-command-row p {
+  margin: 0;
+}
+
+.reports-command-row h2 {
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.reports-command-row p {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.reports-command-row > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.reports-reference-visual-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 18px;
+}
+
+.reports-chart-panel {
+  border-radius: 6px;
+}
+
+.reports-chart-panel .trend-bars {
+  grid-template-columns: repeat(auto-fit, minmax(18px, 1fr));
+}
+
+.reports-panel-heading {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.reports-panel-heading span {
+  color: #1f5bbf;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.reports-panel-heading h2,
+.reports-panel-heading p {
+  margin: 0;
+}
+
+.reports-panel-heading h2 {
+  color: #0f172a;
+  font-size: 19px;
+}
+
+.reports-panel-heading p {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.reports-reference-breakdowns {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .catalog-admin-layout {
   align-items: start;
   display: grid;
@@ -11379,6 +11567,10 @@ tbody td:last-child .row-actions:focus-within {
   .analytics-filter-bar,
   .analytics-overview-grid,
   .analytics-three-column,
+  .reports-reference-flow,
+  .reports-reference-summary,
+  .reports-reference-visual-grid,
+  .reports-reference-breakdowns,
   .executive-filter-bar,
   .executive-hero,
   .executive-command-grid,
@@ -11539,6 +11731,7 @@ tbody td:last-child .row-actions:focus-within {
   .payment-command-row,
   .shipping-command-row,
   .accounting-command-row,
+  .reports-command-row,
   .marketplace-command-row,
   .orders-command-row,
   .product-list-command-row {
@@ -11550,6 +11743,7 @@ tbody td:last-child .row-actions:focus-within {
   .shipping-command-row > div:last-child,
   .payment-command-row > div:last-child,
   .accounting-command-row > div:last-child,
+  .reports-command-row > div:last-child,
   .orders-command-row > div:last-child,
   .product-list-command-row > div:last-child {
     width: 100%;
@@ -11562,6 +11756,8 @@ tbody td:last-child .row-actions:focus-within {
   .payment-command-row button,
   .accounting-command-row .button-link,
   .accounting-command-row button,
+  .reports-command-row .button-link,
+  .reports-command-row button,
   .orders-command-row .button-link,
   .orders-command-row button,
   .product-list-command-row .button-link {
