@@ -1633,6 +1633,13 @@ a {
   margin-top: 4px;
 }
 
+.catalog-cache-hint {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
 .customer-category-row {
   align-items: center;
   display: grid;

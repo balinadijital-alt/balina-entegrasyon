@@ -227,6 +227,7 @@ export function MarketplaceMappingCenterPage({
   const [companies, setCompanies] = useState([]);
   const [products, setProducts] = useState([]);
   const [catalog, setCatalog] = useState({ categories: [], brands: [], attributes: [] });
+  const [providerCatalog, setProviderCatalog] = useState({ categories: [], brands: [], attributesByCategory: {} });
   const [summary, setSummary] = useState(null);
   const [rows, setRows] = useState({ categories: [], brands: [], attributes: [], variants: [], readiness: [] });
   const [selected, setSelected] = useState(null);
@@ -250,6 +251,20 @@ export function MarketplaceMappingCenterPage({
 
   const categorySuggestions = useMemo(() => localCategories.map((name) => ({ name })), [localCategories]);
   const brandSuggestions = useMemo(() => localBrands.map((name) => ({ name })), [localBrands]);
+  const providerCategorySuggestions = useMemo(() => providerCatalog.categories.map((item) => ({
+    id: item.external_id,
+    name: item.path || item.name,
+    path: item.path,
+    categoryName: item.name,
+    confidence: 'catalog',
+  })), [providerCatalog.categories]);
+  const providerBrandSuggestions = useMemo(() => providerCatalog.brands.map((item) => ({
+    id: item.external_id,
+    name: item.name,
+    confidence: 'catalog',
+  })), [providerCatalog.brands]);
+  const effectiveCategorySuggestions = providerCategorySuggestions.length > 0 ? providerCategorySuggestions : categorySuggestions;
+  const effectiveBrandSuggestions = providerBrandSuggestions.length > 0 ? providerBrandSuggestions : brandSuggestions;
   const categoryMappedNames = useMemo(() => new Set(rows.categories.map((row) => row.local_category_name).filter(Boolean)), [rows.categories]);
   const brandMappedNames = useMemo(() => new Set(rows.brands.map((row) => row.local_brand_name).filter(Boolean)), [rows.brands]);
   const requiredAttributes = useMemo(() => rows.attributes.filter((row) => row.required), [rows.attributes]);
@@ -289,12 +304,14 @@ export function MarketplaceMappingCenterPage({
   const load = async () => {
     await run(async () => {
       const params = { marketplace_code: marketplaceCode };
-      const [companyResponse, productResponse, categoryResource, brandResource, attributeResource, summaryResponse, categories, brands, attributes, variants, preview] = await Promise.allSettled([
+      const [companyResponse, productResponse, categoryResource, brandResource, attributeResource, catalogCategories, catalogBrands, summaryResponse, categories, brands, attributes, variants, preview] = await Promise.allSettled([
         api.companies.list(),
         api.products.list(),
         api.catalogResources.list({ type: 'categories', active: 1 }),
         api.catalogResources.list({ type: 'brands', active: 1 }),
         api.catalogResources.list({ type: 'attributes', active: 1 }),
+        api.marketplaceCatalog.categories(marketplaceCode),
+        api.marketplaceCatalog.brands(marketplaceCode),
         api.marketplaceMappings.summary(params),
         api.marketplaceMappings.categories.list(params),
         api.marketplaceMappings.brands.list(params),
@@ -309,6 +326,11 @@ export function MarketplaceMappingCenterPage({
         brands: brandResource.status === 'fulfilled' ? asArray(brandResource.value) : [],
         attributes: attributeResource.status === 'fulfilled' ? asArray(attributeResource.value) : [],
       });
+      setProviderCatalog((current) => ({
+        ...current,
+        categories: catalogCategories.status === 'fulfilled' ? asArray(catalogCategories.value) : [],
+        brands: catalogBrands.status === 'fulfilled' ? asArray(catalogBrands.value) : [],
+      }));
       setSummary(summaryResponse.status === 'fulfilled' ? summaryResponse.value : null);
       setRows({
         categories: categories.status === 'fulfilled' ? asArray(categories.value) : [],
@@ -370,16 +392,19 @@ export function MarketplaceMappingCenterPage({
         ...(activeTab === 'categories' ? { local_category_name: row.local_category_name } : { local_brand_name: row.local_brand_name }),
       };
       if (activeTab === 'brands') {
-        const suggestion = suggestionFor(row.local_brand_name, brandSuggestions);
+        const suggestion = suggestionFor(row.local_brand_name, effectiveBrandSuggestions);
         if (suggestion) {
+          nextForm.marketplace_brand_id = suggestion.id || '';
           nextForm.marketplace_brand_name = suggestion.name;
           nextForm.confidence = suggestion.confidence;
         }
       }
       if (activeTab === 'categories') {
-        const suggestion = suggestionFor(row.local_category_name, categorySuggestions);
+        const suggestion = suggestionFor(row.local_category_name, effectiveCategorySuggestions);
         if (suggestion) {
-          nextForm.marketplace_category_name = suggestion.name;
+          nextForm.marketplace_category_id = suggestion.id || '';
+          nextForm.marketplace_category_name = suggestion.categoryName || suggestion.name;
+          nextForm.marketplace_category_path = suggestion.path || suggestion.name;
           nextForm.confidence = suggestion.confidence;
         }
       }
@@ -424,24 +449,40 @@ export function MarketplaceMappingCenterPage({
 
   const applySuggestion = () => {
     if (activeTab === 'brands') {
-      const suggestion = suggestionFor(form.local_brand_name, brandSuggestions);
+      const suggestion = suggestionFor(form.local_brand_name, effectiveBrandSuggestions);
       if (!suggestion) {
         notify('error', 'Uygun marka onerisi bulunamadi.');
         return;
       }
+      setValue('marketplace_brand_id', suggestion.id || '');
       setValue('marketplace_brand_name', suggestion.name);
       setValue('confidence', suggestion.confidence);
       return;
     }
     if (activeTab === 'categories') {
-      const suggestion = suggestionFor(form.local_category_name, categorySuggestions);
+      const suggestion = suggestionFor(form.local_category_name, effectiveCategorySuggestions);
       if (!suggestion) {
         notify('error', 'Uygun kategori onerisi bulunamadi.');
         return;
       }
-      setValue('marketplace_category_name', suggestion.name);
+      setValue('marketplace_category_id', suggestion.id || '');
+      setValue('marketplace_category_name', suggestion.categoryName || suggestion.name);
+      setValue('marketplace_category_path', suggestion.path || suggestion.name);
       setValue('confidence', suggestion.confidence);
     }
+  };
+
+  const loadProviderAttributes = async (categoryId) => {
+    if (!categoryId || providerCatalog.attributesByCategory[categoryId]) return;
+
+    const response = await api.marketplaceCatalog.attributes(marketplaceCode, categoryId);
+    setProviderCatalog((current) => ({
+      ...current,
+      attributesByCategory: {
+        ...current.attributesByCategory,
+        [categoryId]: asArray(response),
+      },
+    }));
   };
 
   const bulkApplySuggestions = () => {
@@ -493,6 +534,10 @@ export function MarketplaceMappingCenterPage({
         localCategories={localCategories}
         localBrands={localBrands}
         catalogAttributes={catalog.attributes}
+        providerCategories={providerCatalog.categories}
+        providerBrands={providerCatalog.brands}
+        providerAttributesByCategory={providerCatalog.attributesByCategory}
+        loadProviderAttributes={loadProviderAttributes}
         valueMapText={valueMapText}
         setValueMapText={setValueMapText}
       />
@@ -597,8 +642,8 @@ export function MarketplaceMappingCenterPage({
                 products={products}
                 rows={rows}
                 requiredAttributes={requiredAttributes}
-                brandSuggestions={brandSuggestions}
-                categorySuggestions={categorySuggestions}
+                brandSuggestions={effectiveBrandSuggestions}
+                categorySuggestions={effectiveCategorySuggestions}
               />
               <MappingForm
                 activeTab={activeTab}
@@ -608,6 +653,8 @@ export function MarketplaceMappingCenterPage({
                 localCategories={localCategories}
                 localBrands={localBrands}
                 catalogAttributes={catalog.attributes}
+                providerCategories={providerCatalog.categories}
+                providerBrands={providerCatalog.brands}
                 valueMapText={valueMapText}
                 setValueMapText={setValueMapText}
               />
@@ -853,6 +900,10 @@ function MarketplaceMappingWorkflow({
   localCategories,
   localBrands,
   catalogAttributes,
+  providerCategories,
+  providerBrands,
+  providerAttributesByCategory,
+  loadProviderAttributes,
   valueMapText,
   setValueMapText,
   workflowDetail,
@@ -991,6 +1042,10 @@ function MarketplaceMappingWorkflow({
               save={save}
               loading={loadingAction}
               marketplaceCode={marketplaceCode}
+              providerCategories={providerCategories}
+              providerBrands={providerBrands}
+              providerAttributesByCategory={providerAttributesByCategory}
+              loadProviderAttributes={loadProviderAttributes}
               closeWorkflowModal={closeWorkflowModal}
               switchWorkflowModal={switchWorkflowModal}
               attributeStarted={attributeStarted}
@@ -1027,12 +1082,24 @@ function CustomerMappingModalBody({
   save,
   loading,
   marketplaceCode,
+  providerCategories = [],
+  providerBrands = [],
+  providerAttributesByCategory = {},
+  loadProviderAttributes,
   closeWorkflowModal,
   switchWorkflowModal,
   attributeStarted,
 }) {
   const provider = marketplaceCode === 'hepsiburada' ? 'Hepsiburada' : 'Trendyol';
   const categoryRows = rows.filter((row) => tab === 'categories' || isMappedCategory(row)).slice(0, 10);
+  const selectProviderCategory = (row, value) => {
+    const match = providerCategories.find((item) => [item.path, item.name, item.external_id].map(String).includes(String(value)));
+    if (selected?.id !== row.id) selectRow(row);
+    setValue('marketplace_category_path', match?.path || value);
+    setValue('marketplace_category_name', match?.name || value);
+    setValue('marketplace_category_id', match?.external_id || '');
+    setValue('confidence', match ? 'catalog' : form.confidence);
+  };
 
   if (tab === 'categories') {
     return (
@@ -1056,7 +1123,13 @@ function CustomerMappingModalBody({
                 <td>{row.local_category_id || row.id || index + 1}</td>
                 <td><strong>{row.local_category_name || row.category || '-'}</strong></td>
                 <td>
-                  <input value={selected?.id === row.id ? form.marketplace_category_path || form.marketplace_category_name || '' : row.marketplace_category_path || row.marketplace_category_name || ''} onChange={(event) => { if (selected?.id !== row.id) selectRow(row); setValue('marketplace_category_path', event.target.value); setValue('marketplace_category_name', event.target.value); }} placeholder={`${provider} kategori yolu secin`} />
+                  <input list="provider-category-cache-options" value={selected?.id === row.id ? form.marketplace_category_path || form.marketplace_category_name || '' : row.marketplace_category_path || row.marketplace_category_name || ''} onChange={(event) => selectProviderCategory(row, event.target.value)} placeholder={`${provider} kategori yolu secin`} />
+                  <datalist id="provider-category-cache-options">
+                    {providerCategories.slice(0, 200).map((item) => <option key={item.external_id} value={item.path || item.name}>{item.external_id} - {item.name}</option>)}
+                  </datalist>
+                  {(selected?.id === row.id ? form.marketplace_category_id : row.marketplace_category_id) && (
+                    <small className="catalog-cache-hint">Kategori ID: {selected?.id === row.id ? form.marketplace_category_id : row.marketplace_category_id}</small>
+                  )}
                 </td>
                 <td><span className={`workflow-step-status ${isMappedCategory(row) ? 'ready' : 'blocked'}`}>{isMappedCategory(row) ? 'Tamamlandi' : 'Eksik'}</span></td>
                 <td><button type="button" className="warning-button compact-warning-button" onClick={() => selectRow(row)}>Sec</button></td>
@@ -1075,8 +1148,30 @@ function CustomerMappingModalBody({
 
   if (tab === 'attributes') {
     const attributeCount = (category) => attributeRows.filter((row) => String(row.marketplace_category_id || '') === String(category.marketplace_category_id || '')).length;
-    const selectedAttributeRows = workflowDetail ? attributeRows.filter((row) => String(row.marketplace_category_id || '') === String(workflowDetail.marketplace_category_id || '')) : [];
-    const hasAttribute = (field) => selectedAttributeRows.some((row) => normalize(row.marketplace_attribute_name).includes(normalize(field.label)));
+    const selectedCategoryId = workflowDetail?.marketplace_category_id ? String(workflowDetail.marketplace_category_id) : '';
+    const selectedAttributeRows = workflowDetail ? attributeRows.filter((row) => String(row.marketplace_category_id || '') === selectedCategoryId) : [];
+    const providerAttributeRows = selectedCategoryId ? providerAttributesByCategory[selectedCategoryId] || [] : [];
+    const checklistFields = providerAttributeRows.length > 0
+      ? providerAttributeRows
+        .map((attribute) => ({
+          key: attribute.external_id,
+          label: attribute.name,
+          required: Boolean(attribute.required),
+          valueType: attribute.value_type,
+          allowCustom: Boolean(attribute.allow_custom),
+          providerAttribute: true,
+        }))
+        .sort((a, b) => Number(Boolean(b.required)) - Number(Boolean(a.required)))
+      : customerAttributeFields;
+    const hasAttribute = (field) => selectedAttributeRows.some((row) => String(row.marketplace_attribute_id || '') === String(field.key) || normalize(row.marketplace_attribute_name).includes(normalize(field.label)));
+    const openAttributes = async (row) => {
+      setWorkflowDetail(row);
+      setValue('local_category_id', row.local_category_id || '');
+      setValue('marketplace_category_id', row.marketplace_category_id || '');
+      if (row.marketplace_category_id && loadProviderAttributes) {
+        await loadProviderAttributes(row.marketplace_category_id);
+      }
+    };
     return (
       <div className="customer-modal-stack">
         <table className="customer-simple-table">
@@ -1097,8 +1192,8 @@ function CustomerMappingModalBody({
                 <td>{row.local_category_id || row.id || index + 1}</td>
                 <td><strong>{row.local_category_name || '-'}</strong></td>
                 <td><span>{row.marketplace_category_path || row.marketplace_category_name || '-'}</span></td>
-                <td>{attributeCount(row)} / {Math.max(attributeCount(row), customerAttributeFields.length)}</td>
-                <td><button type="button" className="warning-button" onClick={() => { setWorkflowDetail(row); setValue('local_category_id', row.local_category_id || ''); setValue('marketplace_category_id', row.marketplace_category_id || ''); }}>Eslestir</button></td>
+                <td>{attributeCount(row)} / {Math.max(attributeCount(row), (providerAttributesByCategory[row.marketplace_category_id] || customerAttributeFields).length)}</td>
+                <td><button type="button" className="warning-button" onClick={() => openAttributes(row)}>Eslestir</button></td>
               </tr>
             ))}
           </tbody>
@@ -1108,6 +1203,9 @@ function CustomerMappingModalBody({
             <h3>Ozellik Eslestir</h3>
             <p><strong>Kategori:</strong> {workflowDetail.local_category_name}</p>
             <p><strong>Pazaryeri:</strong> {workflowDetail.marketplace_category_path || workflowDetail.marketplace_category_name || '-'}</p>
+            {providerAttributeRows.length > 0 && (
+              <p><strong>Cache:</strong> {providerAttributeRows.filter((item) => item.required).length} zorunlu / {providerAttributeRows.length} toplam nitelik</p>
+            )}
             <div className="workflow-modal-warning">
               <AlertTriangle size={16} />
               <span>Varyant degerleriniz varsa renk/beden gibi alanlari burada degil, varyant eslestirme ekraninda birakin.</span>
@@ -1117,12 +1215,12 @@ function CustomerMappingModalBody({
               <span>Marka bilgisi urun listeleme icin zorunludur. Marka eslesmesi olmayan urunler pazaryerinde reddedilebilir.</span>
             </div>
             <div className="customer-checklist">
-              {customerAttributeFields.map((field) => (
+              {checklistFields.map((field) => (
                 <label className={hasAttribute(field) ? 'complete' : 'missing'} key={field.key}>
                   <span>{hasAttribute(field) ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}</span>
                   <strong>{field.label}{field.required && <b>*</b>}</strong>
-                  <small>{hasAttribute(field) ? 'Tamamlandi' : 'Eksik'}</small>
-                  <input onChange={(event) => { setValue('marketplace_attribute_name', field.label); setValue('fixed_value', event.target.value); setValue('source_type', 'fixed_value'); }} placeholder={`${field.label} secin veya yazin`} />
+                  <small>{hasAttribute(field) ? 'Tamamlandi' : field.valueType ? `${field.valueType} degeri eksik` : 'Eksik'}</small>
+                  <input onChange={(event) => { setValue('marketplace_attribute_id', field.providerAttribute ? field.key : form.marketplace_attribute_id); setValue('marketplace_attribute_name', field.label); setValue('required', Boolean(field.required)); setValue('value_type', field.valueType || ''); setValue('fixed_value', event.target.value); setValue('source_type', 'fixed_value'); }} placeholder={`${field.label} secin veya yazin`} />
                 </label>
               ))}
             </div>
@@ -1267,7 +1365,7 @@ function MappingTable({ activeTab, rows, onSelect }) {
   );
 }
 
-function MappingForm({ activeTab, form, setValue, companies, localCategories, localBrands, catalogAttributes, valueMapText, setValueMapText }) {
+function MappingForm({ activeTab, form, setValue, companies, localCategories, localBrands, catalogAttributes, providerCategories = [], providerBrands = [], valueMapText, setValueMapText }) {
   const companySelect = (
     <Field label="Firma">
       <select value={form.company_id || ''} onChange={(event) => setValue('company_id', event.target.value)}>
@@ -1294,7 +1392,23 @@ function MappingForm({ activeTab, form, setValue, companies, localCategories, lo
         </Field>
         <Field label="Pazaryeri kategori ID"><input value={form.marketplace_category_id || ''} onChange={(event) => setValue('marketplace_category_id', event.target.value)} /></Field>
         <Field label="Pazaryeri kategori adi"><input value={form.marketplace_category_name || ''} onChange={(event) => setValue('marketplace_category_name', event.target.value)} /></Field>
-        <Field label="Kategori yolu / breadcrumb"><input value={form.marketplace_category_path || ''} onChange={(event) => setValue('marketplace_category_path', event.target.value)} /></Field>
+        <Field label="Kategori yolu / breadcrumb">
+          <input
+            list="mapping-provider-categories"
+            value={form.marketplace_category_path || ''}
+            onChange={(event) => {
+              const value = event.target.value;
+              const match = providerCategories.find((item) => [item.path, item.name, item.external_id].map(String).includes(String(value)));
+              setValue('marketplace_category_path', match?.path || value);
+              setValue('marketplace_category_name', match?.name || value);
+              if (match) {
+                setValue('marketplace_category_id', match.external_id || '');
+                setValue('confidence', 'catalog');
+              }
+            }}
+          />
+          <datalist id="mapping-provider-categories">{providerCategories.map((item) => <option key={item.external_id} value={item.path || item.name}>{item.external_id}</option>)}</datalist>
+        </Field>
         <Field label="Guven"><input value={form.confidence || ''} onChange={(event) => setValue('confidence', event.target.value)} placeholder="exact, normalized, manual" /></Field>
         {statusSelect}
       </>
@@ -1309,7 +1423,22 @@ function MappingForm({ activeTab, form, setValue, companies, localCategories, lo
           <datalist id="mapping-local-brands">{localBrands.map((item) => <option key={item} value={item} />)}</datalist>
         </Field>
         <Field label="Pazaryeri marka ID"><input value={form.marketplace_brand_id || ''} onChange={(event) => setValue('marketplace_brand_id', event.target.value)} /></Field>
-        <Field label="Pazaryeri marka adi"><input value={form.marketplace_brand_name || ''} onChange={(event) => setValue('marketplace_brand_name', event.target.value)} /></Field>
+        <Field label="Pazaryeri marka adi">
+          <input
+            list="mapping-provider-brands"
+            value={form.marketplace_brand_name || ''}
+            onChange={(event) => {
+              const value = event.target.value;
+              const match = providerBrands.find((item) => item.name === value || String(item.external_id) === String(value));
+              setValue('marketplace_brand_name', match?.name || value);
+              if (match) {
+                setValue('marketplace_brand_id', match.external_id || '');
+                setValue('confidence', 'catalog');
+              }
+            }}
+          />
+          <datalist id="mapping-provider-brands">{providerBrands.map((item) => <option key={`${item.external_id || item.name}`} value={item.name}>{item.external_id}</option>)}</datalist>
+        </Field>
         <Field label="Guven"><input value={form.confidence || ''} onChange={(event) => setValue('confidence', event.target.value)} placeholder="exact, contains, manual" /></Field>
         {statusSelect}
       </>

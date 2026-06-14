@@ -203,6 +203,16 @@ export const api = {
       remove: (id) => http.delete(`/marketplace-mappings/variants/${id}`),
     },
   },
+  marketplaceCatalog: {
+    categories: (marketplace, params) => http.get(`/marketplace-catalog/${marketplace}/categories`, { params }).then((response) => response.data),
+    syncCategories: (marketplace, payload) => http.post(`/marketplace-catalog/${marketplace}/categories/sync`, payload).then((response) => response.data),
+    brands: (marketplace, params) => http.get(`/marketplace-catalog/${marketplace}/brands`, { params }).then((response) => response.data),
+    syncBrands: (marketplace, payload) => http.post(`/marketplace-catalog/${marketplace}/brands/sync`, payload).then((response) => response.data),
+    attributes: (marketplace, categoryId, params) => http.get(`/marketplace-catalog/${marketplace}/categories/${categoryId}/attributes`, { params }).then((response) => response.data),
+    syncAttributes: (marketplace, categoryId, payload) => http.post(`/marketplace-catalog/${marketplace}/categories/${categoryId}/attributes/sync`, payload).then((response) => response.data),
+    attributeValues: (marketplace, categoryId, attributeId, params) => http.get(`/marketplace-catalog/${marketplace}/categories/${categoryId}/attributes/${attributeId}/values`, { params }).then((response) => response.data),
+    syncAttributeValues: (marketplace, categoryId, attributeId, payload) => http.post(`/marketplace-catalog/${marketplace}/categories/${categoryId}/attributes/${attributeId}/values/sync`, payload).then((response) => response.data),
+  },
   orders: {
     list: (params) => http.get('/orders', { params }).then((response) => response.data),
     show: (id) => http.get(`/orders/${id}`).then((response) => response.data),

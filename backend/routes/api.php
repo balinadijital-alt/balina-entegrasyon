@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\InboundWebhookDeliveryController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MarketplaceSyncController;
 use App\Http\Controllers\Api\MarketplaceAccountController;
+use App\Http\Controllers\Api\MarketplaceCatalogController;
 use App\Http\Controllers\Api\MarketplaceMappingController;
 use App\Http\Controllers\Api\MarketingModuleController;
 use App\Http\Controllers\Api\ModuleCrudController;
@@ -142,6 +143,16 @@ Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(fun
     Route::post('/shipments/{shipment}/return-code', [ShipmentController::class, 'returnCode'])->middleware('permission:shipping.manage');
     Route::post('/shipments/{shipment}/retry', [ShipmentController::class, 'retry'])->middleware('permission:shipping.manage');
     Route::apiResource('marketplaces', MarketplaceAccountController::class)->middleware(['plan.limit:marketplaces', 'permission:marketplaces.manage']);
+    Route::prefix('marketplace-catalog/{marketplace}')->group(function () {
+        Route::get('/categories', [MarketplaceCatalogController::class, 'categories']);
+        Route::post('/categories/sync', [MarketplaceCatalogController::class, 'syncCategories']);
+        Route::get('/brands', [MarketplaceCatalogController::class, 'brands']);
+        Route::post('/brands/sync', [MarketplaceCatalogController::class, 'syncBrands']);
+        Route::get('/categories/{categoryId}/attributes', [MarketplaceCatalogController::class, 'attributes']);
+        Route::post('/categories/{categoryId}/attributes/sync', [MarketplaceCatalogController::class, 'syncAttributes']);
+        Route::get('/categories/{categoryId}/attributes/{attributeId}/values', [MarketplaceCatalogController::class, 'attributeValues']);
+        Route::post('/categories/{categoryId}/attributes/{attributeId}/values/sync', [MarketplaceCatalogController::class, 'syncAttributeValues']);
+    });
     Route::prefix('marketplace-mappings')->middleware('permission:marketplaces.manage')->group(function () {
         Route::get('/summary', [MarketplaceMappingController::class, 'summary']);
         Route::get('/readiness-preview', [MarketplaceMappingController::class, 'readinessPreview']);
