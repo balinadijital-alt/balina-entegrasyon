@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ClipboardList, Edit3, Eye, Layers3, MoreHorizontal, PackagePlus, Send, UploadCloud } from 'lucide-react';
+import { CheckCircle2, ClipboardList, Edit3, Eye, Layers3, MoreHorizontal, PackagePlus, Send, UploadCloud } from 'lucide-react';
 import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -292,6 +292,24 @@ export function ProductsPage() {
           </>
         )}
       />
+      <section className="reference-tabs">
+        {['Urun Yonetimi', 'Kategori Yonetimi', 'Marka Yonetimi', 'Nitelik Yonetimi', 'Pazaryeri Eslestirmeleri', 'Toplu Pazaryeri Islemleri'].map((item) => (
+          <Link
+            className={item === 'Urun Yonetimi' ? 'active' : ''}
+            to={item === 'Kategori Yonetimi' ? '/catalog/categories' : item === 'Marka Yonetimi' ? '/catalog/brands' : item === 'Nitelik Yonetimi' ? '/catalog/attributes' : item === 'Pazaryeri Eslestirmeleri' ? '/marketplace-mapping' : item === 'Toplu Pazaryeri Islemleri' ? '/products/publish-wizard' : '/products'}
+            key={item}
+          >
+            {item}
+          </Link>
+        ))}
+      </section>
+      <section className="reference-info-strip">
+        <CheckCircle2 size={18} />
+        <div>
+          <strong>Ürün yönetiminde ürünlerinizi arayabilir, eksik kategori/marka/nitelik durumlarını görüp pazaryeri işlemine gönderebilirsiniz.</strong>
+          <span>Referans paneldeki gibi ürün listesi ana çalışma alanıdır; eşleştirme ve toplu gönderim üst sekmelerden devam eder.</span>
+        </div>
+      </section>
       <section className="panel compact-filter-panel">
         <div className="compact-filter-heading">
           <strong>Filtreler</strong>

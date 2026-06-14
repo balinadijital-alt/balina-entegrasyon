@@ -185,6 +185,24 @@ export function MarketplaceOnboardingPage() {
         title="Pazaryeri Kurulum Sihirbazi"
         description="Trendyol ve Hepsiburada hesaplarinizi adim adim baglayin, bilgileri dogrulayin ve ilk senkronizasyon aksiyonlarini baslatin."
       />
+      <section className="reference-tabs">
+        {['Pazaryeri Entegrasyonlari', 'Pazaryeri Eslestirmeleri', 'Toplu Pazaryeri Islemleri', 'Pazaryeri Monitoru'].map((item) => (
+          <Link
+            className={item === 'Pazaryeri Entegrasyonlari' ? 'active' : ''}
+            to={item === 'Pazaryeri Eslestirmeleri' ? '/marketplace-mapping' : item === 'Toplu Pazaryeri Islemleri' ? '/products/publish-wizard' : item === 'Pazaryeri Monitoru' ? '/products/publish-queue' : '/marketplaces'}
+            key={item}
+          >
+            {item}
+          </Link>
+        ))}
+      </section>
+      <section className="reference-info-strip">
+        <CheckCircle2 size={18} />
+        <div>
+          <strong>Pazaryeri kurulumunda önce mağaza bağlanır, sonra kategori/özellik eşleştirmeleri ve ürün gönderimi yapılır.</strong>
+          <span>Bu sihirbaz sadece bağlantı ve ilk senkron hazırlığı içindir; ürün gönderimi üst menüdeki toplu işlem ekranından yapılır.</span>
+        </div>
+      </section>
 
       <section className="marketplace-onboarding-layout">
         <aside className="panel onboarding-side-panel">

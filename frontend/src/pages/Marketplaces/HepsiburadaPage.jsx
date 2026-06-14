@@ -150,7 +150,42 @@ export function HepsiburadaPage() {
         )}
       />
 
-      <section className="queue-summary">
+      <section className="reference-tabs">
+        {['Genel Ayarlar', 'Siparis Ayarlari', 'Kategoriler', 'Pazaryeri Eslestirmeleri', 'Urun Aktarim', 'Stok Fiyat', 'Pazaryeri Monitoru'].map((item) => (
+          <button
+            type="button"
+            className={(
+              (item === 'Genel Ayarlar' && ['connection', 'account'].includes(activeTab))
+              || (item === 'Kategoriler' && activeTab === 'catalog')
+              || (item === 'Pazaryeri Eslestirmeleri' && activeTab === 'unsupported')
+              || (item === 'Urun Aktarim' && activeTab === 'queue')
+              || (item === 'Stok Fiyat' && activeTab === 'price')
+              || (item === 'Siparis Ayarlari' && activeTab === 'orders')
+            ) ? 'active' : ''}
+            onClick={() => {
+              if (item === 'Genel Ayarlar') setActiveTab('account');
+              if (item === 'Siparis Ayarlari') setActiveTab('orders');
+              if (item === 'Kategoriler') setActiveTab('catalog');
+              if (item === 'Pazaryeri Eslestirmeleri') setActiveTab('unsupported');
+              if (item === 'Urun Aktarim') setActiveTab('queue');
+              if (item === 'Stok Fiyat') setActiveTab('price');
+              if (item === 'Pazaryeri Monitoru') window.location.assign('/products/publish-queue');
+            }}
+            key={item}
+          >
+            {item}
+          </button>
+        ))}
+      </section>
+      <section className="reference-info-strip">
+        <ShoppingBag size={18} />
+        <div>
+          <strong>Hepsiburada mağaza bağlantısı, kategori önizleme, ürün gönderme ve sipariş çekme işlemleri bu merkezden yönetilir.</strong>
+          <span>Mağaza hesabını seçin, ardından üst sekmelerden yapılacak işlemi açın.</span>
+        </div>
+      </section>
+
+      <section className="queue-summary reference-store-summary">
         <div className="stat-card"><span>Baglanti</span><strong>{selectedAccount?.connection_status || 'unknown'}</strong><small>{formatDate(selectedAccount?.connection_checked_at)}</small></div>
         <div className="stat-card"><span>Merchant ID</span><strong>{selectedAccount?.merchant_id || '-'}</strong><small>{selectedAccount?.company?.name || 'Firma yok'}</small></div>
         <div className="stat-card"><span>Son urun</span><strong>{formatDate(selectedAccount?.last_product_sync_at)}</strong><small>Urun gonderimi</small></div>
@@ -158,7 +193,7 @@ export function HepsiburadaPage() {
         <div className="stat-card"><span>Hata</span><strong>{hasError ? 'Var' : 'Yok'}</strong><small>{selectedAccount?.last_error || 'Son siparis ' + formatDate(selectedAccount?.last_order_sync_at)}</small></div>
       </section>
 
-      <div className="tabs">
+      <div className="tabs provider-technical-tabs">
         {tabs.map(([key, label, Icon]) => <button type="button" className={activeTab === key ? 'tab active' : 'tab'} key={key} onClick={() => setActiveTab(key)}><Icon size={15} /> {label}</button>)}
       </div>
 

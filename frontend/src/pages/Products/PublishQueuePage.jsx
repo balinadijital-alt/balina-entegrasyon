@@ -124,6 +124,38 @@ export function PublishQueuePage() {
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && drafts.length === 0 ? <LoadingState /> : null}
 
+      <section className="reference-tabs">
+        {['Pazaryeri Entegrasyonlari', 'Pazaryeri Eslestirmeleri', 'Toplu Pazaryeri Islemleri', 'Hepsiburada Islemleri', 'Pazaryeri Monitoru'].map((item) => (
+          <Link
+            className={item === 'Pazaryeri Monitoru' ? 'active' : ''}
+            to={item === 'Pazaryeri Eslestirmeleri' ? '/marketplace-mapping' : item === 'Toplu Pazaryeri Islemleri' ? '/products/publish-wizard' : item === 'Pazaryeri Entegrasyonlari' ? '/marketplaces' : '/products/publish-queue'}
+            key={item}
+          >
+            {item}
+          </Link>
+        ))}
+      </section>
+
+      <section className="reference-info-strip">
+        <AlertTriangle size={18} />
+        <div>
+          <strong>Pazaryeri monitörü ile gönderim durumlarını, hataları ve tekrar deneme adımlarını takip edebilirsiniz.</strong>
+          <span>Hatalı kayıt varsa ilgili kategori, marka, özellik veya varyant adımına yönlendirilir.</span>
+        </div>
+      </section>
+
+      <section className="monitor-customer-hero reference-operation-panel">
+        <div>
+          <span>Filtreleme Secenekleri</span>
+          <h2>Gonderimler burada takip edilir</h2>
+          <p>Basarili islemler, bekleyen kuyruklar ve pazaryerinden donen hatalar ayrilir. Hata varsa sistem sizi dogrudan duzeltilecek eslestirme adimina goturur.</p>
+        </div>
+        <div className="monitor-next-actions">
+          <Link className="button-link" to="/products/publish-wizard"><Send size={16} /> Yeni islem baslat</Link>
+          <Link className="button-link secondary-link" to="/marketplace-mapping"><AlertTriangle size={16} /> Eksikleri duzelt</Link>
+        </div>
+      </section>
+
       <section className="monitor-kpi-strip">
         <div className="success"><span>Basarili</span><strong>{statusCounts.success || 0}</strong></div>
         <div className="pending"><span>Bekleyen</span><strong>{(statusCounts.queued || 0) + (statusCounts.running || 0)}</strong></div>

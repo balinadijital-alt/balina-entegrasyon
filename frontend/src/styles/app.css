@@ -1370,6 +1370,259 @@ a {
   line-height: 1;
 }
 
+.marketplace-customer-hero,
+.publish-customer-hero,
+.monitor-customer-hero {
+  align-items: stretch;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.85fr);
+  margin-bottom: 18px;
+  padding: 20px;
+}
+
+.reference-tabs {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding: 10px 12px;
+}
+
+.reference-tabs a,
+.reference-tabs button {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: #64748b;
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 900;
+  min-height: auto;
+  padding: 10px 12px;
+  white-space: nowrap;
+}
+
+.reference-tabs a.active,
+.reference-tabs button.active {
+  background: #fff;
+  box-shadow: 0 7px 18px rgb(15 23 42 / 10%);
+  color: #334155;
+}
+
+.reference-tabs button:hover {
+  box-shadow: 0 7px 18px rgb(15 23 42 / 10%);
+  transform: none;
+}
+
+.reference-info-strip {
+  align-items: center;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  color: #1d4ed8;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+}
+
+.reference-info-strip div {
+  display: grid;
+  gap: 3px;
+}
+
+.reference-info-strip strong {
+  color: #334155;
+}
+
+.reference-info-strip span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.reference-operation-panel {
+  background: #1f4aa8;
+  border-color: #1d4ed8;
+}
+
+.reference-operation-panel .marketplace-roadmap-heading,
+.reference-operation-panel > div:first-child {
+  color: #fff;
+}
+
+.reference-operation-panel .marketplace-roadmap-heading span,
+.reference-operation-panel > div:first-child > span {
+  color: #bfdbfe;
+}
+
+.reference-operation-panel .marketplace-roadmap-heading strong,
+.reference-operation-panel h2,
+.reference-operation-panel p {
+  color: #fff;
+}
+
+.reference-operation-panel .marketplace-roadmap-step,
+.reference-operation-panel .publish-customer-steps div,
+.reference-operation-panel .publish-context-strip div {
+  background: #fff;
+}
+
+.reference-operation-panel .roadmap-arrow {
+  color: #dbeafe;
+}
+
+.reference-warning-line {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.provider-technical-tabs {
+  opacity: 0.72;
+}
+
+.marketplace-customer-hero > div:first-child,
+.publish-customer-hero > div:first-child,
+.monitor-customer-hero > div:first-child {
+  display: grid;
+  gap: 7px;
+}
+
+.marketplace-customer-hero span,
+.publish-customer-hero span,
+.monitor-customer-hero span {
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.marketplace-customer-hero h2,
+.publish-customer-hero h2,
+.monitor-customer-hero h2 {
+  color: #0f172a;
+  font-size: 28px;
+  letter-spacing: 0;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.marketplace-customer-hero p,
+.publish-customer-hero p,
+.monitor-customer-hero p {
+  color: #475569;
+  line-height: 1.55;
+  margin: 0;
+  max-width: 780px;
+}
+
+.marketplace-customer-summary,
+.publish-context-strip {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.marketplace-customer-summary div,
+.publish-context-strip div {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+}
+
+.marketplace-customer-summary span,
+.publish-context-strip span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: none;
+}
+
+.marketplace-customer-summary strong,
+.publish-context-strip strong {
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.publish-customer-steps {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.publish-customer-steps div {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  gap: 8px;
+  min-height: 48px;
+  padding: 9px;
+}
+
+.publish-customer-steps div.active {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.publish-customer-steps strong {
+  align-items: center;
+  background: #2563eb;
+  border-radius: 999px;
+  color: #fff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 13px;
+  height: 26px;
+  justify-content: center;
+  width: 26px;
+}
+
+.publish-customer-steps span {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: none;
+}
+
+.monitor-next-actions {
+  align-content: center;
+  display: grid;
+  gap: 10px;
+}
+
+.customer-modal-guide {
+  align-items: center;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  color: #1e3a8a;
+  display: flex;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+}
+
+.customer-modal-guide span {
+  color: #1e3a8a;
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .marketplace-roadmap-shell {
   background: #fff;
   border: 1px solid var(--border);
@@ -1403,6 +1656,23 @@ a {
 .marketplace-roadmap-heading strong {
   color: #0f172a;
   font-size: 22px;
+}
+
+.reference-operation-panel.marketplace-roadmap-shell .marketplace-roadmap-heading span,
+.reference-operation-panel.publish-customer-hero span,
+.reference-operation-panel.monitor-customer-hero span {
+  color: #bfdbfe;
+}
+
+.reference-operation-panel.marketplace-roadmap-shell .marketplace-roadmap-heading strong,
+.reference-operation-panel.publish-customer-hero h2,
+.reference-operation-panel.monitor-customer-hero h2 {
+  color: #fff;
+}
+
+.reference-operation-panel.publish-customer-hero p,
+.reference-operation-panel.monitor-customer-hero p {
+  color: #dbeafe;
 }
 
 .marketplace-workflow-roadmap {
@@ -1627,6 +1897,11 @@ a {
   gap: 10px;
   margin-top: 18px;
   padding: 16px;
+}
+
+.marketplace-flow-advanced .catalog-cache-panel {
+  box-shadow: none;
+  margin: 6px 0 0;
 }
 
 .marketplace-flow-advanced strong {
@@ -9843,6 +10118,12 @@ tbody td:last-child .row-actions:focus-within {
   .executive-hero,
   .executive-command-grid,
   .executive-growth-grid,
+  .marketplace-customer-hero,
+  .marketplace-customer-summary,
+  .publish-customer-hero,
+  .publish-context-strip,
+  .publish-customer-steps,
+  .monitor-customer-hero,
   .marketplace-flow-kpis,
   .marketplace-workflow-roadmap,
   .marketplace-flow-steps,

@@ -139,7 +139,42 @@ export function TrendyolPage() {
           </>
         )}
       />
-      <section className="queue-summary">
+
+      <section className="reference-tabs">
+        {['Genel Ayarlar', 'Siparis Ayarlari', 'Kategoriler', 'Pazaryeri Eslestirmeleri', 'Urun Aktarim', 'Stok Fiyat', 'Pazaryeri Monitoru'].map((item) => (
+          <button
+            type="button"
+            className={(
+              (item === 'Genel Ayarlar' && ['connection', 'account'].includes(activeTab))
+              || (item === 'Kategoriler' && activeTab === 'catalog')
+              || (item === 'Pazaryeri Eslestirmeleri' && activeTab === 'mapping')
+              || (item === 'Urun Aktarim' && ['queue', 'batch'].includes(activeTab))
+              || (item === 'Stok Fiyat' && activeTab === 'price')
+            ) ? 'active' : ''}
+            onClick={() => {
+              if (item === 'Genel Ayarlar') setActiveTab('account');
+              if (item === 'Siparis Ayarlari') setActiveTab('orders');
+              if (item === 'Kategoriler') setActiveTab('catalog');
+              if (item === 'Pazaryeri Eslestirmeleri') setActiveTab('mapping');
+              if (item === 'Urun Aktarim') setActiveTab('queue');
+              if (item === 'Stok Fiyat') setActiveTab('price');
+              if (item === 'Pazaryeri Monitoru') window.location.assign('/products/publish-queue');
+            }}
+            key={item}
+          >
+            {item}
+          </button>
+        ))}
+      </section>
+      <section className="reference-info-strip">
+        <Link2 size={18} />
+        <div>
+          <strong>Trendyol mağaza ayarları, kategori verileri, ürün aktarımı ve sipariş işlemleri bu merkezden yönetilir.</strong>
+          <span>Referans paneldeki gibi önce mağaza hesabını seçin, sonra sekmeden yapılacak işlemi açın.</span>
+        </div>
+      </section>
+
+      <section className="queue-summary reference-store-summary">
         <div className="stat-card"><span>Baglanti</span><strong>{selectedAccount?.connection_status || 'unknown'}</strong><small>{formatDate(selectedAccount?.connection_checked_at)}</small></div>
         <div className="stat-card"><span>Hazir Urun</span><strong>{selectedAccount?.metadata?.ready_product_count || 0}</strong><small>Aktarima uygun</small></div>
         <div className="stat-card"><span>Eksik Urun</span><strong>{selectedAccount?.metadata?.blocked_product_count || 0}</strong><small>Kategori/ozellik bekliyor</small></div>
@@ -147,7 +182,7 @@ export function TrendyolPage() {
         <div className="stat-card"><span>Hatali Urun</span><strong>{selectedAccount?.last_error ? 'Var' : 'Yok'}</strong><small>{selectedAccount?.last_error || 'Son siparis sync ' + formatDate(selectedAccount?.last_order_sync_at)}</small></div>
       </section>
 
-      <div className="tabs">
+      <div className="tabs provider-technical-tabs">
         {tabs.map(([key, label, Icon]) => <button type="button" className={activeTab === key ? 'tab active' : 'tab'} key={key} onClick={() => setActiveTab(key)}><Icon size={15} /> {label}</button>)}
       </div>
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, ClipboardCheck, Layers3, RefreshCw, Save, Search, Send, ShieldCheck, SlidersHorizontal, Tags, Trash2, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Layers3, PackageCheck, RefreshCw, Save, Search, Send, ShieldCheck, SlidersHorizontal, Tags, Trash2, X } from 'lucide-react';
 import { api, apiErrorMessage, asArray } from '../../api/client.js';
 import { hasPermission } from '../../auth/permissions.js';
 import { DataTable } from '../../components/DataTable.jsx';
@@ -1130,20 +1130,30 @@ function MarketplaceMappingWorkflow({
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && !summary ? <LoadingState /> : null}
 
-      <CatalogCacheStatusPanel
-        marketplaceCode={marketplaceCode}
-        cacheStatus={cacheStatus}
-        canManageCatalog={canManageCatalog}
-        syncLoading={syncLoading}
-        onSyncCategories={() => syncProviderCatalog('categories')}
-        onSyncBrands={() => syncProviderCatalog('brands')}
-        onSyncAttributes={() => syncProviderCatalog('attributes')}
-      />
+      <section className="reference-tabs">
+        {['Pazaryeri Eslestirmeleri', 'Kategori Yonetimi', 'Marka Yonetimi', 'Nitelik Yonetimi', 'Toplu Pazaryeri Islemleri', 'Pazaryeri Monitoru'].map((item) => (
+          <Link
+            className={item === 'Pazaryeri Eslestirmeleri' ? 'active' : ''}
+            to={item === 'Toplu Pazaryeri Islemleri' ? '/products/publish-wizard' : item === 'Pazaryeri Monitoru' ? '/products/publish-queue' : '/marketplace-mapping'}
+            key={item}
+          >
+            {item}
+          </Link>
+        ))}
+      </section>
 
-      <section className="marketplace-roadmap-shell">
+      <section className="reference-info-strip">
+        <CheckCircle2 size={18} />
+        <div>
+          <strong>Pazaryeri eslestirmeleri ile urunlerinizi Trendyol ve Hepsiburada kategorilerine hazirlayabilirsiniz.</strong>
+          <span>Sıradaki işlem: {!categoryStarted ? 'kategori eşleştirme' : !attributeStarted ? 'özellik eşleştirme' : !variantComplete ? 'varyant eşleştirme' : 'ürün gönderme'}.</span>
+        </div>
+      </section>
+
+      <section className="marketplace-roadmap-shell reference-operation-panel">
         <div className="marketplace-roadmap-heading">
           <div>
-            <span>Siradaki is</span>
+            <span>Filtreleme Secenekleri</span>
             <strong>{!categoryStarted ? 'Kategori eslestirmeyi tamamlayin' : !attributeStarted ? 'Ozellikleri eslestirin' : !variantComplete ? 'Varyantlari kontrol edin' : 'Urunleri gonderime alin'}</strong>
           </div>
           <Link className="button-link" to="/products/publish-wizard"><Send size={16} /> Urun gonder</Link>
@@ -1170,14 +1180,23 @@ function MarketplaceMappingWorkflow({
             );
           })}
         </div>
-        <div className="marketplace-flow-alert compact">
+        <div className="marketplace-flow-alert compact reference-warning-line">
           <AlertTriangle size={18} />
-          <strong>Kategori tamamlanmadan ozellik ve varyant adimlari acilmaz.</strong>
+          <strong>Her adim bir sonrakini acar. Eksik olan karttan baslayin, kaydedin ve sonraki adima gecin.</strong>
         </div>
       </section>
 
       <details className="marketplace-flow-advanced">
-        <summary>Gelismis teknik gorunum</summary>
+        <summary>Gelismis teknik gorunum ve katalog cache</summary>
+        <CatalogCacheStatusPanel
+          marketplaceCode={marketplaceCode}
+          cacheStatus={cacheStatus}
+          canManageCatalog={canManageCatalog}
+          syncLoading={syncLoading}
+          onSyncCategories={() => syncProviderCatalog('categories')}
+          onSyncBrands={() => syncProviderCatalog('brands')}
+          onSyncAttributes={() => syncProviderCatalog('attributes')}
+        />
         <div className="quick-fix-strip">
           <Link className="button-link secondary-link" to="/marketplace-readiness">Hazirlik</Link>
           <Link className="button-link secondary-link" to="/marketplace-mapping/categories">Kategori detay</Link>
@@ -1203,14 +1222,11 @@ function MarketplaceMappingWorkflow({
               <span>{modalCopy.warning}</span>
             </div>
             <div className="workflow-modal-toolbar">
-              <label className="resource-search compact-search">
-                <Search size={16} />
-                <input placeholder="Ara" readOnly />
-              </label>
-              <select defaultValue="10">
-                <option value="10">Sayfada 10 kayit goster</option>
-                <option value="25">Sayfada 25 kayit goster</option>
-              </select>
+              <div className="customer-modal-guide">
+                <PackageCheck size={18} />
+                <span>{workflowModal === 'categories' ? 'Ic kategoriyi pazaryeri kategorisiyle eslestir, kaydet ve ozellik adimina gec.' : workflowModal === 'attributes' ? 'Secili kategorinin zorunlu alanlarini tamamla. Marka bilgisi burada ozellikle kontrol edilir.' : 'Renk, beden ve numara gibi varyant alanlarini pazaryeri karsiliklariyla eslestir.'}</span>
+              </div>
+              <span className="customer-modal-count">{modalRows.length || workflowCategoryRows.length || 0} kayit</span>
             </div>
             <CustomerMappingModalBody
               tab={workflowModal}
@@ -1308,20 +1324,21 @@ function CustomerMappingModalBody({
         <table className="customer-simple-table">
           <thead>
             <tr>
-              <th>Kat. No</th>
-              <th>Kategori</th>
+              <th>Urun kategorisi</th>
               <th>Pazaryeri Kategorisi</th>
-              <th>Durum</th>
+              <th>Sonuc</th>
               <th>Islem</th>
             </tr>
           </thead>
           <tbody>
             {categoryRows.length === 0 ? (
-              <tr><td colSpan="5">Kategori kaydi bulunamadi.</td></tr>
+              <tr><td colSpan="4">Kategori kaydi bulunamadi.</td></tr>
             ) : categoryRows.map((row, index) => (
               <tr key={row.id || row.local_category_name || index}>
-                <td>{row.local_category_id || row.id || index + 1}</td>
-                <td><strong>{row.local_category_name || row.category || '-'}</strong></td>
+                <td>
+                  <strong>{row.local_category_name || row.category || '-'}</strong>
+                  <span>Kaynak: urun kategorisi</span>
+                </td>
                 <td>
                   <input list="provider-category-cache-options" value={selected?.id === row.id ? form.marketplace_category_path || form.marketplace_category_name || '' : row.marketplace_category_path || row.marketplace_category_name || ''} onChange={(event) => selectProviderCategory(row, event.target.value)} placeholder={`${provider} kategori yolu secin`} />
                   <datalist id="provider-category-cache-options">
@@ -1332,7 +1349,7 @@ function CustomerMappingModalBody({
                   )}
                 </td>
                 <td><span className={`workflow-step-status ${isMappedCategory(row) ? 'ready' : 'blocked'}`}>{isMappedCategory(row) ? 'Tamamlandi' : 'Eksik'}</span></td>
-                <td><button type="button" className="warning-button compact-warning-button" onClick={() => selectRow(row)}>Sec</button></td>
+                <td><button type="button" className="warning-button compact-warning-button" onClick={() => selectRow(row)}>Bu kategoriyi sec</button></td>
               </tr>
             ))}
           </tbody>
@@ -1378,23 +1395,21 @@ function CustomerMappingModalBody({
         <table className="customer-simple-table">
           <thead>
             <tr>
-              <th>Kat. No</th>
               <th>Kategori</th>
               <th>Pazaryeri Kategorisi</th>
-              <th>Eslesme Durumu</th>
-              <th>Islem</th>
+              <th>Eksik / Tamam</th>
+              <th>Devam et</th>
             </tr>
           </thead>
           <tbody>
             {categoryRows.length === 0 ? (
-              <tr><td colSpan="5">Ozellik eslestirmek icin once kategori eslestirmesini tamamlayin.</td></tr>
+              <tr><td colSpan="4">Ozellik eslestirmek icin once kategori eslestirmesini tamamlayin.</td></tr>
             ) : categoryRows.map((row, index) => (
               <tr key={row.id || index}>
-                <td>{row.local_category_id || row.id || index + 1}</td>
                 <td><strong>{row.local_category_name || '-'}</strong></td>
                 <td><span>{row.marketplace_category_path || row.marketplace_category_name || '-'}</span></td>
                 <td>{attributeCount(row)} / {Math.max(attributeCount(row), (providerAttributesByCategory[row.marketplace_category_id] || customerAttributeFields).length)}</td>
-                <td><button type="button" className="warning-button" onClick={() => openAttributes(row)}>Eslestir</button></td>
+                <td><button type="button" className="warning-button compact-warning-button" onClick={() => openAttributes(row)}>Alanlari ac</button></td>
               </tr>
             ))}
           </tbody>
@@ -1461,25 +1476,23 @@ function CustomerMappingModalBody({
   return (
     <div className="customer-modal-stack">
       <table className="customer-simple-table">
-        <thead>
-          <tr>
-              <th>Kat. No</th>
+          <thead>
+            <tr>
               <th>Kategori</th>
               <th>Pazaryeri Kategorisi</th>
-              <th>Eslesme Durumu</th>
-              <th>Islem</th>
+              <th>Renk / Beden</th>
+              <th>Devam et</th>
             </tr>
           </thead>
           <tbody>
             {categoryRows.length === 0 ? (
-              <tr><td colSpan="5">Varyant eslestirmek icin once kategori eslestirmesini tamamlayin.</td></tr>
+              <tr><td colSpan="4">Varyant eslestirmek icin once kategori eslestirmesini tamamlayin.</td></tr>
             ) : categoryRows.map((row, index) => (
               <tr key={row.id || index}>
-                <td>{row.local_category_id || row.id || index + 1}</td>
               <td><strong>{row.local_category_name || '-'}</strong></td>
               <td><span>{row.marketplace_category_path || row.marketplace_category_name || '-'}</span></td>
               <td>{variantStatus('beden')} / {variantStatus('renk')}</td>
-              <td><button type="button" className="warning-button" onClick={() => setWorkflowDetail(row)}>Eslestir</button></td>
+              <td><button type="button" className="warning-button compact-warning-button" onClick={() => setWorkflowDetail(row)}>Varyantlari ac</button></td>
             </tr>
           ))}
         </tbody>

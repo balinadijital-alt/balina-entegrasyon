@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, RefreshCw, ShoppingBag, Store } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api, asArray } from '../../api/client.js';
 import { hasPermission } from '../../auth/permissions.js';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -133,6 +134,24 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
   return (
     <>
       <PageHeader title={title} />
+      <section className="reference-tabs">
+        {['Pazaryeri Entegrasyonlari', 'Pazaryeri Eslestirmeleri', 'Toplu Pazaryeri Islemleri', 'Hepsiburada Islemleri', 'Pazaryeri Monitoru'].map((item) => (
+          <Link
+            className={item === 'Pazaryeri Entegrasyonlari' ? 'active' : ''}
+            to={item === 'Pazaryeri Eslestirmeleri' ? '/marketplace-mapping' : item === 'Toplu Pazaryeri Islemleri' ? '/products/publish-wizard' : item === 'Pazaryeri Monitoru' ? '/products/publish-queue' : item === 'Hepsiburada Islemleri' ? '/marketplaces/hepsiburada' : '/marketplaces'}
+            key={item}
+          >
+            {item}
+          </Link>
+        ))}
+      </section>
+      <section className="reference-info-strip">
+        <CheckCircle2 size={18} />
+        <div>
+          <strong>Pazaryeri entegrasyonları ile mağazalarınızı tanımlayabilir, bağlantıları test edebilir ve ilk işlemleri başlatabilirsiniz.</strong>
+          <span>Mağaza kartından bağlantı testi, ürün gönderimi, stok/fiyat güncelleme ve sipariş çekme işlemlerini yönetebilirsiniz.</span>
+        </div>
+      </section>
       <PageToolbar
         search={search}
         onSearch={setSearch}

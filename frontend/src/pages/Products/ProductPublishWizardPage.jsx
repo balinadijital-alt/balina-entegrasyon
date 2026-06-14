@@ -152,6 +152,26 @@ export function ProductPublishWizardPage() {
     };
   }, [products, marketplaceCode]);
 
+  useEffect(() => {
+    if (!marketplaceId) {
+      setStep(0);
+      return;
+    }
+    if (draft?.status === 'queued') {
+      setStep(5);
+      return;
+    }
+    if (draft) {
+      setStep(draft.status === 'blocked' ? 2 : 4);
+      return;
+    }
+    if (selectedProducts.length > 0) {
+      setStep(3);
+      return;
+    }
+    setStep(readyProducts.length > 0 ? 1 : 2);
+  }, [marketplaceId, draft, selectedProducts.length, readyProducts.length]);
+
   const filteredReadyProducts = useMemo(() => readyProducts.filter((product) => {
     const query = search.trim().toLowerCase();
     return !query || [product.name, product.sku, product.barcode].some((value) => String(value || '').toLowerCase().includes(query));
@@ -230,6 +250,42 @@ export function ProductPublishWizardPage() {
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && products.length === 0 ? <LoadingState /> : null}
 
+      <section className="reference-tabs">
+        {['Pazaryeri Entegrasyonlari', 'Pazaryeri Eslestirmeleri', 'Toplu Pazaryeri Islemleri', 'Hepsiburada Islemleri', 'Pazaryeri Monitoru'].map((item) => (
+          <Link
+            className={item === 'Toplu Pazaryeri Islemleri' ? 'active' : ''}
+            to={item === 'Pazaryeri Eslestirmeleri' ? '/marketplace-mapping' : item === 'Pazaryeri Monitoru' ? '/products/publish-queue' : item === 'Pazaryeri Entegrasyonlari' ? '/marketplaces' : '/products/publish-wizard'}
+            key={item}
+          >
+            {item}
+          </Link>
+        ))}
+      </section>
+
+      <section className="reference-info-strip">
+        <CheckCircle2 size={18} />
+        <div>
+          <strong>Toplu pazaryeri işlemleri ile seçtiğiniz mağazaya hazır ürünleri gönderebilirsiniz.</strong>
+          <span>Eksik eşleştirmesi olan ürünler kuyruk yerine düzeltme adımına yönlendirilir.</span>
+        </div>
+      </section>
+
+      <section className="publish-customer-hero reference-operation-panel">
+        <div>
+          <span>Filtreleme Secenekleri</span>
+          <h2>Yeni pazaryeri islemini buradan baslatin</h2>
+          <p>Once pazaryeri ve magaza secilir, sonra hazir urunler kontrol edilir. Eksigi olan urunler gonderime alinmaz; ilgili eslestirme ekranina yonlendirilir.</p>
+        </div>
+        <div className="publish-customer-steps">
+          {steps.map((label, index) => (
+            <div className={index <= step ? 'active' : ''} key={label}>
+              <strong>{index + 1}</strong>
+              <span>{label}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className={showForm ? 'bulk-operation-shell is-hidden-history' : 'bulk-operation-shell'}>
         <header className="bulk-operation-toolbar">
           <div className="mapping-filter-heading">
@@ -274,13 +330,19 @@ export function ProductPublishWizardPage() {
       {showForm && (
         <section className="bulk-operation-form-panel">
           <div className="wizard-step-header">
-            <span>Yeni Islem</span>
+            <span>Adim 1 / Yeni Islem</span>
             <h2>Yeni Pazaryeri Islemi</h2>
-            <p>Pazaryeri, magaza ve urun filtresini secin. Kaydetmeden once eslestirme uyarilarini kontrol edin.</p>
+            <p>Bu form musterinin urun gonderme baslangicidir. Pazaryeri, magaza ve urun kaynagini secin; sistem sadece hazir urunleri kuyruga alir.</p>
           </div>
+          <section className="publish-context-strip">
+            <div><span>Kaynak</span><strong>{bulkForm.source === 'ready_products' ? 'Hazir urunler' : bulkForm.source === 'selected_products' ? 'Secili urunler' : 'Tum urunler'}</strong></div>
+            <div><span>Pazaryeri</span><strong>{marketplaceName(marketplaceCode)}</strong></div>
+            <div><span>Hazir urun</span><strong>{readyProducts.length}</strong></div>
+            <div><span>Eksikli urun</span><strong>{blockedProducts.length}</strong></div>
+          </section>
           <div className="workflow-modal-warning bulk-operation-warning">
             <AlertTriangle size={17} />
-            <span>Eksik eslestirme varsa urunler pazaryerinde hatali listelenebilir veya reddedilebilir.</span>
+            <span>Eksik eslestirme varsa urun gonderilmez. Eksikleri tamamlamak icin asagidaki turuncu kartlardan baslayin.</span>
           </div>
           <section className="publish-mapping-check">
             {[
