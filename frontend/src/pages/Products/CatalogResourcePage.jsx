@@ -6,6 +6,7 @@ import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
@@ -224,6 +225,7 @@ export function CatalogResourcePage({ type }) {
   return (
     <>
       <PageHeader title={config.title} description={config.description} />
+      <ReferenceModuleNav section="products" />
       <section className="catalog-admin-layout">
         <form className="panel compact-panel" onSubmit={submit}>
           <h2>{editingId ? 'Duzenle' : 'Yeni Ekle'}</h2>

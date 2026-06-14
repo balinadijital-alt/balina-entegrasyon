@@ -1675,6 +1675,79 @@ a {
   color: #dbeafe;
 }
 
+.orders-hero,
+.shipping-hero,
+.payment-hero,
+.accounting-hero,
+.operations-hero,
+.retry-hero-panel,
+.settings-center-hero,
+.developer-hero,
+.premium-dashboard-hero {
+  background: #1f4aa8;
+  border: 1px solid #1d4ed8;
+  box-shadow: 0 18px 42px rgba(30, 64, 175, 0.18);
+}
+
+.orders-hero .eyebrow,
+.shipping-hero .eyebrow,
+.payment-hero .eyebrow,
+.accounting-hero .eyebrow,
+.operations-hero .eyebrow,
+.retry-hero-panel .eyebrow,
+.settings-center-hero .eyebrow,
+.developer-hero .eyebrow,
+.premium-dashboard-hero .eyebrow {
+  color: #bfdbfe;
+}
+
+.orders-hero h2,
+.shipping-hero h2,
+.payment-hero h2,
+.accounting-hero h2,
+.operations-hero h2,
+.retry-hero-panel h2,
+.settings-center-hero h2,
+.developer-hero h2,
+.premium-dashboard-hero h2 {
+  color: #fff;
+}
+
+.orders-hero p,
+.shipping-hero p,
+.payment-hero p,
+.accounting-hero p,
+.operations-hero p,
+.retry-hero-panel p,
+.settings-center-hero p,
+.developer-hero p,
+.premium-dashboard-hero p {
+  color: #dbeafe;
+}
+
+.orders-hero-status,
+.shipping-hero-status,
+.payment-hero-status,
+.accounting-hero-status,
+.operations-hero-status,
+.retry-health-card,
+.settings-center-status,
+.developer-hero-stats {
+  background: #fff;
+  border-color: rgba(191, 219, 254, 0.72);
+  color: #0f172a;
+}
+
+.orders-filter-panel,
+.shipping-filter-panel,
+.payment-filter-panel,
+.accounting-filter-panel,
+.log-filter-panel,
+.analytics-filter-bar {
+  border-top: 5px solid #1f4aa8;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+}
+
 .marketplace-workflow-roadmap {
   align-items: stretch;
   display: grid;

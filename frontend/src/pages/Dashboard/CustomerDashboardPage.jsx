@@ -28,6 +28,7 @@ import { LoadingState } from '../../components/LoadingState.jsx';
 import { OperationAlertList } from '../../components/OperationAlertList.jsx';
 import { OperationStatCard } from '../../components/OperationStatCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
 const setupSteps = [
@@ -286,6 +287,7 @@ export function CustomerDashboardPage() {
         description="Satis, pazaryeri, import, queue ve API sagligini tek operasyon panelinde takip edin."
         actions={<button type="button" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
+      <ReferenceModuleNav section="marketplace" />
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && !report ? <LoadingState /> : null}
 

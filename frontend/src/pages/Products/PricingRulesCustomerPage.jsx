@@ -6,6 +6,7 @@ import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
@@ -70,6 +71,7 @@ export function PricingRulesCustomerPage() {
   return (
     <>
       <PageHeader title="Fiyat Kurallari" description="Pazaryeri, kategori ve markaya gore satis fiyatinizi otomatik hesaplayacak kurallari yonetin." />
+      <ReferenceModuleNav section="products" />
       <section className="pricing-layout">
         <form className="panel compact-panel" onSubmit={submit}>
           <h2>Kural Olustur</h2>

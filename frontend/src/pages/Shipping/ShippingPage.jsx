@@ -23,6 +23,7 @@ import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { MetricCard } from '../../components/MetricCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
@@ -321,6 +322,7 @@ export function ShippingPage() {
         description="Barkod, etiket, takip, iade kodu ve tasiyici durumlarini tek ekrandan yonetin."
         actions={<button type="button" className="secondary" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
+      <ReferenceModuleNav section="operations" />
 
       <section className="shipping-hero">
         <div>

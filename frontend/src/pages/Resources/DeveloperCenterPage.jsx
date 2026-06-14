@@ -17,6 +17,7 @@ import {
   Truck,
 } from 'lucide-react';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { ResourceCard } from '../../components/ResourceCard.jsx';
 import { Link } from 'react-router-dom';
 
@@ -179,6 +180,7 @@ export function DeveloperCenterPage() {
         description="Pazaryeri, kargo, odeme, e-fatura, import ve platform API surecleri icin operasyon ekiplerinin kullanacagi bilgi merkezi."
         actions={<Link className="button-link" to="/resources/api-knowledge"><ServerCog size={16} /> API Knowledge Center</Link>}
       />
+      <ReferenceModuleNav section="resources" />
 
       <section className="developer-hero panel">
         <div>

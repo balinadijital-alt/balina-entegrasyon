@@ -5,6 +5,7 @@ import { api } from '../../api/client.js';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
 const labels = {
@@ -811,6 +812,7 @@ export function ReportsPage() {
         description="Satis, operasyon, XML, queue, API, webhook ve SaaS sagligini tek merkezde izleyin."
         actions={<button type="button" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
+      <ReferenceModuleNav section="operations" />
 
       <section className="analytics-filter-bar">
         <label>
@@ -1481,6 +1483,7 @@ export function CustomerReportsPage() {
         description="Satis, siparis, kargo ve urun durumlarinizi sade grafiklerle takip edin."
         actions={<button type="button" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
+      <ReferenceModuleNav section="resources" />
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && !report ? <LoadingState /> : null}
       {report && (

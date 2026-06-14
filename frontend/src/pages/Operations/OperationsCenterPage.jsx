@@ -11,6 +11,7 @@ import { OperationAlertList } from '../../components/OperationAlertList.jsx';
 import { OperationStatCard } from '../../components/OperationStatCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { QueueOverviewCard } from '../../components/QueueOverviewCard.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
 function settledValue(result, fallback = null) {
@@ -149,6 +150,7 @@ export function OperationsCenterPage() {
         description="Entegrasyon sagligi, queue islemleri, API hatalari, import surecleri ve siparis akislarini tek komuta ekraninda izleyin."
         actions={<button type="button" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
+      <ReferenceModuleNav section="operations" />
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && !data.dashboard ? <LoadingState /> : null}
 

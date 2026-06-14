@@ -7,6 +7,7 @@ import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { SoftEmpty } from '../../components/SoftEmpty.jsx';
 import { StatusPill } from '../../components/StatusPill.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
@@ -226,6 +227,7 @@ export function ApiLogsPage() {
         description="API loglarini operasyon mesajlariyla inceleyin, kritik hatalari filtreleyin ve ilgili duzeltme ekranina hizli gecin."
         actions={<button type="button" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
+      <ReferenceModuleNav section="operations" />
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && logs.length === 0 ? <LoadingState /> : null}
 

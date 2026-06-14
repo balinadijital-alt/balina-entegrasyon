@@ -27,6 +27,7 @@ import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { MetricCard } from '../../components/MetricCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { SoftEmpty } from '../../components/SoftEmpty.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { StatusPill } from '../../components/StatusPill.jsx';
@@ -396,6 +397,7 @@ export function SettingsPage({ audience = 'admin' }) {
         description="Firma bilgileri, entegrasyon hesaplari, credential guvenligi ve genel sistem ayarlarini tek merkezden yonetin."
         actions={<button type="button" className="secondary" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
+      <ReferenceModuleNav section={audience === 'admin' ? 'admin' : 'operations'} />
 
       <section className="settings-center-hero">
         <div>

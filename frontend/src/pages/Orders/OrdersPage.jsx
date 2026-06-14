@@ -24,6 +24,7 @@ import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { MetricCard } from '../../components/MetricCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { SoftEmpty } from '../../components/SoftEmpty.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { useApp } from '../../context/AppContext.jsx';
@@ -346,6 +347,7 @@ export function OrdersPage({ initialStatus = '' }) {
         description="Trendyol, Hepsiburada ve manuel siparislerin odeme, kargo, fatura ve operasyon akislarini tek ekrandan yonetin."
         actions={<button type="button" className="secondary" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
+      <ReferenceModuleNav section="orders" />
 
       <section className="orders-hero">
         <div>

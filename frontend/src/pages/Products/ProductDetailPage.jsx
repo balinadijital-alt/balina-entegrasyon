@@ -7,6 +7,7 @@ import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { marketplaceStatus, missingFields, productImage, publishBlockReason, readinessScore } from './productWorkflow.js';
@@ -177,6 +178,7 @@ export function ProductDetailPage() {
           </>
         )}
       />
+      <ReferenceModuleNav section="products" />
 
       {missing.length > 0 && (
         <section className="state-box workflow-warning">

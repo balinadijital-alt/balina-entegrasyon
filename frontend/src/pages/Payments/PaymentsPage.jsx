@@ -27,6 +27,7 @@ import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { MetricCard } from '../../components/MetricCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
@@ -323,6 +324,7 @@ export function PaymentsPage() {
         description="POS, 3D Secure, callback, iade ve odeme hata sureclerini tek ekrandan izleyin."
         actions={<button type="button" className="secondary" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
+      <ReferenceModuleNav section="finance" />
 
       <section className="payment-hero">
         <div>

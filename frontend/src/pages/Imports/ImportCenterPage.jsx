@@ -6,6 +6,7 @@ import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { SoftEmpty } from '../../components/SoftEmpty.jsx';
 import { StatusPill } from '../../components/StatusPill.jsx';
 import { useApp } from '../../context/AppContext.jsx';
@@ -698,6 +699,7 @@ export function ImportCenterPage() {
   return (
     <>
       <PageHeader title="XML / Excel Import Merkezi" />
+      <ReferenceModuleNav section="imports" />
 
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && <LoadingState label="Import islemi hazirlaniyor..." />}

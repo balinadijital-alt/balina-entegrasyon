@@ -8,6 +8,7 @@ import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { SoftEmpty } from '../../components/SoftEmpty.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { StatusPill } from '../../components/StatusPill.jsx';
@@ -128,6 +129,7 @@ export function QueuePage() {
         description="Bekleyen, calisan ve basarisiz joblari izleyin; failed job detaylarini inceleyip retry aksiyonlarini yonetin."
         actions={<button type="button" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
+      <ReferenceModuleNav section="operations" />
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && !status ? <LoadingState /> : null}
 

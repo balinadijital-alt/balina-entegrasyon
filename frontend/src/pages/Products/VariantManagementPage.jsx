@@ -6,6 +6,7 @@ import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
@@ -56,6 +57,7 @@ export function VariantManagementPage() {
         title="Varyant Yonetimi"
         description="Renk, beden gibi tekrar kullanacaginiz varyant basliklarini ve degerlerini yonetin."
       />
+      <ReferenceModuleNav section="products" />
       <section className="variant-layout">
         <form className="panel compact-panel" onSubmit={submit}>
           <h2>Yeni Varyant</h2>
