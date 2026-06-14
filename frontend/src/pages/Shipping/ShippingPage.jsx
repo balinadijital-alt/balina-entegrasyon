@@ -21,7 +21,6 @@ import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
-import { MetricCard } from '../../components/MetricCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
@@ -318,54 +317,62 @@ export function ShippingPage() {
   return (
     <div className="shipping-page">
       <PageHeader
-        title="Kargo Operasyon Merkezi"
-        description="Barkod, etiket, takip, iade kodu ve tasiyici durumlarini tek ekrandan yonetin."
+        title="Kargo Yonetimi"
+        description="Barkod, etiket, takip ve iade sureclerini durumuna gore takip edin."
         actions={<button type="button" className="secondary" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
-      <ReferenceModuleNav section="operations" />
+      <ReferenceModuleNav
+        section="operations"
+        note="Kargo ekraninda barkod, etiket, takip ve iade adimlari ayni operasyon akisi icinde izlenir."
+        next="Siradaki islem: barkod bekleyen kayitlari filtreleyin, gerekli etiketleri olusturun ve hatali kayitlari tekrar deneyin."
+      />
 
-      <section className="shipping-hero">
-        <div>
-          <span className="eyebrow">Canli kargo akisi</span>
-          <h2>Siparisten teslimata kadar tum kargo sureci kontrol altinda.</h2>
-          <p>
-            Barkod bekleyen, etiketi hazirlanan, takipte olan ve hataya dusen kargo islemlerini tasiyici bazinda filtreleyin.
-          </p>
-          <div className="shipping-hero-actions">
-            {canCreateLabels && (
-              <button type="button" onClick={bulkLabels} disabled={loading || selectedShipments.length === 0}>
-                <FileText size={16} /> Toplu Etiket
-              </button>
-            )}
-            <button type="button" className="secondary" onClick={() => setFilters({ carrier: 'all', status: 'failed', search: '' })}>
-              <AlertTriangle size={16} /> Hatalari Gor
-            </button>
+      <section className="shipping-reference-flow" aria-label="Kargo akisi">
+        {[
+          ['1', 'Barkod Bekleyen', metrics.barcodePending],
+          ['2', 'Etiket Olustu', metrics.labelCreated],
+          ['3', 'Kargoda', metrics.inTransit],
+          ['4', 'Teslim Edildi', metrics.delivered],
+          ['5', 'Iade / Hata', metrics.returnPending + metrics.failed],
+        ].map(([number, label, count]) => (
+          <div key={label}>
+            <strong>{number}</strong>
+            <span>{label}</span>
+            <small>{count} kayit</small>
           </div>
-        </div>
-        <div className="shipping-hero-status">
-          <Truck size={28} />
-          <strong>{accounts.length}</strong>
-          <span>Tanimli kargo hesabi</span>
-          <small>{selectedShipments.length} kayit secildi, {selectedReadyForLabel} kayit toplu etikete uygun.</small>
-        </div>
+        ))}
       </section>
 
-      <section className="shipping-stat-grid">
-        <MetricCard className="shipping-stat-card" icon={<Barcode size={18} />} label="Barkod bekleyen" value={metrics.barcodePending} tone="orange" />
-        <MetricCard className="shipping-stat-card" icon={<FileText size={18} />} label="Etiket olusturulan" value={metrics.labelCreated} tone="blue" />
-        <MetricCard className="shipping-stat-card" icon={<Truck size={18} />} label="Kargoda" value={metrics.inTransit} tone="purple" />
-        <MetricCard className="shipping-stat-card" icon={<PackageCheck size={18} />} label="Teslim edildi" value={metrics.delivered} tone="green" />
-        <MetricCard className="shipping-stat-card" icon={<Undo2 size={18} />} label="Iade bekleyen" value={metrics.returnPending} tone="orange" />
-        <MetricCard className="shipping-stat-card" icon={<AlertTriangle size={18} />} label="Hatali islem" value={metrics.failed} tone="red" />
+      <section className="shipping-reference-summary">
+        <div>
+          <span>Kargo Hesabi</span>
+          <strong>{accounts.length}</strong>
+          <small>Tanimli hesap</small>
+        </div>
+        <div>
+          <span>Barkod Bekleyen</span>
+          <strong>{metrics.barcodePending}</strong>
+          <small>Etiket oncesi</small>
+        </div>
+        <div>
+          <span>Secili Kayit</span>
+          <strong>{selectedShipments.length}</strong>
+          <small>{selectedReadyForLabel} etikete uygun</small>
+        </div>
+        <div>
+          <span>Hatali Islem</span>
+          <strong>{metrics.failed}</strong>
+          <small>Tekrar dene</small>
+        </div>
       </section>
 
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && accounts.length === 0 && shipments.length === 0 ? <LoadingState /> : (
         <>
-          <section className="panel shipping-filter-panel">
-            <div>
-              <h2>Kargo kayitlari</h2>
-              <p>Tasiyici, durum veya siparis bilgisiyle arama yaparak islem listesini daraltin.</p>
+          <section className="shipping-reference-filter">
+            <div className="shipping-reference-filter-title">
+              <strong>Filtreleme Secenekleri</strong>
+              <span>Tasiyici, durum, siparis, barkod veya takip numarasina gore listeyi daraltin.</span>
             </div>
             <div className="shipping-filter-row">
               <label>
@@ -388,6 +395,23 @@ export function ShippingPage() {
                   placeholder="Siparis no, alici, barkod veya takip no ara"
                 />
               </label>
+            </div>
+          </section>
+
+          <section className="shipping-command-row">
+            <div>
+              <h2>Kargo Operasyon Listesi</h2>
+              <p>{filteredShipments.length} kayit goruntuleniyor. Kayit secerek toplu etiket veya detay aksiyonu baslatabilirsiniz.</p>
+            </div>
+            <div>
+              {canCreateLabels && (
+                <button type="button" onClick={bulkLabels} disabled={loading || selectedShipments.length === 0}>
+                  <FileText size={16} /> Toplu Etiket
+                </button>
+              )}
+              <button type="button" className="secondary" onClick={() => setFilters({ carrier: 'all', status: 'failed', search: '' })}>
+                <AlertTriangle size={16} /> Hatalari Gor
+              </button>
             </div>
           </section>
 

@@ -2989,6 +2989,170 @@ a {
   line-height: 1.35;
 }
 
+.shipping-reference-flow {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  overflow-x: auto;
+  padding: 10px;
+}
+
+.shipping-reference-flow div {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #dbe3ef;
+  border-radius: 5px;
+  display: grid;
+  gap: 5px;
+  min-height: 78px;
+  padding: 12px;
+}
+
+.shipping-reference-flow strong {
+  align-items: center;
+  background: #1f5bbf;
+  border-radius: 999px;
+  color: #fff;
+  display: inline-flex;
+  font-size: 13px;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.shipping-reference-flow span {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.shipping-reference-flow small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.shipping-reference-summary {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.shipping-reference-summary div {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: grid;
+  gap: 5px;
+  min-height: 92px;
+  padding: 14px 16px;
+  position: relative;
+}
+
+.shipping-reference-summary div::after {
+  background: #1f5bbf;
+  border-radius: 999px;
+  content: '';
+  height: 4px;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  width: 42px;
+}
+
+.shipping-reference-summary span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.shipping-reference-summary strong {
+  color: #0f172a;
+  font-size: 27px;
+  line-height: 1;
+}
+
+.shipping-reference-summary small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.shipping-reference-filter {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.shipping-reference-filter-title {
+  align-items: center;
+  background: #1259b8;
+  color: #fff;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+
+.shipping-reference-filter-title strong {
+  color: #fff;
+  font-size: 17px;
+}
+
+.shipping-reference-filter-title span {
+  color: #dbeafe;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.shipping-reference-filter .shipping-filter-row {
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  padding: 16px 18px 18px;
+}
+
+.shipping-reference-filter .shipping-filter-row label {
+  border-radius: 4px;
+}
+
+.shipping-command-row {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+
+.shipping-command-row h2,
+.shipping-command-row p {
+  margin: 0;
+}
+
+.shipping-command-row h2 {
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.shipping-command-row p {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.shipping-command-row > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .catalog-admin-layout {
   align-items: start;
   display: grid;
@@ -10723,8 +10887,10 @@ tbody td:last-child .row-actions:focus-within {
   .operations-hero,
   .shipping-hero,
   .shipping-stat-grid,
+  .shipping-reference-summary,
   .shipping-filter-panel,
   .shipping-filter-row,
+  .shipping-reference-filter .shipping-filter-row,
   .shipping-layout,
   .shipping-detail-grid,
   .shipping-detail-actions,
@@ -11024,6 +11190,8 @@ tbody td:last-child .row-actions:focus-within {
   .orders-reference-filter-title,
   .marketplace-reference-filter-title,
   .marketplace-reference-form-title,
+  .shipping-reference-filter-title,
+  .shipping-command-row,
   .marketplace-command-row,
   .orders-command-row,
   .product-list-command-row {
@@ -11032,6 +11200,7 @@ tbody td:last-child .row-actions:focus-within {
   }
 
   .marketplace-command-row > div:last-child,
+  .shipping-command-row > div:last-child,
   .orders-command-row > div:last-child,
   .product-list-command-row > div:last-child {
     width: 100%;
@@ -11039,6 +11208,7 @@ tbody td:last-child .row-actions:focus-within {
 
   .marketplace-command-row .button-link,
   .marketplace-command-row button,
+  .shipping-command-row button,
   .orders-command-row .button-link,
   .orders-command-row button,
   .product-list-command-row .button-link {
