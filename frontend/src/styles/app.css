@@ -3871,6 +3871,103 @@ a {
   max-width: 1040px;
 }
 
+.product-create-reference-hero {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  padding: 22px;
+}
+
+.product-create-reference-hero h2 {
+  color: #0f172a;
+  font-size: 28px;
+  line-height: 1.12;
+  margin: 8px 0;
+}
+
+.product-create-reference-hero p {
+  color: #64748b;
+  margin: 0;
+  max-width: 820px;
+}
+
+.product-create-score-card {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: inset 3px 0 0 #2563eb;
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.product-create-score-card span,
+.product-create-score-card small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.product-create-score-card strong {
+  color: #0f172a;
+  font-size: 30px;
+}
+
+.product-create-flow {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  overflow: hidden;
+}
+
+.product-create-flow div {
+  display: grid;
+  gap: 6px;
+  min-height: 122px;
+  padding: 16px;
+}
+
+.product-create-flow div + div {
+  border-left: 1px solid var(--border);
+}
+
+.product-create-flow svg {
+  background: #dbeafe;
+  border-radius: 999px;
+  color: #1d4ed8;
+  height: 34px;
+  padding: 8px;
+  width: 34px;
+}
+
+.product-create-flow div.active {
+  background: #eff6ff;
+  box-shadow: inset 0 -3px 0 #2563eb;
+}
+
+.product-create-flow strong {
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.product-create-flow span {
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.product-create-flow small {
+  color: #64748b;
+  font-weight: 800;
+}
+
 .primary-next-button,
 .primary-save-button {
   min-width: 150px;
@@ -11827,6 +11924,8 @@ tbody td:last-child .row-actions:focus-within {
   .customer-empty-guide,
   .product-filter-row,
   .product-reference-summary,
+  .product-create-reference-hero,
+  .product-create-flow,
   .marketplace-reference-summary,
   .marketplace-reference-filter-row,
   .marketplace-card-grid,

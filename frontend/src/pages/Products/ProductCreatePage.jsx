@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ChevronLeft, ChevronRight, Save } from 'lucide-react';
+import { Banknote, CheckCircle2, ChevronLeft, ChevronRight, Layers3, PackagePlus, Save, Send, Tags } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../api/client.js';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -180,6 +180,15 @@ export function ProductCreatePage() {
     };
     return checks;
   }, [form]);
+  const readinessTotal = Object.keys(readiness).length;
+  const readinessDone = Object.values(readiness).filter(Boolean).length;
+  const productFlow = [
+    { icon: PackagePlus, title: 'Urun Bilgisi', value: required(form.name) ? 'Basladi' : 'Bekliyor', text: 'Ad, firma ve urun tipi' },
+    { icon: Tags, title: 'Kategori / Marka', value: required(form.category) && required(form.brand) ? 'Tamam' : 'Eksik', text: 'Listeleme icin zorunlu' },
+    { icon: Banknote, title: 'Fiyat / Stok', value: Number(form.price) > 0 ? 'Tamam' : 'Bekliyor', text: 'Satis ve kargo hesabi' },
+    { icon: Layers3, title: 'Pazaryeri', value: readiness.trendyol || readiness.hepsiburada ? 'Hazirlik var' : 'Sonra tamamla', text: 'Kategori ve nitelik kontrolu' },
+    { icon: Send, title: 'Gonderime Hazir', value: `${readinessDone}/${readinessTotal}`, text: 'Kaydetmeden once kontrol' },
+  ];
 
   const setValue = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -316,8 +325,44 @@ export function ProductCreatePage() {
 
   return (
     <>
-      <PageHeader title={isEdit ? 'Urun Duzenleme Sihirbazi' : 'Urun Ekleme Sihirbazi'} />
-      <ReferenceModuleNav section="products" />
+      <PageHeader
+        title={isEdit ? 'Urun Duzenleme' : 'Urun Ekle'}
+        description="Urunu once temel bilgilerle kaydedin, sonra kategori, fiyat, gorsel ve pazaryeri hazirligini tamamlayin."
+        actions={(
+          <>
+            <Link className="button-link secondary-link" to="/products"><ChevronLeft size={16} /> Urun Listesi</Link>
+            <Link className="button-link secondary-link" to="/marketplace-mapping"><Layers3 size={16} /> Eslestirmeler</Link>
+          </>
+        )}
+      />
+      <ReferenceModuleNav
+        section="products"
+        note="Urun ekleme akisi temel bilgi, kategori/marka, fiyat/stok, gorsel ve pazaryeri hazirligi adimlarindan olusur."
+        next="Siradaki islem: once zorunlu alanlari tamamlayin; pazaryeri eksikleri varsa eslestirme merkezine gecin."
+      />
+      <section className="product-create-reference-hero">
+        <div>
+          <span className="eyebrow">Urun Kayit Akisi</span>
+          <h2>{isEdit ? 'Urunu guncellemeden once eksikleri netlestirin.' : 'Yeni urunu sade adimlarla yayina hazirlayin.'}</h2>
+          <p>Referans panel mantigina uygun olarak form uzun olsa bile is akisi parcalara ayrildi. Her adim kayit ve pazaryeri gonderimi icin neyin eksik kaldigini gosterir.</p>
+        </div>
+        <div className="product-create-score-card">
+          <span>Hazirlik</span>
+          <strong>{Math.round((readinessDone / Math.max(1, readinessTotal)) * 100)}%</strong>
+          <small>{readinessDone}/{readinessTotal} kontrol tamam</small>
+          <div className="operation-progress"><span style={{ width: `${Math.round((readinessDone / Math.max(1, readinessTotal)) * 100)}%` }} /></div>
+        </div>
+      </section>
+      <section className="product-create-flow" aria-label="Urun ekleme akis ozeti">
+        {productFlow.map(({ icon: Icon, title, value, text }, index) => (
+          <div className={index === step ? 'active' : ''} key={title}>
+            <Icon size={18} />
+            <strong>{title}</strong>
+            <span>{value}</span>
+            <small>{text}</small>
+          </div>
+        ))}
+      </section>
       {isEdit && (
         <section className="state-box workflow-warning">
           <span>Duzenleme modu: Kaydetmeden once pazaryeri hazirlik kontrolleri tekrar calisir.</span>
