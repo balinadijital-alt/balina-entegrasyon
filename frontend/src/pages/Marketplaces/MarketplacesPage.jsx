@@ -7,7 +7,7 @@ import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { PageToolbar } from '../../components/PageToolbar.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { SoftEmpty } from '../../components/SoftEmpty.jsx';
 import { StatusPill } from '../../components/StatusPill.jsx';
 import { useApp } from '../../context/AppContext.jsx';
@@ -51,6 +51,7 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [showForm, setShowForm] = useState(false);
 
   const load = async () => {
     await run(async () => {
@@ -79,6 +80,7 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
     await run(async () => {
       await api.marketplaces.create({ ...form, code: provider || form.code });
       setForm({ ...initialForm, code: provider || 'trendyol' });
+      setShowForm(false);
       notify('success', 'Entegrasyon kaydedildi.');
       await load();
     }, { onError: (message) => notify('error', message) });
@@ -130,41 +132,132 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
   });
   const canManageMarketplaces = hasPermission(user, 'marketplaces.manage');
   const canSendMarketplaces = hasPermission(user, 'marketplaces.send');
+  const connectedCount = accounts.filter((account) => account.connection_status === 'connected' || (!account.connection_status && !account.last_error)).length;
+  const failedCount = accounts.filter((account) => account.connection_status === 'failed' || account.last_error).length;
+  const pendingCount = accounts.filter((account) => account.connection_status === 'pending').length;
 
   return (
     <>
-      <PageHeader title={title} />
-      <section className="reference-tabs">
-        {['Pazaryeri Entegrasyonlari', 'Pazaryeri Eslestirmeleri', 'Toplu Pazaryeri Islemleri', 'Hepsiburada Islemleri', 'Pazaryeri Monitoru'].map((item) => (
-          <Link
-            className={item === 'Pazaryeri Entegrasyonlari' ? 'active' : ''}
-            to={item === 'Pazaryeri Eslestirmeleri' ? '/marketplace-mapping' : item === 'Toplu Pazaryeri Islemleri' ? '/products/publish-wizard' : item === 'Pazaryeri Monitoru' ? '/products/publish-queue' : item === 'Hepsiburada Islemleri' ? '/marketplaces/hepsiburada' : '/marketplaces'}
-            key={item}
-          >
-            {item}
-          </Link>
+      <PageHeader
+        title={title}
+        description="Magazalarinizi baglayin, baglanti durumunu kontrol edin ve urun, stok/fiyat, siparis akislarini baslatin."
+        actions={<button type="button" className="secondary" onClick={load} disabled={loading}><RefreshCw size={16} /> Yenile</button>}
+      />
+      <ReferenceModuleNav section="marketplace" />
+
+      <section className="marketplace-reference-flow" aria-label="Pazaryeri akisi">
+        {[
+          ['1', 'Magaza Bagla', accounts.length > 0 ? 'Tamamlandi' : 'Bekliyor'],
+          ['2', 'Baglantiyi Test Et', connectedCount > 0 ? 'Tamamlandi' : 'Devam ediyor'],
+          ['3', 'Eslestirmeleri Yap', 'Sonraki adim'],
+          ['4', 'Urun Gonder', 'Hazir olunca'],
+          ['5', 'Monitor Et', failedCount > 0 ? 'Hata var' : 'Normal'],
+        ].map(([number, label, state]) => (
+          <div key={label}>
+            <strong>{number}</strong>
+            <span>{label}</span>
+            <small>{state}</small>
+          </div>
         ))}
       </section>
-      <section className="reference-info-strip">
-        <CheckCircle2 size={18} />
+
+      <section className="marketplace-reference-summary">
         <div>
-          <strong>Pazaryeri entegrasyonları ile mağazalarınızı tanımlayabilir, bağlantıları test edebilir ve ilk işlemleri başlatabilirsiniz.</strong>
-          <span>Mağaza kartından bağlantı testi, ürün gönderimi, stok/fiyat güncelleme ve sipariş çekme işlemlerini yönetebilirsiniz.</span>
+          <span>Toplam Magaza</span>
+          <strong>{accounts.length}</strong>
+          <small>Bagli hesap</small>
+        </div>
+        <div>
+          <span>Bagli</span>
+          <strong>{connectedCount}</strong>
+          <small>Calisir durumda</small>
+        </div>
+        <div>
+          <span>Kontrol Gerekli</span>
+          <strong>{failedCount}</strong>
+          <small>Hata veya eksik</small>
+        </div>
+        <div>
+          <span>Bekleyen</span>
+          <strong>{pendingCount}</strong>
+          <small>Test bekliyor</small>
         </div>
       </section>
-      <PageToolbar
-        search={search}
-        onSearch={setSearch}
-        searchPlaceholder="Hesap veya firma ara"
-        filters={(
+
+      <section className="marketplace-reference-filter">
+        <div className="marketplace-reference-filter-title">
+          <strong>Filtreleme Secenekleri</strong>
+          <span>Magaza, firma veya baglanti durumuna gore entegrasyonlari daraltin.</span>
+        </div>
+        <div className="marketplace-reference-filter-row">
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Hesap veya firma ara" />
           <select value={status} onChange={(event) => setStatus(event.target.value)}>
             <option value="">Tum baglantilar</option>
             <option value="connected">Bagli</option>
             <option value="failed">Basarisiz</option>
             <option value="pending">Bekliyor</option>
           </select>
-        )}
-      />
+          <select value={form.code} disabled={!!provider} onChange={(event) => setForm({ ...form, code: event.target.value })}>
+            <option value="trendyol">Trendyol</option>
+            <option value="hepsiburada">Hepsiburada</option>
+            <option value="ciceksepeti">Ciceksepeti</option>
+          </select>
+          <button type="button" onClick={load} disabled={loading}>Filtrele</button>
+        </div>
+      </section>
+
+      <section className="marketplace-command-row">
+        <div>
+          <h2>Pazaryeri Magazalari</h2>
+          <p>{visibleAccounts.length} hesap goruntuleniyor. Once magazayi baglayin, sonra baglantiyi test edip eslestirmelere gecin.</p>
+        </div>
+        <div>
+          <Link className="button-link secondary-link" to="/marketplace-mapping">Eslestirmelere Git</Link>
+          {canManageMarketplaces && <button type="button" onClick={() => setShowForm((current) => !current)}>{showForm ? 'Formu Kapat' : 'Yeni Magaza Bagla'}</button>}
+        </div>
+      </section>
+
+      {canManageMarketplaces && showForm && (
+        <section className="marketplace-reference-form">
+          <div className="marketplace-reference-form-title">
+            <strong>Yeni Pazaryeri Hesabi</strong>
+            <span>Firma ve pazaryeri bilgilerini girin, sonra baglantiyi test edin.</span>
+          </div>
+          <form className="form-grid" onSubmit={submit}>
+            <Field label="Firma" error={errors.company_id}>
+              <select value={form.company_id} onChange={(event) => setForm({ ...form, company_id: event.target.value })}>
+                <option value="">Seciniz</option>
+                {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Pazaryeri">
+              <select value={form.code} disabled={!!provider} onChange={(event) => setForm({ ...form, code: event.target.value })}>
+                <option value="trendyol">Trendyol</option>
+                <option value="hepsiburada">Hepsiburada</option>
+                <option value="ciceksepeti">Ciceksepeti</option>
+              </select>
+            </Field>
+            <Field label="Hesap Adi" error={errors.name}><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
+            <Field label="Trendyol Satici No" error={errors.supplier_id}><input value={form.supplier_id} onChange={(event) => setForm({ ...form, supplier_id: event.target.value })} /></Field>
+            <Field label="Hepsiburada Magaza No" error={errors.merchant_id}><input value={form.merchant_id} onChange={(event) => setForm({ ...form, merchant_id: event.target.value })} /></Field>
+            <Field label="Kullanici Adi / Anahtar" error={errors.service_username}>
+              <input
+                value={form.api_key}
+                onChange={(event) => setForm({ ...form, api_key: event.target.value, service_username: event.target.value })}
+              />
+            </Field>
+            <Field label="Sifre / Gizli Anahtar" error={errors.service_password}>
+              <input
+                type="password"
+                value={form.api_secret}
+                onChange={(event) => setForm({ ...form, api_secret: event.target.value, service_password: event.target.value })}
+              />
+            </Field>
+            <button disabled={loading}>{loading ? 'Kaydediliyor...' : 'Baglanti Ekle'}</button>
+          </form>
+        </section>
+      )}
+
       {loading && accounts.length === 0 ? <LoadingState /> : (
         <section className="marketplace-card-grid">
           {visibleAccounts.length === 0 ? (
@@ -229,42 +322,6 @@ export function MarketplacesPage({ provider = '', title = 'Pazaryerleri' }) {
           )}
         </section>
       )}
-
-      {canManageMarketplaces && <details className="panel marketplace-form-panel">
-        <summary>Yeni pazaryeri hesabi ekle</summary>
-        <form className="form-grid" onSubmit={submit}>
-          <Field label="Firma" error={errors.company_id}>
-            <select value={form.company_id} onChange={(event) => setForm({ ...form, company_id: event.target.value })}>
-              <option value="">Seciniz</option>
-              {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
-            </select>
-          </Field>
-          <Field label="Pazaryeri">
-            <select value={form.code} disabled={!!provider} onChange={(event) => setForm({ ...form, code: event.target.value })}>
-              <option value="trendyol">Trendyol</option>
-              <option value="hepsiburada">Hepsiburada</option>
-              <option value="ciceksepeti">Ciceksepeti</option>
-            </select>
-          </Field>
-          <Field label="Hesap Adi" error={errors.name}><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
-          <Field label="Trendyol Satici No" error={errors.supplier_id}><input value={form.supplier_id} onChange={(event) => setForm({ ...form, supplier_id: event.target.value })} /></Field>
-          <Field label="Hepsiburada Magaza No" error={errors.merchant_id}><input value={form.merchant_id} onChange={(event) => setForm({ ...form, merchant_id: event.target.value })} /></Field>
-          <Field label="Kullanici Adi / Anahtar" error={errors.service_username}>
-            <input
-              value={form.api_key}
-              onChange={(event) => setForm({ ...form, api_key: event.target.value, service_username: event.target.value })}
-            />
-          </Field>
-          <Field label="Sifre / Gizli Anahtar" error={errors.service_password}>
-            <input
-              type="password"
-              value={form.api_secret}
-              onChange={(event) => setForm({ ...form, api_secret: event.target.value, service_password: event.target.value })}
-            />
-          </Field>
-          <button disabled={loading}>{loading ? 'Kaydediliyor...' : 'Baglanti Ekle'}</button>
-        </form>
-      </details>}
       {error && <ErrorState message={error} onRetry={load} />}
       {syncing && <LoadingState label="Islem calisiyor..." />}
       {categories.length > 0 && (

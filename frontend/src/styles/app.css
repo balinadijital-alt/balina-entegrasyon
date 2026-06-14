@@ -3959,6 +3959,183 @@ a {
   margin-bottom: 18px;
 }
 
+.marketplace-reference-flow {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  overflow-x: auto;
+  padding: 10px;
+}
+
+.marketplace-reference-flow div {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #dbe3ef;
+  border-radius: 5px;
+  display: grid;
+  gap: 5px;
+  min-height: 78px;
+  padding: 12px;
+}
+
+.marketplace-reference-flow strong {
+  align-items: center;
+  background: #1f5bbf;
+  border-radius: 999px;
+  color: #fff;
+  display: inline-flex;
+  font-size: 13px;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.marketplace-reference-flow span {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.marketplace-reference-flow small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.marketplace-reference-summary {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 0;
+}
+
+.marketplace-reference-summary div {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: grid;
+  gap: 5px;
+  min-height: 92px;
+  padding: 14px 16px;
+  position: relative;
+}
+
+.marketplace-reference-summary div::after {
+  background: #1f5bbf;
+  border-radius: 999px;
+  content: '';
+  height: 4px;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  width: 42px;
+}
+
+.marketplace-reference-summary span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.marketplace-reference-summary strong {
+  color: #0f172a;
+  font-size: 27px;
+  line-height: 1;
+}
+
+.marketplace-reference-summary small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.marketplace-reference-filter,
+.marketplace-reference-form {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.marketplace-reference-filter-title,
+.marketplace-reference-form-title {
+  align-items: center;
+  background: #1259b8;
+  color: #fff;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+
+.marketplace-reference-filter-title strong,
+.marketplace-reference-form-title strong {
+  color: #fff;
+  font-size: 17px;
+}
+
+.marketplace-reference-filter-title span,
+.marketplace-reference-form-title span {
+  color: #dbeafe;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.marketplace-reference-filter-row {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(150px, 1fr));
+  padding: 16px 18px 18px;
+}
+
+.marketplace-reference-filter-row input,
+.marketplace-reference-filter-row select {
+  border-radius: 4px;
+  min-height: 42px;
+}
+
+.marketplace-command-row {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+
+.marketplace-command-row h2,
+.marketplace-command-row p {
+  margin: 0;
+}
+
+.marketplace-command-row h2 {
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.marketplace-command-row p {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.marketplace-command-row > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.marketplace-reference-form .form-grid {
+  padding: 18px;
+}
+
 .marketplace-account-card {
   background: #fff;
   border: 1px solid var(--border);
@@ -10619,6 +10796,8 @@ tbody td:last-child .row-actions:focus-within {
   .customer-empty-guide,
   .product-filter-row,
   .product-reference-summary,
+  .marketplace-reference-summary,
+  .marketplace-reference-filter-row,
   .marketplace-card-grid,
   .marketplace-card-stats,
   .result-summary-grid,
@@ -10843,17 +11022,23 @@ tbody td:last-child .row-actions:focus-within {
 
   .product-reference-filter-title,
   .orders-reference-filter-title,
+  .marketplace-reference-filter-title,
+  .marketplace-reference-form-title,
+  .marketplace-command-row,
   .orders-command-row,
   .product-list-command-row {
     align-items: flex-start;
     flex-direction: column;
   }
 
+  .marketplace-command-row > div:last-child,
   .orders-command-row > div:last-child,
   .product-list-command-row > div:last-child {
     width: 100%;
   }
 
+  .marketplace-command-row .button-link,
+  .marketplace-command-row button,
   .orders-command-row .button-link,
   .orders-command-row button,
   .product-list-command-row .button-link {
