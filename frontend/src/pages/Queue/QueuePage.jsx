@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Clock3, Eye, PlayCircle, RadioTower, RefreshCcw, RotateCcw, ServerCog, Timer, Workflow } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Eye, RefreshCcw, RotateCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api, asArray, asObject } from '../../api/client.js';
 import { hasPermission } from '../../auth/permissions.js';
@@ -125,36 +125,78 @@ export function QueuePage() {
   return (
     <>
       <PageHeader
-        title="Queue Retry Merkezi"
-        description="Bekleyen, calisan ve basarisiz joblari izleyin; failed job detaylarini inceleyip retry aksiyonlarini yonetin."
+        title="Queue Merkezi"
+        description="Bekleyen, calisan, tamamlanan ve hatali islemleri takip edin; gerekenleri guvenli sekilde tekrar deneyin."
         actions={<button type="button" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
-      <ReferenceModuleNav section="operations" />
+      <ReferenceModuleNav
+        section="operations"
+        note="Queue Merkezi arka planda calisan aktarim, senkronizasyon, import, kargo ve fatura islemlerinin durumunu sade bir akisla gosterir."
+        next="Siradaki islem: once hatali islem sayisini kontrol edin, gerekiyorsa job detayindan ilgili module gidin veya retry aksiyonunu kullanin."
+      />
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && !status ? <LoadingState /> : null}
 
       {status && (
         <>
-          <section className="retry-hero-panel">
+          <section className="queue-reference-flow" aria-label="Queue akis ozeti">
+            {[
+              ['1', 'Bekleyen', stats.queued || 0, 'Sirada calisacak islemler'],
+              ['2', 'Calisan', stats.running || 0, 'Su an devam eden joblar'],
+              ['3', 'Basarili', stats.completed || 0, 'Tamamlanan islemler'],
+              ['4', 'Hatali', stats.failed_jobs || 0, 'Mudahale bekleyen joblar'],
+              ['5', 'Tekrar Dene', retryCount, 'Bu oturumdaki retry'],
+            ].map(([step, label, value, help]) => (
+              <div key={step}>
+                <strong>{step}</strong>
+                <span>{label}</span>
+                <small>{value} kayit</small>
+                <em>{help}</em>
+              </div>
+            ))}
+          </section>
+
+          <section className="queue-reference-summary" aria-label="Queue kisa ozet">
             <div>
-              <span className="eyebrow"><RadioTower size={15} /> Queue Health</span>
-              <h2>{queueHealthy ? 'Queue saglikli calisiyor.' : 'Queue kontrol istiyor.'}</h2>
-              <p>Redis baglantisi, bekleyen isler, calisan joblar ve failed job kayitlari 15 saniyede bir yenilenir.</p>
+              <span>Queue Durumu</span>
+              <strong>{queueHealthy ? 'Saglikli' : 'Kontrol'}</strong>
+              <small>{redis.connected ? 'Redis bagli' : 'Redis baglantisi yok'}</small>
             </div>
-            <div className="retry-health-card">
-              <span className={redis.connected ? 'health-dot online' : 'health-dot warning'} />
-              <strong>{redis.connected ? 'Redis bagli' : 'Redis baglantisi yok'}</strong>
-              <small>{redis.message || '-'}</small>
-              <div className="progress"><span style={{ width: `${completedProgress}%` }} /></div>
+            <div>
+              <span>Basari Orani</span>
+              <strong>%{completedProgress}</strong>
+              <small>Tamamlanan is payi</small>
+            </div>
+            <div>
+              <span>Hatali Islem</span>
+              <strong>{stats.failed_jobs || 0}</strong>
+              <small>Retry veya inceleme bekler</small>
+            </div>
+            <div>
+              <span>Son Hata</span>
+              <strong>{lastFailedJob ? jobName(lastFailedJob) : 'Yok'}</strong>
+              <small>{lastFailedJob ? formatDate(lastFailedJob.failed_at) : 'Failed job yok'}</small>
             </div>
           </section>
 
-          <section className="retry-stat-grid">
-            <div className="retry-stat-card"><Clock3 size={19} /><span>Pending jobs</span><strong>{stats.queued || 0}</strong><small>Kuyrukta bekleyen is</small></div>
-            <div className="retry-stat-card danger"><AlertTriangle size={19} /><span>Failed jobs</span><strong>{stats.failed_jobs || 0}</strong><small>Retry bekleyen job</small></div>
-            <div className="retry-stat-card"><PlayCircle size={19} /><span>Running jobs</span><strong>{stats.running || 0}</strong><small>Su anda calisan</small></div>
-            <div className="retry-stat-card success"><RotateCcw size={19} /><span>Retry edilen</span><strong>{retryCount}</strong><small>Bu oturumda tekrar denendi</small></div>
-            <div className="retry-stat-card warning"><ServerCog size={19} /><span>Son basarisiz job</span><strong>{lastFailedJob ? jobName(lastFailedJob) : 'Yok'}</strong><small>{lastFailedJob ? formatDate(lastFailedJob.failed_at) : 'Failed job yok'}</small></div>
+          <section className="queue-command-row">
+            <div>
+              <h2>Ne yapmaliyim?</h2>
+              <p>Hatali islem varsa kaydi secin, hata ozetini okuyun ve ilgili module gecerek duzeltin.</p>
+            </div>
+            <div>
+              <Link className="button-link secondary-link" to="/api-logs">Hata Merkezi</Link>
+              <Link className="button-link secondary-link" to="/operations">Operasyon Merkezi</Link>
+              {canRetryQueue && selectedJob && <button type="button" disabled={loading} onClick={() => retry(selectedJob.uuid)}><RotateCcw size={15} /> Secileni Retry Et</button>}
+            </div>
+          </section>
+
+          <section className={`queue-health-strip ${queueHealthy ? 'healthy' : 'warning'}`}>
+            {queueHealthy ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+            <div>
+              <strong>{queueHealthy ? 'Arka plan islemleri normal calisiyor.' : 'Arka plan islemleri kontrol istiyor.'}</strong>
+              <span>{redis.message || 'Queue durumu 15 saniyede bir otomatik yenilenir.'}</span>
+            </div>
           </section>
 
           <section className="retry-layout">

@@ -19,7 +19,7 @@ const smokeRoutes = [
   { path: '/accounting', title: 'Fatura / Cari' },
   { path: '/saas', title: 'SaaS Operasyon Merkezi' },
   { path: '/settings', title: 'Ayarlar' },
-  { path: '/queue', title: 'Queue Retry Merkezi' },
+  { path: '/queue', title: 'Queue Merkezi' },
   { path: '/api-logs', title: 'Hata Merkezi' },
   { path: '/resources', title: 'Kaynaklar / Developer Center' },
   { path: '/resources/api-knowledge', title: 'API Knowledge Center' },
