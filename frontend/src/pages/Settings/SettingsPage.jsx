@@ -25,7 +25,6 @@ import { DataTable } from '../../components/DataTable.jsx';
 import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
-import { MetricCard } from '../../components/MetricCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { SoftEmpty } from '../../components/SoftEmpty.jsx';
@@ -393,40 +392,72 @@ export function SettingsPage({ audience = 'admin' }) {
   return (
     <div className="settings-center-page">
       <PageHeader
-        title="Sistem ve Firma Yonetim Merkezi"
-        description="Firma bilgileri, entegrasyon hesaplari, credential guvenligi ve genel sistem ayarlarini tek merkezden yonetin."
+        title="Ayarlar"
+        description="Firma, entegrasyon, bildirim ve guvenlik ayarlarini tek ekrandan kontrol edin."
         actions={<button type="button" className="secondary" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
-      <ReferenceModuleNav section={audience === 'admin' ? 'admin' : 'operations'} />
+      <ReferenceModuleNav
+        section={audience === 'admin' ? 'admin' : 'operations'}
+        note="Ayarlar sayfasi firma bilgileri, entegrasyon hesaplari, genel tercihler ve guvenlik kontrolleri icin ana yonetim alanidir."
+        next="Siradaki islem: once ilgili sekmeyi secin, sonra tablo veya form uzerinden gerekli bilgiyi guncelleyin."
+      />
 
-      <section className="settings-center-hero">
-        <div>
-          <span className="eyebrow">Yonetim ve guvenlik merkezi</span>
-          <h2>Firma, entegrasyon ve ayar sagligini tek ekranda izleyin.</h2>
-          <p>Vergi/iletisim bilgileri, pazaryeri ve servis hesaplari, API credential maskeleri ve genel sistem ayarlari merkezi olarak kontrol edilir.</p>
-        </div>
-        <div className="settings-center-status">
-          <ShieldCheck size={28} />
-          <strong>{metrics.integrations}</strong>
-          <span>Toplam entegrasyon hesabi</span>
-          <small>{metrics.warnings} hesap kontrol istiyor, {metrics.licenses} aktif lisans var.</small>
-        </div>
+      <section className="settings-reference-tabs" aria-label="Ayar bolumleri">
+        {tabs.map(({ key, label, icon: Icon }) => (
+          <button type="button" className={activeTab === key ? 'active' : ''} key={key} onClick={() => setActiveTab(key)}>
+            <Icon size={16} />
+            <span>{label}</span>
+          </button>
+        ))}
       </section>
 
-      <section className="settings-center-stat-grid">
-        <MetricCard className="settings-center-stat" icon={<Building2 size={18} />} label="Firma" value={metrics.companies} tone="blue" />
-        <MetricCard className="settings-center-stat" icon={<Link2 size={18} />} label="Entegrasyon" value={metrics.integrations} tone="purple" />
-        <MetricCard className="settings-center-stat" icon={<AlertTriangle size={18} />} label="Kritik uyari" value={metrics.warnings} tone="red" />
-        <MetricCard className="settings-center-stat" icon={<KeyRound size={18} />} label="Aktif lisans" value={metrics.licenses} tone="green" />
+      <section className="settings-reference-summary">
+        <div>
+          <span>Firma</span>
+          <strong>{metrics.companies}</strong>
+          <small>Kayitli musteri</small>
+        </div>
+        <div>
+          <span>Entegrasyon</span>
+          <strong>{metrics.integrations}</strong>
+          <small>Bagli hesap</small>
+        </div>
+        <div>
+          <span>Kritik Uyari</span>
+          <strong>{metrics.warnings}</strong>
+          <small>Kontrol gerekli</small>
+        </div>
+        <div>
+          <span>Aktif Lisans</span>
+          <strong>{metrics.licenses}</strong>
+          <small>Kullanımda</small>
+        </div>
       </section>
 
       <section className="settings-center-layout">
-        <aside className="settings-center-nav panel">
-          {tabs.map(({ key, label, icon: Icon }) => (
-            <button type="button" className={activeTab === key ? 'active' : ''} key={key} onClick={() => setActiveTab(key)}>
-              <Icon size={17} /> {label}
+        <aside className="settings-action-panel">
+          <div className="settings-action-panel-title">
+            <strong>Yonetim Adimlari</strong>
+            <span>Sayfa amacini secin ve ilgili tabloyu duzenleyin.</span>
+          </div>
+          <div className="settings-action-list">
+            <button type="button" className={activeTab === 'companies' ? 'active' : ''} onClick={() => setActiveTab('companies')}>
+              <Building2 size={17} />
+              <span><strong>Firma bilgileri</strong><small>Paket, lisans, siparis ve adres ozeti.</small></span>
             </button>
-          ))}
+            <button type="button" className={activeTab === 'integrations' ? 'active' : ''} onClick={() => setActiveTab('integrations')}>
+              <Link2 size={17} />
+              <span><strong>Entegrasyon hesaplari</strong><small>Pazaryeri, kargo, POS, ERP ve XML baglantilari.</small></span>
+            </button>
+            <button type="button" className={activeTab === 'general' ? 'active' : ''} onClick={() => setActiveTab('general')}>
+              <Settings2 size={17} />
+              <span><strong>Genel ayarlar</strong><small>Bildirim, e-posta, webhook, dil ve tema.</small></span>
+            </button>
+            <button type="button" className={activeTab === 'security' ? 'active' : ''} onClick={() => setActiveTab('security')}>
+              <ShieldCheck size={17} />
+              <span><strong>Guvenlik</strong><small>Credential maskeleme ve kritik hesap kontrolleri.</small></span>
+            </button>
+          </div>
         </aside>
 
         <main className="settings-center-content">

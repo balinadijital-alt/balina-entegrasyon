@@ -18,7 +18,7 @@ const smokeRoutes = [
   { path: '/payments', title: 'Odeme Operasyon Merkezi' },
   { path: '/accounting', title: 'Muhasebe Operasyon Merkezi' },
   { path: '/saas', title: 'SaaS Operasyon Merkezi' },
-  { path: '/settings', title: 'Sistem ve Firma Yonetim Merkezi' },
+  { path: '/settings', title: 'Ayarlar' },
   { path: '/queue', title: 'Queue Retry Merkezi' },
   { path: '/api-logs', title: 'Hata Merkezi' },
   { path: '/resources', title: 'Kaynaklar / Developer Center' },

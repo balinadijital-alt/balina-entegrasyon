@@ -2835,6 +2835,160 @@ a {
   justify-content: flex-end;
 }
 
+.settings-reference-tabs {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px;
+}
+
+.settings-reference-tabs button {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #dbe3ef;
+  border-radius: 5px;
+  color: #334155;
+  display: inline-flex;
+  flex: 1 0 180px;
+  gap: 8px;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 12px;
+}
+
+.settings-reference-tabs button.active {
+  background: #1f5bbf;
+  border-color: #1f5bbf;
+  color: #fff;
+}
+
+.settings-reference-tabs span {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.settings-reference-summary {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.settings-reference-summary div {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: grid;
+  gap: 5px;
+  min-height: 92px;
+  padding: 14px 16px;
+  position: relative;
+}
+
+.settings-reference-summary div::after {
+  background: #1f5bbf;
+  border-radius: 999px;
+  content: '';
+  height: 4px;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  width: 42px;
+}
+
+.settings-reference-summary span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.settings-reference-summary strong {
+  color: #0f172a;
+  font-size: 27px;
+  line-height: 1;
+}
+
+.settings-reference-summary small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.settings-action-panel {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  height: fit-content;
+  overflow: hidden;
+  position: sticky;
+  top: 18px;
+}
+
+.settings-action-panel-title {
+  background: #1259b8;
+  color: #fff;
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+}
+
+.settings-action-panel-title strong {
+  color: #fff;
+  font-size: 16px;
+}
+
+.settings-action-panel-title span {
+  color: #dbeafe;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.settings-action-list {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.settings-action-list button {
+  align-items: flex-start;
+  background: #f8fafc;
+  border: 1px solid #dbe3ef;
+  border-radius: 5px;
+  color: #334155;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+  min-height: 70px;
+  padding: 12px;
+  text-align: left;
+}
+
+.settings-action-list button.active {
+  background: #eff6ff;
+  border-color: #1f5bbf;
+  color: #1f5bbf;
+}
+
+.settings-action-list button > span {
+  display: grid;
+  gap: 3px;
+}
+
+.settings-action-list strong {
+  color: inherit;
+  font-size: 13px;
+}
+
+.settings-action-list small {
+  color: #64748b;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .catalog-admin-layout {
   align-items: start;
   display: grid;
@@ -10438,6 +10592,7 @@ tbody td:last-child .row-actions:focus-within {
   .saas-form-grid,
   .settings-center-hero,
   .settings-center-stat-grid,
+  .settings-reference-summary,
   .settings-center-layout,
   .settings-company-grid,
   .settings-detail-grid,
