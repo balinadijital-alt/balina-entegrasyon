@@ -1,20 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  Banknote,
   CheckCircle2,
   Download,
   Eye,
   FileText,
   Filter,
-  Landmark,
   ReceiptText,
   RefreshCcw,
   RotateCcw,
   Search,
   Send,
   Undo2,
-  WalletCards,
 } from 'lucide-react';
 import { Link as RouterLink } from 'react-router-dom';
 import { api, asArray } from '../../api/client.js';
@@ -23,7 +20,6 @@ import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
-import { MetricCard } from '../../components/MetricCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
@@ -346,49 +342,63 @@ export function AccountingPage() {
   return (
     <div className="accounting-page">
       <PageHeader
-        title="Muhasebe Operasyon Merkezi"
-        description="Fatura, e-fatura, e-arsiv, cari hesap, tahsilat ve ERP entegrasyon sureclerini tek ekrandan yonetin."
+        title="Fatura / Cari"
+        description="Fatura kesme, ERP gonderim, PDF, iade ve cari hareketleri tek finans akisi icinde takip edin."
         actions={<button type="button" className="secondary" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
-      <ReferenceModuleNav section="finance" />
+      <ReferenceModuleNav
+        section="finance"
+        note="Fatura / Cari ekraninda fatura kesme, ERP gonderim, PDF, iade ve cari hareketler ayni finans akisi icinde izlenir."
+        next="Siradaki islem: kesilecek veya basarisiz faturalari filtreleyin, kaydi secip sag panelden sorgu, PDF ya da iade aksiyonunu baslatin."
+      />
 
-      <section className="accounting-hero">
-        <div>
-          <span className="eyebrow">Canli muhasebe akisi</span>
-          <h2>Fatura, cari ve ERP entegrasyonlarini tek merkezden takip edin.</h2>
-          <p>Kesilecek faturalar, ERP gonderim sonucu, PDF durumu, iade faturasi ve cari borc/alacak akisini ayni ekranda gorun.</p>
-          <div className="accounting-hero-actions">
-            <button type="button" onClick={() => setFilters({ provider: 'all', status: 'failed', search: '' })}>
-              <AlertTriangle size={16} /> Kritik Hatalar
-            </button>
-            <RouterLink className="button-link secondary-link" to="/api-logs">API Loglari</RouterLink>
+      <section className="accounting-reference-flow" aria-label="Fatura cari akisi">
+        {[
+          ['1', 'Kesilecek', metrics.draft, 'Siparisten fatura olusacak'],
+          ['2', 'ERP Gonderim', metrics.issued, 'Servis sonucu izlenir'],
+          ['3', 'PDF Hazir', metrics.pdf, 'Belge indirilebilir'],
+          ['4', 'Iade', metrics.returns, 'Iade faturasi takip edilir'],
+          ['5', 'Hata / Cari', metrics.failed, 'Cari ve log kontrolu'],
+        ].map(([step, label, value, help]) => (
+          <div key={step}>
+            <strong>{step}</strong>
+            <span>{label}</span>
+            <small>{value} kayit</small>
+            <em>{help}</em>
           </div>
-        </div>
-        <div className="accounting-hero-status">
-          <Landmark size={28} />
-          <strong>%{successRate}</strong>
-          <span>Fatura basari orani</span>
-          <small>{accounts.length} ERP hesabi, {formatMoney(metrics.balance)} cari bakiye ozeti.</small>
-          <div className="progress"><span style={{ width: `${successRate}%` }} /></div>
-        </div>
+        ))}
       </section>
 
-      <section className="accounting-stat-grid">
-        <MetricCard className="accounting-stat-card" icon={<ReceiptText size={18} />} label="Kesilecek faturalar" value={metrics.draft} tone="orange" />
-        <MetricCard className="accounting-stat-card" icon={<CheckCircle2 size={18} />} label="Basarili e-faturalar" value={metrics.issued} tone="green" />
-        <MetricCard className="accounting-stat-card" icon={<AlertTriangle size={18} />} label="Basarisiz faturalar" value={metrics.failed} tone="red" />
-        <MetricCard className="accounting-stat-card" icon={<FileText size={18} />} label="PDF hazir olanlar" value={metrics.pdf} tone="blue" />
-        <MetricCard className="accounting-stat-card" icon={<Undo2 size={18} />} label="Iade faturalari" value={metrics.returns} tone="purple" />
-        <MetricCard className="accounting-stat-card" icon={<WalletCards size={18} />} label="Cari bakiye ozeti" value={formatMoney(metrics.balance)} tone="green" />
+      <section className="accounting-reference-summary" aria-label="Fatura ozeti">
+        <div>
+          <span>Fatura Basari</span>
+          <strong>%{successRate}</strong>
+          <small>Tamamlanan fatura orani</small>
+        </div>
+        <div>
+          <span>ERP Hesabi</span>
+          <strong>{accounts.length}</strong>
+          <small>Bagli muhasebe servisi</small>
+        </div>
+        <div>
+          <span>Basarisiz</span>
+          <strong>{metrics.failed}</strong>
+          <small>Mudahale bekleyen fatura</small>
+        </div>
+        <div>
+          <span>Cari Bakiye</span>
+          <strong>{formatMoney(metrics.balance)}</strong>
+          <small>Borc / alacak ozeti</small>
+        </div>
       </section>
 
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && currentAccounts.length === 0 && invoices.length === 0 ? <LoadingState /> : (
         <>
-          <section className="panel accounting-filter-panel">
-            <div>
-              <h2>Fatura kayitlari</h2>
-              <p>ERP servisi, durum, siparis no, cari veya fatura numarasi ile filtreleyin.</p>
+          <section className="accounting-reference-filter">
+            <div className="accounting-reference-filter-title">
+              <strong>Filtreleme Secenekleri</strong>
+              <span>ERP servisi, durum, siparis, cari veya fatura numarasina gore listeyi daraltin.</span>
             </div>
             <div className="accounting-filter-row">
               <label>
@@ -414,12 +424,25 @@ export function AccountingPage() {
             </div>
           </section>
 
+          <section className="accounting-command-row">
+            <div>
+              <h2>Fatura Operasyon Listesi</h2>
+              <p>{filteredInvoices.length} fatura goruntuleniyor. Kayit secerek sorgu, PDF, iade veya log kontrolu baslatabilirsiniz.</p>
+            </div>
+            <div>
+              <button type="button" onClick={() => setFilters({ provider: 'all', status: 'failed', search: '' })}>
+                <AlertTriangle size={16} /> Kritik Hatalar
+              </button>
+              <RouterLink className="button-link secondary-link" to="/api-logs">API Loglari</RouterLink>
+            </div>
+          </section>
+
           <section className="accounting-layout">
             <div className="panel accounting-table-panel">
               <div className="accounting-table-header">
                 <div>
-                  <h2>Fatura listesi</h2>
-                  <p>{filteredInvoices.length} fatura kaydi goruntuleniyor.</p>
+                  <h2>Operasyon Tablosu</h2>
+                  <p>Fatura, cari ve ERP sonucu birlikte izlenir.</p>
                 </div>
                 <StatusBadge tone={metrics.failed ? 'failed' : 'active'} label={metrics.failed ? 'Kontrol gerekli' : 'Saglikli'} />
               </div>

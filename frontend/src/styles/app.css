@@ -3317,6 +3317,180 @@ a {
   justify-content: flex-end;
 }
 
+.accounting-reference-flow {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
+  display: grid;
+  gap: 0;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  overflow: hidden;
+}
+
+.accounting-reference-flow div {
+  border-right: 1px solid #e2e8f0;
+  display: grid;
+  gap: 7px;
+  min-height: 132px;
+  padding: 18px;
+  position: relative;
+}
+
+.accounting-reference-flow div:last-child {
+  border-right: 0;
+}
+
+.accounting-reference-flow strong {
+  align-items: center;
+  background: #e8f1ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  color: #1259b8;
+  display: inline-flex;
+  font-size: 15px;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.accounting-reference-flow span {
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.accounting-reference-flow small {
+  color: #1f5bbf;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.accounting-reference-flow em {
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.accounting-reference-summary {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.accounting-reference-summary div {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  display: grid;
+  gap: 5px;
+  overflow: hidden;
+  padding: 16px;
+  position: relative;
+}
+
+.accounting-reference-summary div::after {
+  background: #1f5bbf;
+  content: '';
+  height: 100%;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 4px;
+}
+
+.accounting-reference-summary span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.accounting-reference-summary strong {
+  color: #0f172a;
+  font-size: 24px;
+  overflow-wrap: anywhere;
+}
+
+.accounting-reference-summary small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.accounting-reference-filter {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+  display: grid;
+  overflow: hidden;
+}
+
+.accounting-reference-filter-title {
+  align-items: center;
+  background: #1259b8;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+
+.accounting-reference-filter-title strong {
+  color: #fff;
+  font-size: 17px;
+}
+
+.accounting-reference-filter-title span {
+  color: #dbeafe;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.accounting-reference-filter .accounting-filter-row {
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  padding: 16px 18px 18px;
+}
+
+.accounting-reference-filter .accounting-filter-row label {
+  border-radius: 4px;
+}
+
+.accounting-command-row {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+
+.accounting-command-row h2,
+.accounting-command-row p {
+  margin: 0;
+}
+
+.accounting-command-row h2 {
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.accounting-command-row p {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.accounting-command-row > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .catalog-admin-layout {
   align-items: start;
   display: grid;
@@ -11073,8 +11247,11 @@ tbody td:last-child .row-actions:focus-within {
   .payment-account-panel .form-grid,
   .accounting-hero,
   .accounting-stat-grid,
+  .accounting-reference-flow,
+  .accounting-reference-summary,
   .accounting-filter-panel,
   .accounting-filter-row,
+  .accounting-reference-filter .accounting-filter-row,
   .accounting-layout,
   .accounting-detail-grid,
   .accounting-detail-actions,
@@ -11358,8 +11535,10 @@ tbody td:last-child .row-actions:focus-within {
   .marketplace-reference-form-title,
   .shipping-reference-filter-title,
   .payment-reference-filter-title,
+  .accounting-reference-filter-title,
   .payment-command-row,
   .shipping-command-row,
+  .accounting-command-row,
   .marketplace-command-row,
   .orders-command-row,
   .product-list-command-row {
@@ -11370,6 +11549,7 @@ tbody td:last-child .row-actions:focus-within {
   .marketplace-command-row > div:last-child,
   .shipping-command-row > div:last-child,
   .payment-command-row > div:last-child,
+  .accounting-command-row > div:last-child,
   .orders-command-row > div:last-child,
   .product-list-command-row > div:last-child {
     width: 100%;
@@ -11380,6 +11560,8 @@ tbody td:last-child .row-actions:focus-within {
   .shipping-command-row button,
   .payment-command-row .button-link,
   .payment-command-row button,
+  .accounting-command-row .button-link,
+  .accounting-command-row button,
   .orders-command-row .button-link,
   .orders-command-row button,
   .product-list-command-row .button-link {
