@@ -25,7 +25,6 @@ import { DetailItem } from '../../components/DetailItem.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
-import { MetricCard } from '../../components/MetricCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
@@ -320,49 +319,62 @@ export function PaymentsPage() {
   return (
     <div className="payment-page">
       <PageHeader
-        title="Odeme Operasyon Merkezi"
-        description="POS, 3D Secure, callback, iade ve odeme hata sureclerini tek ekrandan izleyin."
+        title="Odeme Yonetimi"
+        description="POS, 3D Secure, callback, iade ve odeme hata sureclerini durumuna gore takip edin."
         actions={<button type="button" className="secondary" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
-      <ReferenceModuleNav section="finance" />
+      <ReferenceModuleNav
+        section="finance"
+        note="Odeme ekraninda POS, 3D Secure, callback, iade ve hata kontrolleri ayni finans akisi icinde izlenir."
+        next="Siradaki islem: basarisiz veya callback hatali odemeleri filtreleyin, kaydi secip sag panelden sorgu ya da iade aksiyonunu baslatin."
+      />
 
-      <section className="payment-hero">
-        <div>
-          <span className="eyebrow">Canli odeme akisi</span>
-          <h2>POS ve alternatif odeme islemlerini tek merkezden yonetin.</h2>
-          <p>iyzico, PayTR, Param, Sipay, Paynet, banka POS, havale/EFT ve kapida odeme kayitlarini durum ve saglayici bazinda takip edin.</p>
-          <div className="payment-hero-actions">
-            <button type="button" onClick={() => setFilters({ provider: 'all', status: 'failed', search: '' })}>
-              <AlertTriangle size={16} /> Kritik Hatalar
-            </button>
-            <RouterLink className="button-link secondary-link" to="/api-logs">API Loglari</RouterLink>
+      <section className="payment-reference-flow" aria-label="Odeme akisi">
+        {[
+          ['1', 'Bekleyen', metrics.pending],
+          ['2', 'Basarili', metrics.paid],
+          ['3', '3D Secure', metrics.threeD],
+          ['4', 'Iade', metrics.refunded],
+          ['5', 'Hata / Callback', metrics.failed + metrics.callback],
+        ].map(([number, label, count]) => (
+          <div key={label}>
+            <strong>{number}</strong>
+            <span>{label}</span>
+            <small>{count} kayit</small>
           </div>
-        </div>
-        <div className="payment-hero-status">
-          <ShieldCheck size={28} />
-          <strong>%{successRate}</strong>
-          <span>Odeme basari orani</span>
-          <small>{accounts.length} POS hesabi, {metrics.callback} callback hatasi takipte.</small>
-          <div className="progress"><span style={{ width: `${successRate}%` }} /></div>
-        </div>
+        ))}
       </section>
 
-      <section className="payment-stat-grid">
-        <MetricCard className="payment-stat-card" icon={<CheckCircle2 size={18} />} label="Basarili odemeler" value={metrics.paid} tone="green" />
-        <MetricCard className="payment-stat-card" icon={<RefreshCcw size={18} />} label="Bekleyen odemeler" value={metrics.pending} tone="orange" />
-        <MetricCard className="payment-stat-card" icon={<AlertTriangle size={18} />} label="Basarisiz odemeler" value={metrics.failed} tone="red" />
-        <MetricCard className="payment-stat-card" icon={<Undo2 size={18} />} label="Iade edilenler" value={metrics.refunded} tone="purple" />
-        <MetricCard className="payment-stat-card" icon={<LockKeyhole size={18} />} label="3D Secure bekleyen" value={metrics.threeD} tone="blue" />
-        <MetricCard className="payment-stat-card" icon={<Webhook size={18} />} label="Callback hatalari" value={metrics.callback} tone="red" />
+      <section className="payment-reference-summary">
+        <div>
+          <span>Basari Orani</span>
+          <strong>%{successRate}</strong>
+          <small>{metrics.paid} basarili odeme</small>
+        </div>
+        <div>
+          <span>POS Hesabi</span>
+          <strong>{accounts.length}</strong>
+          <small>Tanimli hesap</small>
+        </div>
+        <div>
+          <span>Basarisiz</span>
+          <strong>{metrics.failed}</strong>
+          <small>Kontrol gerekli</small>
+        </div>
+        <div>
+          <span>Callback Hatasi</span>
+          <strong>{metrics.callback}</strong>
+          <small>Log kontrolu</small>
+        </div>
       </section>
 
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && accounts.length === 0 && payments.length === 0 ? <LoadingState /> : (
         <>
-          <section className="panel payment-filter-panel">
-            <div>
-              <h2>Odeme kayitlari</h2>
-              <p>Saglayici, durum, siparis no, musteri veya islem numarasina gore filtreleyin.</p>
+          <section className="payment-reference-filter">
+            <div className="payment-reference-filter-title">
+              <strong>Filtreleme Secenekleri</strong>
+              <span>Saglayici, durum, siparis, musteri veya islem numarasina gore listeyi daraltin.</span>
             </div>
             <div className="payment-filter-row">
               <label>
@@ -385,6 +397,19 @@ export function PaymentsPage() {
                   placeholder="Siparis no, musteri, islem no veya saglayici ara"
                 />
               </label>
+            </div>
+          </section>
+
+          <section className="payment-command-row">
+            <div>
+              <h2>Odeme Operasyon Listesi</h2>
+              <p>{filteredPayments.length} odeme goruntuleniyor. Kayit secerek sorgu, iade veya log kontrolu baslatabilirsiniz.</p>
+            </div>
+            <div>
+              <button type="button" onClick={() => setFilters({ provider: 'all', status: 'failed', search: '' })}>
+                <AlertTriangle size={16} /> Kritik Hatalar
+              </button>
+              <RouterLink className="button-link secondary-link" to="/api-logs">API Loglari</RouterLink>
             </div>
           </section>
 
