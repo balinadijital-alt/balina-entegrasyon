@@ -388,6 +388,12 @@ export function SettingsPage({ audience = 'admin' }) {
     warnings: integrationAccounts.filter((account) => account.status === 'failed').length,
     licenses: data.licenses.filter((license) => license.status === 'active').length,
   };
+  const settingsFlow = [
+    { title: 'Firma', value: `${metrics.companies} kayit`, text: 'Paket, lisans ve adres' },
+    { title: 'Entegrasyon', value: `${metrics.integrations} hesap`, text: 'Pazaryeri, kargo, POS, ERP' },
+    { title: 'Genel', value: settings.webhooks.enabled ? 'Webhook aktif' : 'Webhook pasif', text: 'Bildirim, e-posta, dil' },
+    { title: 'Guvenlik', value: settings.security.mask_credentials !== false ? 'Maskeli' : 'Acik', text: 'Credential ve oturum' },
+  ];
 
   return (
     <div className="settings-center-page">
@@ -401,6 +407,30 @@ export function SettingsPage({ audience = 'admin' }) {
         note="Ayarlar sayfasi firma bilgileri, entegrasyon hesaplari, genel tercihler ve guvenlik kontrolleri icin ana yonetim alanidir."
         next="Siradaki islem: once ilgili sekmeyi secin, sonra tablo veya form uzerinden gerekli bilgiyi guncelleyin."
       />
+
+      <section className="settings-reference-hero">
+        <div>
+          <span className="eyebrow">Ayar Kurulum Akisi</span>
+          <h2>Once firma ve baglantilari kontrol edin, sonra genel ayarlari kaydedin.</h2>
+          <p>Zip referanslarindaki ayar ekranlari gibi bu alan da kullaniciyi bolum bolum yonlendirir: firma, entegrasyon, genel tercihler ve guvenlik.</p>
+        </div>
+        <div className={metrics.warnings > 0 ? 'settings-reference-status warning' : 'settings-reference-status'}>
+          <span>Kontrol durumu</span>
+          <strong>{metrics.warnings > 0 ? `${metrics.warnings} uyari` : 'Temiz'}</strong>
+          <small>{metrics.warnings > 0 ? 'Hatali entegrasyonlari inceleyin.' : 'Kritik ayar uyarisi yok.'}</small>
+        </div>
+      </section>
+
+      <section className="settings-reference-flow" aria-label="Ayar akis ozeti">
+        {settingsFlow.map((item, index) => (
+          <button type="button" key={item.title} onClick={() => setActiveTab(tabs[index]?.key || 'companies')} className={activeTab === tabs[index]?.key ? 'active' : ''}>
+            <em>{index + 1}</em>
+            <strong>{item.title}</strong>
+            <span>{item.value}</span>
+            <small>{item.text}</small>
+          </button>
+        ))}
+      </section>
 
       <section className="settings-reference-tabs" aria-label="Ayar bolumleri">
         {tabs.map(({ key, label, icon: Icon }) => (
