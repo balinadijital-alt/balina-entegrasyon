@@ -6,6 +6,7 @@ import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
@@ -230,6 +231,7 @@ export function OrderDetailPage() {
   return (
     <>
       <PageHeader title={`Siparis Detayi ${order?.marketplace_order_id || ''}`} actions={<Link className="button-link secondary-link" to="/orders"><ArrowLeft size={16} /> Listeye Don</Link>} />
+      <ReferenceModuleNav section="orders" />
       {error && <ErrorState message={error} onRetry={load} />}
       {order && (
         <>

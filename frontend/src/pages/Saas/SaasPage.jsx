@@ -22,6 +22,7 @@ import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { MetricCard } from '../../components/MetricCard.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { SoftEmpty } from '../../components/SoftEmpty.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { useApp } from '../../context/AppContext.jsx';
@@ -256,6 +257,7 @@ export function SaasPage() {
         description="Firma abonelikleri, paket limitleri, kullanim metrikleri, lisans anahtarlari ve partner yapisini tek merkezden yonetin."
         actions={<button type="button" className="secondary" onClick={load} disabled={loading}><TrendingUp size={16} /> Yenile</button>}
       />
+      <ReferenceModuleNav section="saas" />
 
       <section className="saas-hero">
         <div>

@@ -4,6 +4,7 @@ import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
 export function RolesPage() {
@@ -23,6 +24,7 @@ export function RolesPage() {
   return (
     <>
       <PageHeader title="Rol ve Yetki Yonetimi" />
+      <ReferenceModuleNav section="admin" />
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && roles.length === 0 ? <LoadingState /> : (
       <DataTable

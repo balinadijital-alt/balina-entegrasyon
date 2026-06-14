@@ -3,6 +3,7 @@ import { BookOpen, CheckCircle2, ExternalLink, HelpCircle, Search, Sparkles } fr
 import { Link } from 'react-router-dom';
 import { DetailItem } from '../../components/DetailItem.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { SoftEmpty } from '../../components/SoftEmpty.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { StatusPill } from '../../components/StatusPill.jsx';
@@ -71,6 +72,7 @@ export function HelpCenterPage() {
         title="Yardım Merkezi"
         description="Operasyon ekipleri için ürün, pazaryeri, import, sipariş, kargo, ödeme, webhook ve queue rehberleri."
       />
+      <ReferenceModuleNav section="resources" />
 
       <section className="developer-hero panel help-center-hero">
         <div>

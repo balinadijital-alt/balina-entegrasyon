@@ -5,6 +5,7 @@ import { api } from '../../api/client.js';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
 function formatDate(date) {
@@ -149,6 +150,7 @@ export function ExecutiveDashboardPage() {
         description="Platform sagligi, buyume sinyalleri ve tenant risklerini tek stratejik ekranda izleyin."
         actions={<button className="primary" type="button" onClick={load}><RefreshCcw size={16} /> Yenile</button>}
       />
+      <ReferenceModuleNav section="admin" />
 
       <div className="analytics-filter-bar executive-filter-bar">
         <label>

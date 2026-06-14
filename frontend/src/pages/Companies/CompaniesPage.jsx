@@ -5,6 +5,7 @@ import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { firstError, validateCompany } from '../../utils/validation.js';
@@ -50,6 +51,7 @@ export function CompaniesPage() {
   return (
     <>
       <PageHeader title="Firma Yonetimi" />
+      <ReferenceModuleNav section="admin" />
       <section className="panel">
         <form className="form-grid" onSubmit={submit}>
           <Field label="Firma Adi" error={errors.name}><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>

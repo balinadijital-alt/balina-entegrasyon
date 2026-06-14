@@ -5,6 +5,7 @@ import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
 function statusText(status) {
@@ -32,6 +33,7 @@ export function BatchResultsPage() {
   return (
     <>
       <PageHeader title="Batch Sonuclari" description="Pazaryerine gonderilen urunlerin sonucunu sade ozet olarak takip edin." />
+      <ReferenceModuleNav section="marketplace" />
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && drafts.length === 0 ? <LoadingState /> : (
         <DataTable

@@ -7,6 +7,7 @@ import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { PageToolbar } from '../../components/PageToolbar.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
@@ -204,6 +205,7 @@ export function ModulePage({ config }) {
   return (
     <>
       <PageHeader title={config.title} />
+      <ReferenceModuleNav section="commerce" />
       <PageToolbar
         search={search}
         onSearch={setSearch}

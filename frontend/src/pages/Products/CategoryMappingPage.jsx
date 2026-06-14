@@ -7,6 +7,7 @@ import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
@@ -160,6 +161,7 @@ export function CategoryMappingPage() {
   return (
     <>
       <PageHeader title="Kategori Eslestirme" />
+      <ReferenceModuleNav section="products" />
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && mappings.length === 0 ? <LoadingState /> : null}
 

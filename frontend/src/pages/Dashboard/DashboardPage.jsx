@@ -22,6 +22,7 @@ import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 
 const iconMap = {
@@ -161,6 +162,7 @@ export function DashboardPage({ title = 'Yonetim Paneli' }) {
         title={title}
         actions={<button type="button" onClick={load} disabled={loading}><RefreshCcw size={16} /> Yenile</button>}
       />
+      <ReferenceModuleNav section="admin" />
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && !report ? <LoadingState /> : null}
 

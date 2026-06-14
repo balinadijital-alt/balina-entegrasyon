@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Activity, BookOpen, CheckCircle2, ExternalLink, FileCode2, GitBranch, Link2, Search, ServerCog, Workflow } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { apiKnowledgeFoundations, apiKnowledgeProviders, apiKnowledgeTopicMap } from '../../data/apiKnowledgeContent.js';
 
 function badgeTone(value) {
@@ -86,6 +87,7 @@ export function ApiKnowledgeCenterPage() {
         description="Provider endpointleri, sistemde kullanildiklari ekranlar, queue iliskileri ve readiness etkileri icin teknik bilgi merkezi."
         actions={<Link className="button-link secondary-link" to="/help-center"><BookOpen size={16} /> Yardim Merkezi</Link>}
       />
+      <ReferenceModuleNav section="resources" />
 
       <section className="api-knowledge-hero panel">
         <div>

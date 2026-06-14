@@ -81,6 +81,31 @@ const sectionConfig = {
     note: 'Yardim, API dokumani ve operasyon bilgisi birbirinden ayrilir; teknik bilgi merkezden bulunur.',
     next: 'Siradaki islem: aradiginiz entegrasyon basligini secip kullanildigi ekranlari kontrol edin.',
   },
+  commerce: {
+    tabs: [
+      { label: 'CMS Sayfalari', to: '/cms/pages' },
+      { label: 'Banner / Popup', to: '/cms/banners' },
+      { label: 'Kuponlar', to: '/marketing/coupons' },
+      { label: 'Feed / Pixel', to: '/marketing/feeds' },
+      { label: 'SEO Ayarlari', to: '/seo/settings' },
+      { label: 'B2B / Bayi', to: '/b2b/dealers' },
+      { label: 'Fiyat Motoru', to: '/pricing/profit-rules' },
+    ],
+    note: 'Icerik, pazarlama, SEO, B2B ve fiyat motoru referans paneldeki gibi ust sekmelerle ayrilir.',
+    next: 'Siradaki islem: duzenlemek istediginiz modulu secip tablo veya form alanindan kaydi guncelleyin.',
+  },
+  saas: {
+    tabs: [
+      { label: 'Paketler', to: '/admin/saas' },
+      { label: 'Firmalar', to: '/admin/companies' },
+      { label: 'Roller', to: '/admin/roles' },
+      { label: 'Odemeler', to: '/admin/payments' },
+      { label: 'Sistem Sagligi', to: '/admin/reports' },
+      { label: 'API Loglari', to: '/admin/api-logs' },
+    ],
+    note: 'Paket, firma, rol ve odeme kontrolleri super admin operasyon akisi icinde izlenir.',
+    next: 'Siradaki islem: firma veya paket kaydini secip lisans ve kullanim durumunu kontrol edin.',
+  },
   admin: {
     tabs: [
       { label: 'Musteri Firmalar', to: '/admin/companies' },
