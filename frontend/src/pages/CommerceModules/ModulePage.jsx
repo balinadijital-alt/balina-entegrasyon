@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Save } from 'lucide-react';
+import { CheckCircle2, Plus, Save, Search, SlidersHorizontal } from 'lucide-react';
 import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { Field } from '../../components/Field.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { PageToolbar } from '../../components/PageToolbar.jsx';
 import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useApp } from '../../context/AppContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
@@ -103,6 +102,44 @@ const statusLabels = {
   published: 'Yayinda',
 };
 
+const groupSummaries = {
+  CMS: {
+    eyebrow: 'Tasarim ve icerik',
+    description: 'Sayfa, blog, banner ve popup iceriklerini tek yerden yayinlayin.',
+    steps: ['Icerigi hazirla', 'Durumu sec', 'Onizle', 'Yayinla'],
+  },
+  Pazarlama: {
+    eyebrow: 'Kampanya ve hedefleme',
+    description: 'Kupon, terk edilmis sepet, mesaj sablonu ve feed ayarlarini takip edin.',
+    steps: ['Kampanyayi tanimla', 'Kosullari sec', 'Hedef kanali bagla', 'Yayina al'],
+  },
+  'Gelistirilmis Urun': {
+    eyebrow: 'Katalog operasyonu',
+    description: 'Varyant, iliski, ozel alan ve yorum kayitlarini katalog akisiyle yonetin.',
+    steps: ['Kaydi sec', 'Alanlari doldur', 'Kontrol et', 'Kaydet'],
+  },
+  'Fiyat Motoru': {
+    eyebrow: 'Fiyat ve kar',
+    description: 'Kar, maliyet ve toplu fiyat kurallarini pazar yeri hazirligina uygun tutun.',
+    steps: ['Kapsami sec', 'Orani gir', 'Maliyeti kontrol et', 'Uygula'],
+  },
+  'Siparis Is Akisi': {
+    eyebrow: 'Operasyon otomasyonu',
+    description: 'Siparis durum gecisleri, notlar ve operasyon gecmisini izlenebilir hale getirin.',
+    steps: ['Tetikleyici sec', 'Durumu belirle', 'Not ekle', 'Takip et'],
+  },
+  'Bayi B2B': {
+    eyebrow: 'Bayi yonetimi',
+    description: 'Bayi kartlari, fiyatlari ve tahsilatlarini daha okunur bir akisla yonetin.',
+    steps: ['Bayi sec', 'Fiyat/tahsilat gir', 'Limiti kontrol et', 'Kaydet'],
+  },
+  'SEO ve Ayarlar': {
+    eyebrow: 'SEO ve teknik ayar',
+    description: 'Meta, sitemap, robots, dil, lokasyon ve doviz ayarlarini net sekilde yonetin.',
+    steps: ['Kapsami sec', 'Icerigi gir', 'Durumu kontrol et', 'Yayina al'],
+  },
+};
+
 function fieldLabel(field) {
   return fieldLabels[field] || field.split('_').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
 }
@@ -117,6 +154,14 @@ function formatValue(value) {
 
 function emptyForm(config) {
   return config.fields.reduce((carry, field) => ({ ...carry, [field]: config.defaults?.[field] ?? '' }), {});
+}
+
+function moduleSummary(config) {
+  return groupSummaries[config.group] || {
+    eyebrow: 'Modul yonetimi',
+    description: `${config.title} kayitlarini arayin, filtreleyin ve yeni kayitlari kontrollu bicimde olusturun.`,
+    steps: ['Ara', 'Filtrele', 'Duzenle', 'Kaydet'],
+  };
 }
 
 function normalizeValue(field, value) {
@@ -169,6 +214,10 @@ export function ModulePage({ config }) {
     return matchesSearch && matchesStatus;
   }), [rows, search, status, config]);
 
+  const activeRows = useMemo(() => rows.filter((row) => row.status === 'active' || row.is_active === true).length, [rows]);
+  const pendingRows = useMemo(() => rows.filter((row) => ['draft', 'pending'].includes(row.status)).length, [rows]);
+  const summary = moduleSummary(config);
+
   const submit = async (event) => {
     event.preventDefault();
     await run(async () => {
@@ -206,47 +255,119 @@ export function ModulePage({ config }) {
     <>
       <PageHeader title={config.title} />
       <ReferenceModuleNav section="commerce" />
-      <PageToolbar
-        search={search}
-        onSearch={setSearch}
-        searchPlaceholder={`${config.title} ara`}
-        filters={(
-          <select value={status} onChange={(event) => setStatus(event.target.value)}>
-            <option value="">Tum durumlar</option>
-            <option value="draft">Taslak</option>
-            <option value="active">Aktif</option>
-            <option value="pending">Bekliyor</option>
-            <option value="approved">Onayli</option>
-            <option value="rejected">Reddedildi</option>
-          </select>
-        )}
-      />
-      <section className="panel">
-        <div className="module-form-heading">
-          <h2>Yeni Kayit</h2>
-          <span>{config.title} icin gerekli alanlari doldurun.</span>
+
+      <section className="commerce-reference-hero">
+        <div>
+          <span>{summary.eyebrow}</span>
+          <h2>{config.title}</h2>
+          <p>{summary.description}</p>
         </div>
-        <form className="form-grid" onSubmit={submit}>
-          {config.fields.map((field) => (
-            <Field label={fieldLabel(field)} key={field}>{renderField(field)}</Field>
-          ))}
-          <button disabled={loading}><Save size={16} /> Kaydet</button>
-        </form>
+        <button type="button" onClick={() => document.getElementById('module-create-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+          <Plus size={18} /> Yeni Kayit
+        </button>
       </section>
+
+      <section className="commerce-reference-flow">
+        {summary.steps.map((step, index) => (
+          <div key={step} className={index === 0 ? 'active' : ''}>
+            <em>{index + 1}</em>
+            <strong>{step}</strong>
+            <span>{index === 0 ? 'Devam ediyor' : 'Siradaki adim'}</span>
+          </div>
+        ))}
+      </section>
+
+      <section className="commerce-reference-summary">
+        <div>
+          <span>Toplam kayit</span>
+          <strong>{rows.length}</strong>
+          <small>Bu moduldeki tum kayitlar</small>
+        </div>
+        <div>
+          <span>Aktif</span>
+          <strong>{activeRows}</strong>
+          <small>Yayinda veya kullanima acik</small>
+        </div>
+        <div>
+          <span>Bekleyen</span>
+          <strong>{pendingRows}</strong>
+          <small>Taslak ya da onay bekliyor</small>
+        </div>
+        <div>
+          <span>Gorunen liste</span>
+          <strong>{filteredRows.length}</strong>
+          <small>Arama ve filtre sonucu</small>
+        </div>
+      </section>
+
+      <section className="commerce-reference-filter">
+        <div className="commerce-reference-filter-title">
+          <div>
+            <span><SlidersHorizontal size={16} /> Filtreleme</span>
+            <strong>{config.title} kayitlarini bulun</strong>
+          </div>
+          <small>Referans paneldeki gibi once arayin, sonra gerekirse yeni kayit ekleyin.</small>
+        </div>
+        <div className="commerce-reference-filter-grid">
+          <label className="commerce-reference-search">
+            <span>Arama</span>
+            <div>
+              <Search size={17} />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`${config.title} ara`} />
+            </div>
+          </label>
+          <label>
+            <span>Durum</span>
+            <select value={status} onChange={(event) => setStatus(event.target.value)}>
+              <option value="">Tum durumlar</option>
+              <option value="draft">Taslak</option>
+              <option value="active">Aktif</option>
+              <option value="pending">Bekliyor</option>
+              <option value="approved">Onayli</option>
+              <option value="rejected">Reddedildi</option>
+            </select>
+          </label>
+          <label>
+            <span>Modul grubu</span>
+            <input value={config.group || 'Genel'} readOnly />
+          </label>
+        </div>
+      </section>
+
       {error && <ErrorState message={error} onRetry={load} />}
-      {loading && rows.length === 0 ? <LoadingState /> : (
-        <DataTable
-          rows={filteredRows}
-          emptyTitle="Kayit bulunamadi"
-          emptyText={`${config.title} icin henuz kayit yok. Yeni kayit ekleyebilir veya filtreleri temizleyebilirsiniz.`}
-          columns={[
-            { key: config.primary, label: fieldLabel(config.primary), render: (row) => formatValue(row[config.primary] ?? row.title ?? row.name) },
-            { key: config.secondary, label: fieldLabel(config.secondary), render: (row) => formatValue(row[config.secondary]) },
-            { key: 'status', label: 'Durum', render: (row) => row.status ? <span className={`badge ${row.status}`}>{statusLabels[row.status] || row.status}</span> : (row.is_active === false ? 'Pasif' : 'Aktif') },
-            { key: 'created_at', label: fieldLabel('created_at'), render: (row) => row.created_at ? new Date(row.created_at).toLocaleDateString('tr-TR') : '-' },
-          ]}
-        />
-      )}
+      <section className="commerce-reference-layout">
+        <div className="commerce-reference-table">
+          {loading && rows.length === 0 ? <LoadingState /> : (
+            <DataTable
+              rows={filteredRows}
+              emptyTitle="Kayit bulunamadi"
+              emptyText={`${config.title} icin henuz kayit yok. Yeni kayit ekleyebilir veya filtreleri temizleyebilirsiniz.`}
+              columns={[
+                { key: config.primary, label: fieldLabel(config.primary), render: (row) => formatValue(row[config.primary] ?? row.title ?? row.name) },
+                { key: config.secondary, label: fieldLabel(config.secondary), render: (row) => formatValue(row[config.secondary]) },
+                { key: 'status', label: 'Durum', render: (row) => row.status ? <span className={`badge ${row.status}`}>{statusLabels[row.status] || row.status}</span> : (row.is_active === false ? 'Pasif' : 'Aktif') },
+                { key: 'created_at', label: fieldLabel('created_at'), render: (row) => row.created_at ? new Date(row.created_at).toLocaleDateString('tr-TR') : '-' },
+              ]}
+            />
+          )}
+        </div>
+
+        <aside className="commerce-reference-form" id="module-create-form">
+          <div className="commerce-reference-form-title">
+            <div>
+              <span><CheckCircle2 size={16} /> Yeni Kayit</span>
+              <strong>{config.title}</strong>
+            </div>
+            <small>Gerekli alanlari doldurun ve kaydedin.</small>
+          </div>
+          <form className="form-grid" onSubmit={submit}>
+            {config.fields.map((field) => (
+              <Field label={fieldLabel(field)} key={field}>{renderField(field)}</Field>
+            ))}
+            <button disabled={loading}><Save size={16} /> Kaydet</button>
+          </form>
+        </aside>
+      </section>
     </>
   );
 }
