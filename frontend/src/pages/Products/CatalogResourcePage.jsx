@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Edit3, Plus, Save, Trash2 } from 'lucide-react';
+import { Edit3, Filter, Plus, Save, Search, Trash2 } from 'lucide-react';
 import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -123,6 +123,9 @@ export function CatalogResourcePage({ type }) {
   const [rows, setRows] = useState([]);
   const [form, setForm] = useState(initialForm(type));
   const [editingId, setEditingId] = useState(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [companyFilter, setCompanyFilter] = useState('');
 
   const load = async () => {
     await run(async () => {
@@ -143,6 +146,21 @@ export function CatalogResourcePage({ type }) {
   }, [type]);
 
   const categoryRows = useMemo(() => rows.filter((row) => row.type === 'categories'), [rows]);
+  const filteredRows = useMemo(() => rows.filter((row) => {
+    const text = [row.name, row.parent?.name, row.description, row.code, ...(Array.isArray(row.values) ? row.values : [])]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase('tr');
+    const matchesSearch = !search || text.includes(search.toLocaleLowerCase('tr'));
+    const matchesStatus = statusFilter === 'all'
+      || (statusFilter === 'active' && row.is_active)
+      || (statusFilter === 'passive' && !row.is_active);
+    const matchesCompany = !companyFilter || String(row.company_id || '') === String(companyFilter);
+    return matchesSearch && matchesStatus && matchesCompany;
+  }), [rows, search, statusFilter, companyFilter]);
+  const activeCount = rows.filter((row) => row.is_active).length;
+  const passiveCount = rows.length - activeCount;
+  const mappedCount = rows.filter((row) => row.marketplace_mappings_count || row.marketplaceMappings?.length).length;
 
   const submit = async (event) => {
     event.preventDefault();
@@ -226,8 +244,91 @@ export function CatalogResourcePage({ type }) {
     <>
       <PageHeader title={config.title} description={config.description} />
       <ReferenceModuleNav section="products" />
-      <section className="catalog-admin-layout">
-        <form className="panel compact-panel" onSubmit={submit}>
+
+      <section className="catalog-reference-hero">
+        <div>
+          <span>Urun yonetimi</span>
+          <h2>{config.title}</h2>
+          <p>{config.description}</p>
+        </div>
+        <button type="button" onClick={() => { setEditingId(null); setForm(initialForm(type)); }}>
+          <Plus size={17} /> Yeni Kayit
+        </button>
+      </section>
+
+      <section className="catalog-reference-filter">
+        <div className="catalog-reference-filter-title">
+          <Filter size={18} />
+          <strong>Filtreleme Secenekleri</strong>
+        </div>
+        <div className="catalog-reference-filter-grid">
+          <label>
+            <span>Arama Terimi</span>
+            <div className="catalog-reference-search">
+              <Search size={17} />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`${config.title} icinde ara`} />
+            </div>
+          </label>
+          <label>
+            <span>Durum</span>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option value="all">Tumu</option>
+              <option value="active">Aktif</option>
+              <option value="passive">Pasif</option>
+            </select>
+          </label>
+          <label>
+            <span>Firma</span>
+            <select value={companyFilter} onChange={(event) => setCompanyFilter(event.target.value)}>
+              <option value="">Tumu</option>
+              {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="catalog-reference-filter-actions">
+          <button type="button" onClick={() => { setSearch(''); setStatusFilter('all'); setCompanyFilter(''); }}>Temizle</button>
+          <button type="button" onClick={() => {}}>Filtrele</button>
+        </div>
+      </section>
+
+      <section className="catalog-reference-stats">
+        <div><span>Toplam kayit</span><strong>{rows.length}</strong><small>{filteredRows.length} kayit listeleniyor</small></div>
+        <div><span>Aktif</span><strong>{activeCount}</strong><small>Kullanilabilir kayit</small></div>
+        <div><span>Pasif</span><strong>{passiveCount}</strong><small>Secimlerde gizlenebilir</small></div>
+        <div><span>Pazaryeri eslesmesi</span><strong>{mappedCount}</strong><small>Mapping etkisi olan kayit</small></div>
+      </section>
+
+      {error && <ErrorState message={error} onRetry={load} />}
+      {loading && rows.length === 0 ? <LoadingState /> : null}
+
+      <section className="catalog-reference-layout">
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Kayitlar</h2>
+              <span>Listeyi filtreleyin, sonra sag panelden secili kaydi duzenleyin.</span>
+            </div>
+          </div>
+          <DataTable
+            rows={filteredRows}
+            emptyTitle="Kayit yok"
+            emptyText={config.empty}
+            columns={[
+              { key: 'select', label: '', render: () => <input type="checkbox" aria-label="Satir sec" /> },
+              { key: 'id', label: '#', render: (row) => row.id },
+              { key: 'name', label: type === 'categories' ? 'Kategori Adi' : 'Ad' },
+              { key: 'parent', label: 'Ust Kategori', render: (row) => row.parent?.name || '-' },
+              { key: 'values', label: 'Degerler', render: (row) => Array.isArray(row.values) ? row.values.join(', ') : '-' },
+              { key: 'product_count', label: 'Urun Sayisi', render: (row) => row.product_count || 0 },
+              { key: 'is_active', label: 'Durum', render: (row) => <span className={row.is_active ? 'catalog-status active' : 'catalog-status passive'}>{row.is_active ? 'Aktif' : 'Pasif'}</span> },
+              { key: 'sort_order', label: 'Sira', render: (row) => row.sort_order ?? 0 },
+              { key: 'actions', label: 'Islem', render: (row) => <div className="row-actions"><button type="button" className="secondary-button" onClick={() => { setEditingId(row.id); setForm(rowToForm(row)); }}><Edit3 size={15} /> Duzenle</button><button type="button" className="secondary-button" onClick={() => remove(row)}><Trash2 size={15} /> Sil</button></div> },
+            ]}
+          />
+        </section>
+
+        <form className="panel compact-panel catalog-reference-form" onSubmit={submit}>
+          <span className="eyebrow">{editingId ? 'Kayit duzenleme' : 'Yeni kayit'}</span>
           <h2>{editingId ? 'Duzenle' : 'Yeni Ekle'}</h2>
           <Field label="Firma">
             <select value={form.company_id} onChange={(event) => setForm({ ...form, company_id: event.target.value })}>
@@ -238,6 +339,7 @@ export function CatalogResourcePage({ type }) {
           {config.fields.map((field) => <Field label={fieldLabel(field)} key={field}>{renderField(field)}</Field>)}
           <button disabled={loading}><Save size={16} /> Kaydet</button>
         </form>
+
         {type === 'categories' && (
           <section className="panel compact-panel">
             <h2>Kategori Agaci</h2>
@@ -250,25 +352,6 @@ export function CatalogResourcePage({ type }) {
           </section>
         )}
       </section>
-      {error && <ErrorState message={error} onRetry={load} />}
-      {loading && rows.length === 0 ? <LoadingState /> : (
-        <section className="panel">
-          <h2>Kayitlar</h2>
-          <DataTable
-            rows={rows}
-            emptyTitle="Kayit yok"
-            emptyText={config.empty}
-            columns={[
-              { key: 'name', label: 'Ad' },
-              { key: 'parent', label: 'Ust', render: (row) => row.parent?.name || '-' },
-              { key: 'values', label: 'Degerler', render: (row) => Array.isArray(row.values) ? row.values.join(', ') : '-' },
-              { key: 'product_count', label: 'Urun Sayisi' },
-              { key: 'is_active', label: 'Durum', render: (row) => row.is_active ? 'Aktif' : 'Pasif' },
-              { key: 'actions', label: 'Islem', render: (row) => <div className="row-actions"><button type="button" className="secondary-button" onClick={() => { setEditingId(row.id); setForm(rowToForm(row)); }}><Edit3 size={15} /> Duzenle</button><button type="button" className="secondary-button" onClick={() => remove(row)}><Trash2 size={15} /> Sil</button></div> },
-            ]}
-          />
-        </section>
-      )}
     </>
   );
 }
