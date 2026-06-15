@@ -1,0 +1,20 @@
+{
+  "items": [
+    {
+      "barcode": "869000000011",
+      "stockCode": "SKU-MVP-1",
+      "status": "SUCCESS"
+    },
+    {
+      "barcode": "869000000099",
+      "stockCode": "SKU-MVP-FAILED",
+      "status": "FAILED",
+      "failureReasons": [
+        {
+          "code": "ATTRIBUTE_VALUE_INVALID",
+          "message": "Nitelik degeri kategori icin gecersiz."
+        }
+      ]
+    }
+  ]
+}

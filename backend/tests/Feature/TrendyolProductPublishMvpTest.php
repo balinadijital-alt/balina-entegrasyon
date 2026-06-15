@@ -255,6 +255,194 @@ class TrendyolProductPublishMvpTest extends TestCase
             ->assertJsonPath('result_summary.summary.general_error', 'Batch genel hata');
     }
 
+    public function test_fixture_batch_created_response_submits_products(): void
+    {
+        $account = $this->trendyolAccount();
+        $product = $this->readyProduct();
+        $draft = $this->readyDraft($account, [$product->id], ['status' => 'running']);
+
+        Http::fakeSequence()
+            ->push($this->fixture('filter_products_not_found'))
+            ->push($this->fixture('filter_products_not_found'))
+            ->push($this->fixture('product_publish_batch_created'));
+
+        $products = Product::query()->whereKey([$product->id])->get();
+
+        $result = app(TrendyolService::class)->sendProductCollection($account, $products, $draft);
+
+        $this->assertSame('batch-fixture-created-001', $result['batch_request_id']);
+        $this->assertDatabaseHas('product_marketplace_statuses', [
+            'product_id' => $product->id,
+            'marketplace_account_id' => $account->id,
+            'status' => 'submitted',
+            'provider_state' => 'not_found',
+            'batch_request_id' => 'batch-fixture-created-001',
+        ]);
+    }
+
+    public function test_fixture_batch_processing_response_is_not_failed(): void
+    {
+        $account = $this->trendyolAccount();
+        $product = $this->readyProduct();
+        $draft = $this->readyDraft($account, [$product->id], ['status' => 'submitted', 'batch_request_id' => 'batch-fixture-processing-001']);
+
+        Http::fake(['*' => Http::response($this->fixture('product_publish_batch_processing'))]);
+
+        $this->postJson("/api/marketplace-publish-drafts/{$draft->id}/batch-result")
+            ->assertOk()
+            ->assertJsonPath('status', 'processing')
+            ->assertJsonPath('result_summary.summary.processing_count', 1);
+    }
+
+    public function test_fixture_batch_success_response_updates_sku_status(): void
+    {
+        $account = $this->trendyolAccount();
+        $product = $this->readyProduct();
+        $draft = $this->readyDraft($account, [$product->id], ['status' => 'submitted', 'batch_request_id' => 'batch-fixture-success']);
+
+        Http::fake(['*' => Http::response($this->fixture('product_publish_batch_success'))]);
+
+        $this->postJson("/api/marketplace-publish-drafts/{$draft->id}/batch-result")
+            ->assertOk()
+            ->assertJsonPath('status', 'completed')
+            ->assertJsonPath('result_summary.summary.items.0.sku', 'SKU-MVP-1')
+            ->assertJsonPath('result_summary.summary.items.0.barcode', '869000000011')
+            ->assertJsonPath('result_summary.summary.items.0.provider_state', 'approved');
+    }
+
+    public function test_fixture_batch_partial_failure_isolates_item_statuses(): void
+    {
+        $account = $this->trendyolAccount();
+        $success = $this->readyProduct();
+        $failed = $this->readyProduct(['sku' => 'SKU-MVP-FAILED', 'barcode' => '869000000099']);
+        $draft = $this->readyDraft($account, [$success->id, $failed->id], ['status' => 'submitted', 'batch_request_id' => 'batch-fixture-partial']);
+
+        Http::fake(['*' => Http::response($this->fixture('product_publish_batch_partial_failure'))]);
+
+        $this->postJson("/api/marketplace-publish-drafts/{$draft->id}/batch-result")
+            ->assertOk()
+            ->assertJsonPath('status', 'partial_success')
+            ->assertJsonPath('result_summary.summary.success_count', 1)
+            ->assertJsonPath('result_summary.summary.failed_count', 1)
+            ->assertJsonPath('result_summary.summary.items.1.error_code', 'ATTRIBUTE_VALUE_INVALID');
+
+        $this->assertDatabaseHas('product_marketplace_statuses', [
+            'product_id' => $success->id,
+            'marketplace_account_id' => $account->id,
+            'status' => 'success',
+            'provider_state' => 'approved',
+        ]);
+        $this->assertDatabaseHas('product_marketplace_statuses', [
+            'product_id' => $failed->id,
+            'marketplace_account_id' => $account->id,
+            'status' => 'failed',
+            'provider_state' => 'unapproved',
+        ]);
+    }
+
+    public function test_fixture_batch_general_error_response_is_normalized(): void
+    {
+        $account = $this->trendyolAccount();
+        $product = $this->readyProduct();
+        $draft = $this->readyDraft($account, [$product->id], ['status' => 'submitted', 'batch_request_id' => 'batch-fixture-general-error-001']);
+
+        Http::fake(['*' => Http::response($this->fixture('product_publish_batch_general_error'))]);
+
+        $this->postJson("/api/marketplace-publish-drafts/{$draft->id}/batch-result")
+            ->assertOk()
+            ->assertJsonPath('status', 'rejected')
+            ->assertJsonPath('result_summary.summary.general_error', 'Batch genel hata');
+    }
+
+    public function test_fixture_batch_unknown_status_stays_recheck_needed(): void
+    {
+        $account = $this->trendyolAccount();
+        $product = $this->readyProduct();
+        $draft = $this->readyDraft($account, [$product->id], ['status' => 'submitted', 'batch_request_id' => 'batch-fixture-unknown']);
+
+        Http::fake(['*' => Http::response($this->fixture('product_publish_batch_unknown_status'))]);
+
+        $this->postJson("/api/marketplace-publish-drafts/{$draft->id}/batch-result")
+            ->assertOk()
+            ->assertJsonPath('status', 'processing')
+            ->assertJsonPath('result_summary.summary.unknown_count', 1);
+    }
+
+    public function test_fixture_batch_unmatched_item_is_not_linked_to_wrong_product(): void
+    {
+        $account = $this->trendyolAccount();
+        $product = $this->readyProduct();
+        $draft = $this->readyDraft($account, [$product->id], ['status' => 'submitted', 'batch_request_id' => 'batch-fixture-unmatched']);
+
+        Http::fake(['*' => Http::response($this->fixture('product_publish_batch_unmatched_item'))]);
+
+        $this->postJson("/api/marketplace-publish-drafts/{$draft->id}/batch-result")
+            ->assertOk()
+            ->assertJsonPath('status', 'rejected')
+            ->assertJsonPath('result_summary.summary.unmatched_items.0.barcode', '869000000404')
+            ->assertJsonPath('result_summary.summary.items.0.product_id', null);
+
+        $this->assertDatabaseMissing('product_marketplace_statuses', [
+            'product_id' => $product->id,
+            'marketplace_account_id' => $account->id,
+            'batch_request_id' => 'batch-fixture-unmatched',
+        ]);
+    }
+
+    public function test_fixture_provider_state_responses_map_approved_unapproved_and_not_found(): void
+    {
+        $account = $this->trendyolAccount();
+        $approved = $this->readyProduct(['sku' => 'SKU-APPROVED', 'barcode' => '869APPROVED']);
+        $unapproved = $this->readyProduct(['sku' => 'SKU-UNAPPROVED', 'barcode' => '869UNAPPROVED']);
+        $missing = $this->readyProduct(['sku' => 'SKU-MISSING', 'barcode' => '869MISSING']);
+
+        Http::fakeSequence()
+            ->push($this->fixture('filter_products_approved'))
+            ->push($this->fixture('filter_products_unapproved'));
+
+        $states = app(TrendyolService::class)->resolveProductProviderStates($account, collect([$approved, $unapproved, $missing]));
+
+        $this->assertSame('approved', $states[$approved->id]);
+        $this->assertSame('unapproved', $states[$unapproved->id]);
+        $this->assertSame('not_found', $states[$missing->id]);
+    }
+
+    public function test_fixture_provider_not_found_response_marks_not_found(): void
+    {
+        $account = $this->trendyolAccount();
+        $product = $this->readyProduct(['sku' => 'SKU-MISSING', 'barcode' => '869MISSING']);
+
+        Http::fakeSequence()
+            ->push($this->fixture('filter_products_not_found'))
+            ->push($this->fixture('filter_products_not_found'));
+
+        $states = app(TrendyolService::class)->resolveProductProviderStates($account, collect([$product]));
+
+        $this->assertSame('not_found', $states[$product->id]);
+        $this->assertDatabaseHas('product_marketplace_statuses', [
+            'product_id' => $product->id,
+            'marketplace_account_id' => $account->id,
+            'provider_state' => 'not_found',
+        ]);
+    }
+
+    public function test_fixture_provider_error_marks_unknown_without_failing_batch(): void
+    {
+        $account = $this->trendyolAccount();
+        $product = $this->readyProduct(['sku' => 'SKU-RATE-LIMIT', 'barcode' => '869RATELIMIT']);
+
+        Http::fake(['*' => Http::response($this->fixture('provider_error'), 429)]);
+
+        $states = app(TrendyolService::class)->resolveProductProviderStates($account, collect([$product]));
+
+        $this->assertSame('unknown', $states[$product->id]);
+        $this->assertDatabaseHas('product_marketplace_statuses', [
+            'product_id' => $product->id,
+            'marketplace_account_id' => $account->id,
+            'provider_state' => 'unknown',
+        ]);
+    }
+
     public function test_bulk_provider_state_resolver_does_not_query_per_product(): void
     {
         $account = $this->trendyolAccount();
@@ -474,5 +662,14 @@ class TrendyolProductPublishMvpTest extends TestCase
             'marketplace_category_path' => 'Ev > Dekorasyon > Kanvas Tablo',
             'status' => 'active',
         ], $overrides));
+    }
+
+    private function fixture(string $name): array
+    {
+        $path = base_path("tests/Fixtures/trendyol/{$name}.json");
+
+        $this->assertFileExists($path);
+
+        return json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
     }
 }

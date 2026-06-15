@@ -1,0 +1,15 @@
+{
+  "items": [
+    {
+      "barcode": "869000000404",
+      "stockCode": "SKU-NOT-LOCAL",
+      "status": "FAILED",
+      "failureReasons": [
+        {
+          "code": "BARCODE_NOT_FOUND",
+          "message": "Barkod yerel urunle eslesmedi."
+        }
+      ]
+    }
+  ]
+}

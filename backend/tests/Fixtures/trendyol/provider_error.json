@@ -1,0 +1,9 @@
+{
+  "message": "Too many requests",
+  "errors": [
+    {
+      "code": "RATE_LIMIT",
+      "message": "Rate limit asildi, daha sonra tekrar deneyin."
+    }
+  ]
+}
