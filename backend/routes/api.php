@@ -150,6 +150,7 @@ Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(fun
         Route::post('/brands/sync', [MarketplaceCatalogController::class, 'syncBrands']);
         Route::get('/categories/{categoryId}/attributes', [MarketplaceCatalogController::class, 'attributes']);
         Route::post('/categories/{categoryId}/attributes/sync', [MarketplaceCatalogController::class, 'syncAttributes']);
+        Route::post('/mapped-categories/attributes/sync', [MarketplaceCatalogController::class, 'syncMappedAttributes']);
         Route::get('/categories/{categoryId}/attributes/{attributeId}/values', [MarketplaceCatalogController::class, 'attributeValues']);
         Route::post('/categories/{categoryId}/attributes/{attributeId}/values/sync', [MarketplaceCatalogController::class, 'syncAttributeValues']);
     });
@@ -215,6 +216,7 @@ Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(fun
     Route::get('/marketplace-publish-drafts', [ProductMarketplaceController::class, 'drafts']);
     Route::post('/marketplace-publish/validate', [ProductMarketplaceController::class, 'validatePublish']);
     Route::post('/marketplace-publish-drafts/{draft}/send', [ProductMarketplaceController::class, 'send'])->middleware('permission:marketplaces.send');
+    Route::post('/marketplace-publish-drafts/{draft}/batch-result', [ProductMarketplaceController::class, 'batchResult'])->middleware('permission:marketplaces.send');
 
     Route::get('/api-logs', [ApiLogController::class, 'index'])->middleware('permission:logs.view');
     Route::get('/inbound-webhook-deliveries', [InboundWebhookDeliveryController::class, 'index'])->middleware('permission:logs.view');

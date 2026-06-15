@@ -26,6 +26,9 @@ function statusLabel(status) {
   if (status === 'ready') return 'queued';
   if (status === 'queued') return 'queued';
   if (status === 'running') return 'running';
+  if (status === 'submitted') return 'submitted';
+  if (status === 'processing') return 'processing';
+  if (status === 'partial_success') return 'partial_success';
   if (status === 'completed') return 'success';
   if (status === 'success') return 'success';
   if (status === 'failed') return 'failed';
@@ -36,7 +39,7 @@ function statusLabel(status) {
 
 function statusClass(status) {
   const normalized = statusLabel(status);
-  if (['success', 'queued', 'running'].includes(normalized)) return 'status-pill ready';
+  if (['success', 'queued', 'running', 'submitted', 'processing'].includes(normalized)) return 'status-pill ready';
   if (['failed', 'rejected'].includes(normalized)) return 'status-pill blocked';
   return 'status-pill';
 }
@@ -104,6 +107,16 @@ export function PublishQueuePage() {
       const response = await api.productPublish.send(draftId);
       setSelectedDraft(response);
       notify(response.status === 'blocked' ? 'error' : 'success', response.error_message || 'Aktarim yeniden kuyruga alindi.');
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
+  const refreshBatchResult = async (draftId) => {
+    if (!canSendMarketplaces) return;
+    await run(async () => {
+      const response = await api.productPublish.batchResult(draftId);
+      setSelectedDraft(response);
+      notify('success', 'Batch sonucu guncellendi.');
       await load();
     }, { onError: (message) => notify('error', message) });
   };
@@ -185,7 +198,7 @@ export function PublishQueuePage() {
           emptyText="Kuyruga alinan islemler burada listelenir."
           columns={[
             { key: 'id', label: 'Islem gecmisi', render: (row) => `#${row.id}` },
-            { key: 'batch', label: 'Batch ID', render: (row) => row.result_summary?.batch_request_id || row.id || '-' },
+            { key: 'batch', label: 'Batch ID', render: (row) => row.batch_request_id || row.result_summary?.batch_request_id || '-' },
             { key: 'status', label: 'Durum', render: (row) => <span className={statusClass(row.status)}>{statusLabel(row.status)}</span> },
             { key: 'marketplace_code', label: 'Pazaryeri', render: (row) => row.marketplace_code || '-' },
             { key: 'error', label: 'Hata mesaji', render: (row) => row.error_message || draftMissingText(row) || row.result_summary?.message || '-' },
@@ -196,6 +209,9 @@ export function PublishQueuePage() {
               render: (row) => (
                 <div className="row-actions">
                   <button type="button" className="secondary-button" onClick={() => setSelectedDraft(row)}>Detay</button>
+                  {canSendMarketplaces && (row.batch_request_id || row.result_summary?.batch_request_id) && (
+                    <button type="button" className="secondary-button" onClick={() => refreshBatchResult(row.id)}><RefreshCw size={15} /> Batch sonucunu güncelle</button>
+                  )}
                   {['failed', 'rejected'].includes(statusLabel(row.status)) && (() => {
                     const target = fixTarget([...draftMissingFields(row), ...missingFromMessage(row.error_message || row.result_summary?.message)]);
                     return <Link className="table-action-link" to={target.href}>{target.label}</Link>;
@@ -210,6 +226,15 @@ export function PublishQueuePage() {
           <div className="soft-empty monitor-detail-line">
             <strong>Detay #{selectedDraft.id}</strong>
             <span>{selectedDraft.error_message || draftMissingText(selectedDraft) || selectedDraft.result_summary?.message || 'Hata mesaji yok.'}</span>
+            {Array.isArray(selectedDraft.result_summary?.summary?.items) && selectedDraft.result_summary.summary.items.length > 0 && (
+              <div className="monitor-batch-items">
+                {selectedDraft.result_summary.summary.items.slice(0, 8).map((item, index) => (
+                  <span className={item.status === 'success' ? 'ready' : 'blocked'} key={`${item.barcode || item.sku || index}`}>
+                    {item.barcode || item.sku || `Satir ${index + 1}`}: {item.status}{item.message ? ` - ${item.message}` : ''}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </section>

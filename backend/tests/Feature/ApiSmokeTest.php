@@ -13,6 +13,7 @@ use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -127,7 +128,11 @@ class ApiSmokeTest extends TestCase
             'code' => 'trendyol',
             'name' => 'Test Trendyol',
             'supplier_id' => '12345',
+            'api_key' => 'api-key',
+            'api_secret' => 'api-secret',
             'is_active' => true,
+            'connection_status' => 'connected',
+            'connection_checked_at' => now(),
         ]);
 
         CategoryMapping::create([
@@ -156,6 +161,8 @@ class ApiSmokeTest extends TestCase
             'marketplace_account_id' => $marketplace->id,
             'product_ids' => [$product['id']],
         ])->assertCreated()->assertJsonPath('status', 'ready')->json();
+
+        Queue::fake();
 
         $this->postJson("/api/marketplace-publish-drafts/{$draft['id']}/send")
             ->assertOk()

@@ -9,9 +9,11 @@ class ProductMarketplaceStatus extends Model
 {
     protected $fillable = [
         'product_id',
+        'marketplace_account_id',
         'marketplace_code',
         'status',
         'readiness_status',
+        'provider_state',
         'missing_fields',
         'external_product_id',
         'batch_request_id',
@@ -36,5 +38,10 @@ class ProductMarketplaceStatus extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function marketplaceAccount(): BelongsTo
+    {
+        return $this->belongsTo(MarketplaceAccount::class);
     }
 }

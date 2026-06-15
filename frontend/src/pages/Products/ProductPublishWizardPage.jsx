@@ -118,6 +118,7 @@ export function ProductPublishWizardPage() {
   );
   const marketplaceCode = selectedMarketplace?.code || '';
   const canSendMarketplaces = hasPermission(user, 'marketplaces.send');
+  const apiVerified = selectedMarketplace?.connection_status === 'connected' && Boolean(selectedMarketplace?.connection_checked_at);
 
   const readyProducts = useMemo(() => products.filter((product) => product.product_type !== 'parent' && isMarketplaceReady(product, marketplaceCode)), [products, marketplaceCode]);
   const blockedProducts = useMemo(() => products.filter((product) => product.product_type === 'parent' || !isMarketplaceReady(product, marketplaceCode)), [products, marketplaceCode]);
@@ -210,7 +211,13 @@ export function ProductPublishWizardPage() {
 
   const validateDraft = async () => {
     if (!canSendMarketplaces) return;
-    const productIds = selectedProducts.length > 0 ? selectedProducts : readyProducts.map((product) => product.id);
+    if (!apiVerified) {
+      setError('API dogrulanmadan urun gonderme islemi olusturulamaz. Once pazaryeri entegrasyonunda baglantiyi test edin.');
+      return;
+    }
+    const productIds = bulkForm.source === 'selected_products' && selectedProducts.length > 0
+      ? selectedProducts
+      : readyProducts.map((product) => product.id);
     if (!marketplaceId || productIds.length === 0) {
       setError('Pazaryeri ve gonderilecek hazir urun zorunludur.');
       return;
@@ -220,6 +227,10 @@ export function ProductPublishWizardPage() {
       const response = await api.productPublish.validate({
         marketplace_account_id: marketplaceId,
         product_ids: productIds,
+        operation_name: bulkForm.name,
+        operation_type: bulkForm.operation,
+        schedule: bulkForm.schedule,
+        operation_filters: bulkForm,
         mappings: {},
         price_controls: { source: 'bulk-marketplace-operation', filters: bulkForm },
       });
@@ -304,10 +315,10 @@ export function ProductPublishWizardPage() {
           emptyText="Yeni Pazaryeri Islemi butonu ile gonderim formunu acin."
           columns={[
             { key: 'id', label: 'Islem No', render: (row) => row.id || '-' },
-            { key: 'name', label: 'Adi', render: (row) => row.result_summary?.name || `Pazaryeri islemi #${row.id}` },
-            { key: 'operation', label: 'Islem', render: () => 'Urun gonder' },
+            { key: 'name', label: 'Adi', render: (row) => row.operation_name || row.result_summary?.name || `Pazaryeri islemi #${row.id}` },
+            { key: 'operation', label: 'Islem', render: (row) => row.operation_type === 'price_stock_update' ? 'Fiyat / stok guncelle' : row.operation_type === 'product_status_check' ? 'Durum sorgula' : 'Urun gonder' },
             { key: 'marketplace_code', label: 'Pazaryeri', render: (row) => row.marketplace_code || '-' },
-            { key: 'schedule', label: 'Zamanlama', render: () => 'Manuel' },
+            { key: 'schedule', label: 'Zamanlama', render: (row) => row.schedule === 'daily' ? 'Gunde bir' : row.schedule === 'hourly' ? 'Saatlik' : 'Manuel' },
             { key: 'status', label: 'Durum', render: (row) => <span className={row.status === 'blocked' ? 'status-pill blocked' : 'status-pill ready'}>{draftStatusLabel(row.status)}</span> },
             {
               key: 'actions',
@@ -358,12 +369,20 @@ export function ProductPublishWizardPage() {
               <button type="button" className={String(marketplace.id) === String(marketplaceId) ? 'marketplace-select-card active' : 'marketplace-select-card'} key={marketplace.id} onClick={() => { setMarketplaceId(String(marketplace.id)); setSelectedProducts([]); setDraft(null); }}>
                 <strong>{marketplace.name}</strong>
                 <span>{marketplaceName(marketplace.code)} hesabi</span>
-                <small>{marketplace.is_active === false ? 'Pasif hesap' : 'Aktif hesap'}</small>
+                <small>{marketplace.is_active === false ? 'Pasif hesap' : marketplace.connection_status === 'connected' ? 'API dogrulandi' : 'API testi gerekli'}</small>
               </button>
             ))}
           </div>
           {marketplaces.length === 0 && <div className="soft-empty">Pazaryeri hesabi bulunamadi. Once pazaryeri hesabi baglayin.</div>}
+          {selectedMarketplace && !apiVerified && (
+            <div className="workflow-modal-warning bulk-operation-warning">
+              <AlertTriangle size={17} />
+              <span>Bu magazanin API baglantisi dogrulanmamis. Urun gonderme islemi olusturmak icin once Pazaryeri Entegrasyonlari ekraninda API Test Et adimini tamamlayin.</span>
+              <Link className="table-action-link" to="/marketplaces">API Test Et</Link>
+            </div>
+          )}
           <section className="bulk-operation-form-grid">
+            <label><span>Islem Adi</span><input value={bulkForm.name} onChange={(event) => setBulkForm((current) => ({ ...current, name: event.target.value }))} placeholder="Toplu urun gonderimi" /></label>
             <label><span>Pazaryeri</span><input value={marketplaceName(marketplaceCode)} readOnly /></label>
             <label><span>Magaza</span><input value={selectedMarketplace?.name || ''} readOnly placeholder="Magaza seciniz" /></label>
             <label>
@@ -401,7 +420,7 @@ export function ProductPublishWizardPage() {
           )}
           <div className="wizard-actions inline-actions">
             <button type="button" className="secondary-button" onClick={() => setShowForm(false)}>Son islemleri goster</button>
-            <button type="button" disabled={loading || !marketplaceId} onClick={validateDraft}><CheckCircle2 size={16} /> Kaydet</button>
+            <button type="button" disabled={loading || !marketplaceId || !apiVerified} onClick={validateDraft}><CheckCircle2 size={16} /> Kaydet</button>
             {draft && canSendMarketplaces && <button type="button" disabled={loading || draft?.status === 'blocked'} onClick={sendDraft}><Send size={16} /> Kuyruga Al</button>}
           </div>
         </section>

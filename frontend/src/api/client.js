@@ -125,6 +125,7 @@ export const api = {
     drafts: () => http.get('/marketplace-publish-drafts').then((response) => response.data),
     validate: (payload) => http.post('/marketplace-publish/validate', payload).then((response) => response.data),
     send: (draftId) => http.post(`/marketplace-publish-drafts/${draftId}/send`).then((response) => response.data),
+    batchResult: (draftId) => http.post(`/marketplace-publish-drafts/${draftId}/batch-result`).then((response) => response.data),
   },
   imports: {
     runs: () => http.get('/import-runs').then((response) => response.data),
@@ -210,6 +211,7 @@ export const api = {
     syncBrands: (marketplace, accountId) => http.post(`/marketplace-catalog/${marketplace}/brands/sync`, { marketplace_account_id: accountId }).then((response) => response.data),
     attributes: (marketplace, categoryId, params) => http.get(`/marketplace-catalog/${marketplace}/categories/${categoryId}/attributes`, { params }).then((response) => response.data),
     syncAttributes: (marketplace, categoryId, accountId) => http.post(`/marketplace-catalog/${marketplace}/categories/${categoryId}/attributes/sync`, { marketplace_account_id: accountId }).then((response) => response.data),
+    syncMappedAttributes: (marketplace, accountId) => http.post(`/marketplace-catalog/${marketplace}/mapped-categories/attributes/sync`, { marketplace_account_id: accountId }).then((response) => response.data),
     attributeValues: (marketplace, categoryId, attributeId, params) => http.get(`/marketplace-catalog/${marketplace}/categories/${categoryId}/attributes/${attributeId}/values`, { params }).then((response) => response.data),
     syncAttributeValues: (marketplace, categoryId, attributeId, accountId) => http.post(`/marketplace-catalog/${marketplace}/categories/${categoryId}/attributes/${attributeId}/values/sync`, { marketplace_account_id: accountId }).then((response) => response.data),
   },

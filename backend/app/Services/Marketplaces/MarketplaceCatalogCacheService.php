@@ -34,7 +34,7 @@ class MarketplaceCatalogCacheService
     public function syncTrendyolBrands(MarketplaceAccount $account): Collection
     {
         $syncedAt = now();
-        $items = collect($this->trendyol->brands($account, ['size' => 500])['brands'] ?? [])
+        $items = $this->paginatedTrendyolBrands($account)
             ->map(fn (array $brand) => $this->brandPayload($brand))
             ->filter(fn (?array $brand) => filled($brand['name'] ?? null));
 
@@ -75,7 +75,7 @@ class MarketplaceCatalogCacheService
     public function syncTrendyolAttributeValues(MarketplaceAccount $account, string $categoryId, string $attributeId): Collection
     {
         $syncedAt = now();
-        $items = collect($this->trendyol->categoryAttributeValues($account, $categoryId, $attributeId)['values'] ?? [])
+        $items = $this->paginatedTrendyolAttributeValues($account, $categoryId, $attributeId)
             ->map(fn (array $value) => $this->attributeValuePayload($value, $categoryId, $attributeId))
             ->filter(fn (?array $value) => filled($value['external_id'] ?? null) && filled($value['name'] ?? null));
 
@@ -99,6 +99,58 @@ class MarketplaceCatalogCacheService
             ->orderBy('path')
             ->limit(200)
             ->get();
+    }
+
+    public function syncTrendyolMappedCategoryAttributes(MarketplaceAccount $account): Collection
+    {
+        $categoryIds = \App\Models\MarketplaceCategoryMapping::query()
+            ->where('company_id', $account->company_id)
+            ->where('marketplace_code', 'trendyol')
+            ->where('status', 'active')
+            ->pluck('marketplace_category_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        return $categoryIds->flatMap(fn (string $categoryId) => $this->syncTrendyolCategoryAttributes($account, $categoryId))->values();
+    }
+
+    private function paginatedTrendyolBrands(MarketplaceAccount $account): Collection
+    {
+        $page = 0;
+        $size = 500;
+        $items = collect();
+
+        do {
+            $response = $this->trendyol->brands($account, ['page' => $page, 'size' => $size]);
+            $pageItems = collect($response['brands'] ?? [])->filter(fn ($item) => is_array($item))->values();
+            $items = $items->merge($pageItems);
+            $raw = $response['raw'] ?? [];
+            $totalPages = (int) data_get($raw, 'totalPages', 0);
+            $hasNext = $totalPages > 0 ? $page + 1 < $totalPages : $pageItems->count() >= $size;
+            $page++;
+        } while ($hasNext && $page < 200);
+
+        return $items;
+    }
+
+    private function paginatedTrendyolAttributeValues(MarketplaceAccount $account, string $categoryId, string $attributeId): Collection
+    {
+        $page = 0;
+        $size = 500;
+        $items = collect();
+
+        do {
+            $response = $this->trendyol->categoryAttributeValues($account, $categoryId, $attributeId, ['page' => $page, 'size' => $size]);
+            $pageItems = collect($response['values'] ?? [])->filter(fn ($item) => is_array($item))->values();
+            $items = $items->merge($pageItems);
+            $raw = $response['raw'] ?? [];
+            $totalPages = (int) data_get($raw, 'totalPages', 0);
+            $hasNext = $totalPages > 0 ? $page + 1 < $totalPages : $pageItems->count() >= $size;
+            $page++;
+        } while ($hasNext && $page < 200);
+
+        return $items;
     }
 
     public function cachedBrands(string $marketplaceCode, ?string $search = null): EloquentCollection

@@ -62,6 +62,14 @@ class MarketplaceCatalogController extends Controller
         return $this->catalogResponse($items);
     }
 
+    public function syncMappedAttributes(Request $request, string $marketplace): JsonResponse
+    {
+        $account = $this->syncAccount($request, $marketplace);
+        $items = $this->catalog->syncTrendyolMappedCategoryAttributes($account);
+
+        return $this->catalogResponse($items);
+    }
+
     public function attributeValues(Request $request, string $marketplace, string $categoryId, string $attributeId): JsonResponse
     {
         $this->authorizeRead($request);

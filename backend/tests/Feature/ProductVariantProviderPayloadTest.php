@@ -215,6 +215,8 @@ class ProductVariantProviderPayloadTest extends TestCase
             'service_username' => 'user',
             'service_password' => 'pass',
             'is_active' => true,
+            'connection_status' => 'connected',
+            'connection_checked_at' => now(),
         ]);
     }
 

@@ -39,6 +39,10 @@ class ProductMarketplaceController extends Controller
             'marketplace_account_id' => ['required', 'exists:marketplace_accounts,id'],
             'product_ids' => ['required', 'array', 'min:1'],
             'product_ids.*' => ['integer', 'exists:products,id'],
+            'operation_name' => ['nullable', 'string', 'max:255'],
+            'operation_type' => ['nullable', 'string', 'max:80'],
+            'schedule' => ['nullable', 'in:manual,hourly,daily,weekly'],
+            'operation_filters' => ['nullable', 'array'],
             'mappings' => ['nullable', 'array'],
             'price_controls' => ['nullable', 'array'],
         ]);
@@ -68,5 +72,14 @@ class ProductMarketplaceController extends Controller
         ]);
 
         return response()->json($sent->load(['company:id,name', 'marketplaceAccount:id,name,code']));
+    }
+
+    public function batchResult(MarketplacePublishDraft $draft, MarketplacePublishService $service): JsonResponse
+    {
+        $this->abortIfNotTenant(request(), $draft);
+
+        $result = $service->refreshBatchResult($draft);
+
+        return response()->json($result->load(['company:id,name', 'marketplaceAccount:id,name,code']));
     }
 }

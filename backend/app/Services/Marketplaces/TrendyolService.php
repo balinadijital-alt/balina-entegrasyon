@@ -4,8 +4,10 @@ namespace App\Services\Marketplaces;
 
 use App\Exceptions\MarketplaceApiException;
 use App\Models\MarketplaceAccount;
+use App\Models\MarketplacePublishDraft;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductMarketplaceStatus;
 use App\Services\Products\ProductVariantPayloadResolver;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
@@ -60,6 +62,7 @@ class TrendyolService extends AbstractMarketplaceService
 
         return [
             'brands' => $response->json('brands', $response->json('content', $response->json())),
+            'raw' => $response->json(),
             'fetched_at' => now()->toISOString(),
         ];
     }
@@ -119,15 +122,51 @@ class TrendyolService extends AbstractMarketplaceService
             throw new MarketplaceApiException('Trendyol icin aktif urun bulunamadi.');
         }
 
+        return $this->sendProductCollection($account, $products);
+    }
+
+    public function sendProductCollection(MarketplaceAccount $account, Collection $products, ?MarketplacePublishDraft $draft = null): array
+    {
+        $this->assertTrendyolAccount($account);
+
+        if ($products->isEmpty()) {
+            throw new MarketplaceApiException('Trendyol icin gonderilecek urun bulunamadi.');
+        }
+
+        $products->loadMissing(['images', 'parent.images', 'marketplaceStatuses']);
+        $providerStates = $this->resolveProviderStates($account, $products);
         $payload = ['items' => $products->map(fn (Product $product) => $this->productPayload($product))->values()->all()];
         $endpoint = "/integration/product/sellers/{$account->supplier_id}/v2/products";
         $response = $this->request($account, 'POST', $endpoint, $payload);
         $batchRequestId = $response->json('batchRequestId');
 
-        $products->each(fn (Product $product) => $product->update([
-            'trendyol_batch_request_id' => $batchRequestId,
-            'last_trendyol_sync_at' => now(),
-        ]));
+        $products->each(function (Product $product) use ($batchRequestId, $draft, $payload, $providerStates) {
+            $product->update([
+                'trendyol_batch_request_id' => $batchRequestId,
+                'last_trendyol_sync_at' => now(),
+            ]);
+
+            $productPayload = collect($payload['items'])->first(fn (array $item) => (string) ($item['barcode'] ?? '') === (string) $product->barcode);
+
+            $product->marketplaceStatuses()->updateOrCreate(
+                ['marketplace_code' => 'trendyol', 'marketplace_account_id' => $account->id],
+                [
+                    'status' => 'submitted',
+                    'readiness_status' => 'ready',
+                    'provider_state' => $providerStates[$product->id] ?? 'new',
+                    'batch_request_id' => $batchRequestId,
+                    'last_payload' => $productPayload,
+                    'last_response' => [
+                        'draft_id' => $draft?->id,
+                        'batch_request_id' => $batchRequestId,
+                        'status' => 'submitted',
+                    ],
+                    'error_message' => null,
+                    'last_sent_at' => now(),
+                    'last_checked_at' => now(),
+                ]
+            );
+        });
 
         $account->update([
             'last_product_sync_at' => now(),
@@ -139,6 +178,7 @@ class TrendyolService extends AbstractMarketplaceService
             'message' => 'Trendyol urun gonderimi kuyruga alindi.',
             'count' => $products->count(),
             'batch_request_id' => $batchRequestId,
+            'provider_states' => array_count_values($providerStates),
         ];
     }
 
@@ -181,16 +221,18 @@ class TrendyolService extends AbstractMarketplaceService
         ];
     }
 
-    public function batchResult(MarketplaceAccount $account, string $batchRequestId): array
+    public function batchResult(MarketplaceAccount $account, string $batchRequestId, ?MarketplacePublishDraft $draft = null): array
     {
         $this->assertTrendyolAccount($account);
 
         $endpoint = "/integration/product/sellers/{$account->supplier_id}/products/batch-requests/{$batchRequestId}";
         $response = $this->request($account, 'GET', $endpoint);
+        $summary = $this->applyBatchResult($account, $batchRequestId, $response->json(), $draft);
 
         $account->update([
             'metadata' => array_merge($account->metadata ?? [], [
                 'last_batch_result' => $response->json(),
+                'last_batch_summary' => $summary,
                 'last_batch_checked_at' => now()->toISOString(),
             ]),
             'last_error' => null,
@@ -199,6 +241,7 @@ class TrendyolService extends AbstractMarketplaceService
         return [
             'message' => 'Trendyol batch sonucu sorgulandi.',
             'batch_request_id' => $batchRequestId,
+            'summary' => $summary,
             'result' => $response->json(),
         ];
     }
@@ -496,6 +539,223 @@ class TrendyolService extends AbstractMarketplaceService
             ->take(8)
             ->values()
             ->all();
+    }
+
+    private function resolveProviderStates(MarketplaceAccount $account, Collection $products): array
+    {
+        $states = [];
+
+        foreach ($products as $product) {
+            $existing = $product->marketplaceStatuses
+                ->first(fn (ProductMarketplaceStatus $status) => $status->marketplace_code === 'trendyol' && (int) $status->marketplace_account_id === (int) $account->id)
+                ?: $product->marketplaceStatuses->first(fn (ProductMarketplaceStatus $status) => $status->marketplace_code === 'trendyol' && $status->marketplace_account_id === null);
+
+            if (in_array($existing?->provider_state, ['approved', 'unapproved', 'rejected'], true)) {
+                $states[$product->id] = $existing->provider_state;
+                continue;
+            }
+
+            $states[$product->id] = $this->resolveProviderState($account, $product);
+        }
+
+        return $states;
+    }
+
+    private function resolveProviderState(MarketplaceAccount $account, Product $product): string
+    {
+        foreach (['approved', 'unapproved'] as $state) {
+            try {
+                $result = $this->filterProducts($account, [
+                    'state' => $state,
+                    'barcode' => $product->barcode,
+                    'stockCode' => $product->sku,
+                    'size' => 1,
+                ]);
+            } catch (MarketplaceApiException) {
+                continue;
+            }
+
+            $matches = collect($result['products'] ?? [])
+                ->filter(fn ($item) => is_array($item))
+                ->contains(function (array $item) use ($product) {
+                    return (string) ($item['barcode'] ?? '') === (string) $product->barcode
+                        || (string) ($item['stockCode'] ?? $item['stockCode'] ?? '') === (string) $product->sku;
+                });
+
+            if ($matches) {
+                return $state;
+            }
+        }
+
+        return 'new';
+    }
+
+    private function applyBatchResult(MarketplaceAccount $account, string $batchRequestId, array $result, ?MarketplacePublishDraft $draft = null): array
+    {
+        $items = $this->batchItems($result);
+        $batchState = $this->normalizeBatchStatus((string) ($this->batchItemValue($result, ['status', 'state', 'batchStatus', 'result.status']) ?? ''));
+        $generalMessage = $this->batchItemMessage($result);
+        $summary = [
+            'item_count' => $items->count(),
+            'success_count' => 0,
+            'failed_count' => 0,
+            'rejected_count' => 0,
+            'processing_count' => 0,
+            'unknown_count' => 0,
+            'general_error' => null,
+            'unmatched_items' => [],
+            'items' => [],
+        ];
+
+        if ($items->isEmpty()) {
+            if ($batchState === 'failed' || $batchState === 'rejected') {
+                $summary['failed_count'] = 1;
+                $summary['general_error'] = $generalMessage ?: 'Trendyol batch genel hata dondu.';
+            } elseif ($batchState === 'success') {
+                $summary['success_count'] = 1;
+            } elseif ($batchState === 'processing') {
+                $summary['processing_count'] = 1;
+            } else {
+                $summary['unknown_count'] = 1;
+                $summary['general_error'] = $generalMessage ?: 'Batch sonucu henuz net degil, yeniden kontrol gerekli.';
+            }
+
+            return $summary;
+        }
+
+        $items->each(function (array $item) use ($account, $batchRequestId, $draft, &$summary) {
+            $barcode = $this->batchItemValue($item, ['barcode', 'requestItem.barcode', 'item.barcode']);
+            $sku = $this->batchItemValue($item, ['stockCode', 'stock_code', 'sku', 'requestItem.stockCode', 'item.stockCode']);
+            $state = $this->normalizeBatchStatus((string) $this->batchItemValue($item, ['status', 'state', 'result.status']));
+            $message = $this->batchItemMessage($item);
+
+            if ($state === 'success') {
+                $summary['success_count']++;
+            } elseif ($state === 'rejected') {
+                $summary['rejected_count']++;
+            } elseif ($state === 'processing') {
+                $summary['processing_count']++;
+            } elseif ($state === 'unknown') {
+                $summary['unknown_count']++;
+            } else {
+                $summary['failed_count']++;
+            }
+
+            if (! $barcode && ! $sku) {
+                $summary['unmatched_items'][] = [
+                    'status' => $state,
+                    'message' => $message ?: 'SKU veya barkod bilgisi olmayan batch satiri.',
+                    'item' => $item,
+                ];
+                return;
+            }
+
+            $product = Product::query()
+                ->where('company_id', $account->company_id)
+                ->where(function ($query) use ($barcode, $sku) {
+                    $query->when($barcode, fn ($query) => $query->orWhere('barcode', $barcode))
+                        ->when($sku, fn ($query) => $query->orWhere('sku', $sku));
+                })
+                ->first();
+
+            $row = [
+                'barcode' => $barcode,
+                'sku' => $sku,
+                'status' => $state,
+                'message' => $message,
+            ];
+
+            if ($product) {
+                $product->marketplaceStatuses()->updateOrCreate(
+                    ['marketplace_code' => 'trendyol', 'marketplace_account_id' => $account->id],
+                    [
+                        'status' => $state,
+                        'provider_state' => $state === 'success' ? 'approved' : ($state === 'rejected' ? 'rejected' : null),
+                        'batch_request_id' => $batchRequestId,
+                        'last_response' => [
+                            'draft_id' => $draft?->id,
+                            'batch_request_id' => $batchRequestId,
+                            'item' => $item,
+                        ],
+                        'error_message' => $state === 'success' ? null : $message,
+                        'last_checked_at' => now(),
+                    ]
+                );
+
+                $row['product_id'] = $product->id;
+            } else {
+                $summary['unmatched_items'][] = $row + ['message' => $message ?: 'Urun eslesmesi bulunamadi.'];
+            }
+
+            $summary['items'][] = $row;
+        });
+
+        return $summary;
+    }
+
+    private function batchItems(array $result): Collection
+    {
+        $items = data_get($result, 'items')
+            ?? data_get($result, 'content')
+            ?? data_get($result, 'batchRequestItems')
+            ?? data_get($result, 'result.items')
+            ?? data_get($result, 'result.content')
+            ?? [];
+
+        return collect($items)->filter(fn ($item) => is_array($item))->values();
+    }
+
+    private function batchItemValue(array $item, array $keys): ?string
+    {
+        foreach ($keys as $key) {
+            $value = data_get($item, $key);
+
+            if (filled($value)) {
+                return (string) $value;
+            }
+        }
+
+        return null;
+    }
+
+    private function batchItemMessage(array $item): ?string
+    {
+        $reasons = data_get($item, 'failureReasons')
+            ?? data_get($item, 'errors')
+            ?? data_get($item, 'messages')
+            ?? null;
+
+        if (is_array($reasons)) {
+            return collect($reasons)
+                ->map(fn ($reason) => is_array($reason) ? ($reason['message'] ?? json_encode($reason, JSON_UNESCAPED_UNICODE)) : $reason)
+                ->filter()
+                ->implode(', ');
+        }
+
+        return data_get($item, 'message') ?? data_get($item, 'errorMessage') ?? data_get($item, 'result.message');
+    }
+
+    private function normalizeBatchStatus(string $status): string
+    {
+        $status = Str::lower($status);
+
+        if (str_contains($status, 'success') || str_contains($status, 'complete') || str_contains($status, 'approve')) {
+            return 'success';
+        }
+
+        if (str_contains($status, 'reject') || str_contains($status, 'unapprove')) {
+            return 'rejected';
+        }
+
+        if (str_contains($status, 'process') || str_contains($status, 'progress') || str_contains($status, 'queue') || str_contains($status, 'wait')) {
+            return 'processing';
+        }
+
+        if (str_contains($status, 'fail') || str_contains($status, 'error')) {
+            return 'failed';
+        }
+
+        return 'unknown';
     }
 
     private function upsertOrder(MarketplaceAccount $account, array $order): Order

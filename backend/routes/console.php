@@ -33,6 +33,11 @@ Schedule::command('imports:dispatch-due-xml')
     ->withoutOverlapping()
     ->onOneServer();
 
+Schedule::command('marketplace:dispatch-due-publish-drafts')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
 Schedule::call(fn () => Cache::put('scheduler:last_run_at', now()->toISOString(), now()->addMinutes(10)))->everyMinute();
 Schedule::command('queue:prune-failed --hours=168')->daily();

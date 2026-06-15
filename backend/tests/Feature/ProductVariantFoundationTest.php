@@ -113,6 +113,8 @@ class ProductVariantFoundationTest extends TestCase
             'api_key' => 'key',
             'api_secret' => 'secret',
             'is_active' => true,
+            'connection_status' => 'connected',
+            'connection_checked_at' => now(),
         ]);
         $parent = Product::create([
             'company_id' => $company->id,

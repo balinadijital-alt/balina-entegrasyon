@@ -100,6 +100,20 @@ class MarketplaceCatalogCacheTest extends TestCase
             ->assertJsonPath('data.0.name', 'Balina Home');
     }
 
+    public function test_brands_sync_reads_multiple_pages(): void
+    {
+        Http::fakeSequence()
+            ->push(['brands' => [['id' => 501, 'name' => 'Ilk Marka']], 'totalPages' => 2])
+            ->push(['brands' => [['id' => 502, 'name' => 'Ikinci Marka']], 'totalPages' => 2]);
+
+        $this->postJson('/api/marketplace-catalog/trendyol/brands/sync', [
+            'marketplace_account_id' => $this->account->id,
+        ])->assertOk()->assertJsonPath('count', 2);
+
+        $this->assertDatabaseHas('marketplace_catalog_brands', ['external_id' => '501']);
+        $this->assertDatabaseHas('marketplace_catalog_brands', ['external_id' => '502']);
+    }
+
     public function test_attributes_and_values_sync_write_cache(): void
     {
         Http::fakeSequence()
@@ -148,6 +162,20 @@ class MarketplaceCatalogCacheTest extends TestCase
         $this->getJson('/api/marketplace-catalog/trendyol/categories/11/attributes/338/values')
             ->assertOk()
             ->assertJsonCount(2, 'data');
+    }
+
+    public function test_attribute_values_sync_reads_multiple_pages(): void
+    {
+        Http::fakeSequence()
+            ->push(['content' => [['id' => 1, 'name' => 'Siyah']], 'totalPages' => 2])
+            ->push(['content' => [['id' => 2, 'name' => 'Beyaz']], 'totalPages' => 2]);
+
+        $this->postJson('/api/marketplace-catalog/trendyol/categories/11/attributes/338/values/sync', [
+            'marketplace_account_id' => $this->account->id,
+        ])->assertOk()->assertJsonPath('count', 2);
+
+        $this->assertDatabaseHas('marketplace_catalog_attribute_values', ['attribute_external_id' => '338', 'external_id' => '1']);
+        $this->assertDatabaseHas('marketplace_catalog_attribute_values', ['attribute_external_id' => '338', 'external_id' => '2']);
     }
 
     public function test_sync_requires_manage_permission(): void
