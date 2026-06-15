@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Activity,
+  ArrowRight,
   AlertTriangle,
   Banknote,
-  Building2,
   CheckCircle2,
   ClipboardList,
-  CreditCard,
-  FileText,
   Package,
   PackageCheck,
   RadioTower,
@@ -17,6 +14,7 @@ import {
   TrendingUp,
   Truck,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
@@ -24,17 +22,6 @@ import { LoadingState } from '../../components/LoadingState.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { ReferenceModuleNav } from '../../components/ReferenceModuleNav.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
-
-const iconMap = {
-  'Toplam Satis': Banknote,
-  Siparis: ClipboardList,
-  'Aktif Urun': Package,
-  Kargo: Truck,
-  'Basarili Odeme': CreditCard,
-  'Kesilen Fatura': FileText,
-  'Aktif Abonelik': Building2,
-  'API Cagrisi': Activity,
-};
 
 const statusLabels = {
   new: 'Yeni',
@@ -178,9 +165,9 @@ export function DashboardPage({ title = 'Yonetim Paneli' }) {
         <>
           <section className="dashboard-hero">
             <div className="hero-copy">
-              <span className="eyebrow">Operasyon komuta merkezi</span>
-              <h2>Satis, senkronizasyon ve servis sagligini tek ekrandan takip edin.</h2>
-              <p>Canli metrikler, kritik uyarilar ve son aktiviteler operasyon ekiplerinin gunluk aksiyonlarini daha gorunur hale getirir.</p>
+              <span className="eyebrow">Operasyon ana ekrani</span>
+              <h2>Bugun hangi islem bekliyor, hangi servis saglikli, hangi siparis aksiyon istiyor?</h2>
+              <p>Referans panel mantigiyla satis, siparis, kargo ve API durumunu tek akista okuyun; gereken ekrana dogrudan gecin.</p>
             </div>
             <div className="hero-health-grid">
               <div>
@@ -216,6 +203,19 @@ export function DashboardPage({ title = 'Yonetim Paneli' }) {
               </div>
             ))}
           </div>
+
+          <section className="dashboard-reference-strip">
+            <div>
+              <span className="eyebrow">Hizli is akisi</span>
+              <strong>Once siparisleri, sonra urun ve entegrasyon hatalarini kontrol edin.</strong>
+            </div>
+            <div className="dashboard-reference-actions">
+              <Link to="/orders"><ClipboardList size={16} /> Siparisleri Ac</Link>
+              <Link to="/products"><Package size={16} /> Urunleri Ac</Link>
+              <Link to="/marketplaces"><RadioTower size={16} /> Entegrasyonlar</Link>
+              <Link to="/api-logs"><AlertTriangle size={16} /> Hata Merkezi</Link>
+            </div>
+          </section>
 
           <div className="dashboard-command-grid">
             <section className="panel chart-panel">
@@ -263,41 +263,9 @@ export function DashboardPage({ title = 'Yonetim Paneli' }) {
                 <div className="alert-row" key={log.id || `${log.endpoint}-${log.status_code}`}>
                   <strong>{log.marketplace_code || 'API'} · HTTP {log.status_code}</strong>
                   <span>{log.endpoint}</span>
+                  <Link to="/api-logs">Loglari ac <ArrowRight size={13} /></Link>
                 </div>
               ))}
-            </section>
-          </div>
-
-          <div className="stats-grid dashboard-stats">
-            {report.summary.map((metric) => {
-              const Icon = iconMap[metric.label] || Activity;
-              const positive = Number(metric.change || 0) >= 0;
-
-              return (
-                <div className="stat-card metric-card" key={metric.label}>
-                  <div className="metric-top">
-                    <Icon size={20} />
-                    {metric.change !== null && (
-                      <span className={`trend-pill ${positive ? 'up' : 'down'}`}>
-                        {positive ? '+' : ''}{metric.change}%
-                      </span>
-                    )}
-                  </div>
-                  <strong>{formatValue(metric)}</strong>
-                  <span>{metric.label}</span>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="split">
-            <section className="panel">
-              <h2>7 Gunluk Satis Trendi</h2>
-              <TrendBars series={report.charts.sales} />
-            </section>
-            <section className="panel">
-              <h2>7 Gunluk Siparis Trendi</h2>
-              <TrendBars series={report.charts.orders} tone="secondary" />
             </section>
           </div>
 
