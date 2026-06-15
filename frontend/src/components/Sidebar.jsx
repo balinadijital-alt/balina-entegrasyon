@@ -1,127 +1,173 @@
-import { Bell, ChevronDown, Eye, HelpCircle, KeyRound, Plus, Search } from 'lucide-react';
-import { useState } from 'react';
+import { Bell, ChevronDown, ChevronsLeft, KeyRound, Menu, Plus, Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { navigationGroups as defaultNavigationGroups } from '../navigation.js';
+import { useApp } from '../context/AppContext.jsx';
+
+const quickActionLabels = [
+  'Urun Ekle',
+  'Toplu Urun Yukleme',
+  'Tum Siparisler',
+  'Pazaryeri Eslestirmeleri',
+  'Hata Merkezi',
+  'Kargoya Hazir',
+];
+
+const groupLabelMap = {
+  'Baslangic': 'Başlangıç',
+  'Urun Yonetimi': 'Ürün',
+  'Siparis Yonetimi': 'Sipariş',
+  Entegrasyonlar: 'Pazaryeri',
+  Operasyon: 'Operasyon',
+  Genel: 'Kaynaklar',
+  'Balina Yonetimi': 'Yönetim',
+  'Sistem Operasyonu': 'Sistem',
+};
+
+function isRouteActive(pathname, item) {
+  if (item.end) return pathname === item.to;
+  return pathname === item.to || pathname.startsWith(`${item.to}/`);
+}
+
+function groupIsActive(pathname, group) {
+  return group.items.some((item) => isRouteActive(pathname, item));
+}
 
 export function Sidebar({ navigationGroups = defaultNavigationGroups, panelLabel = 'Operasyon Paneli' }) {
   const location = useLocation();
+  const { user } = useApp();
+  const [collapsed, setCollapsed] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
-  const [activeMenu, setActiveMenu] = useState('');
   const [search, setSearch] = useState('');
-  const normalizedSearch = search.trim().toLocaleLowerCase('tr-TR');
-  const visibleGroups = normalizedSearch
-    ? navigationGroups
+  const [openGroups, setOpenGroups] = useState({});
+
+  const visibleGroups = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase('tr-TR');
+
+    if (!query) return navigationGroups;
+
+    return navigationGroups
       .map((group) => ({
         ...group,
-        items: group.items.filter((item) => item.label.toLocaleLowerCase('tr-TR').includes(normalizedSearch)),
+        items: group.items.filter((item) => item.label.toLocaleLowerCase('tr-TR').includes(query)),
       }))
-      .filter((group) => group.items.length > 0)
-    : navigationGroups;
-  const quickItems = navigationGroups
-    .flatMap((group) => group.items)
-    .filter((item) => /ekle|kurulum|paket|lisans|rapor/i.test(item.label))
-    .slice(0, 6);
-  const railItems = navigationGroups.map((group) => group.items[0]).filter(Boolean).slice(0, 7);
-  const primaryLabels = ['Siparis Yonetimi', 'Urun Yonetimi', 'Entegrasyonlar', 'Operasyon', 'Genel'];
-  const menuLabels = {
-    'Siparis Yonetimi': 'Siparisler',
-    'Urun Yonetimi': 'Urunler',
-    Entegrasyonlar: 'Entegrasyonlar',
-    Operasyon: 'Operasyon',
-    Genel: 'Ayarlar',
-    Diger: 'Diger',
-  };
-  const primaryGroups = visibleGroups.filter((group) => primaryLabels.includes(group.label));
-  const secondaryGroups = visibleGroups.filter((group) => !primaryLabels.includes(group.label));
-  const topGroups = secondaryGroups.length
-    ? [...primaryGroups, { label: 'Diger', items: secondaryGroups.flatMap((group) => group.items.slice(0, 4)) }]
-    : primaryGroups;
+      .filter((group) => group.items.length > 0);
+  }, [navigationGroups, search]);
 
-  const isGroupActive = (group) => group.items.some(({ to, end }) => {
-    if (end) return location.pathname === to;
-    return location.pathname === to || location.pathname.startsWith(`${to}/`);
-  });
+  useEffect(() => {
+    setOpenGroups((current) => {
+      const next = { ...current };
+      visibleGroups.forEach((group, index) => {
+        if (next[group.label] === undefined) {
+          next[group.label] = index < 2 || groupIsActive(location.pathname, group);
+        }
+        if (groupIsActive(location.pathname, group)) {
+          next[group.label] = true;
+        }
+      });
+      return next;
+    });
+  }, [location.pathname, visibleGroups]);
 
-  const currentGroup = activeMenu ? topGroups.find((group) => group.label === activeMenu) : null;
+  const quickItems = useMemo(() => {
+    const allItems = navigationGroups.flatMap((group) => group.items);
+    return quickActionLabels
+      .map((label) => allItems.find((item) => item.label === label || item.label.includes(label)))
+      .filter(Boolean)
+      .slice(0, 6);
+  }, [navigationGroups]);
+
+  const userName = user?.name || user?.username || user?.email || 'Kullanici';
+  const toggleGroup = (label) => setOpenGroups((current) => ({ ...current, [label]: !current[label] }));
 
   return (
     <>
-      <aside className="sidebar reference-sidebar">
-        <div className="reference-currency-pill">Doviz Kurlari</div>
-        <div className="brand">
-          <span className="brand-mark"><KeyRound size={21} /></span>
+      <button type="button" className="mobile-menu-button" onClick={() => setDrawerOpen(true)} aria-label="Menuyu ac">
+        <Menu size={20} />
+      </button>
+      {drawerOpen ? <button type="button" className="sidebar-backdrop" onClick={() => setDrawerOpen(false)} aria-label="Menuyu kapat" /> : null}
+      <aside className={`sidebar balina-sidebar ${collapsed ? 'compact' : ''} ${drawerOpen ? 'drawer-open' : ''}`}>
+        <div className="balina-brand">
+          <span className="balina-brand-mark"><KeyRound size={21} /></span>
           <div>
             <strong>Balina</strong>
             <small>{panelLabel}</small>
           </div>
+          <button type="button" className="sidebar-collapse" onClick={() => setCollapsed((value) => !value)} aria-label="Menuyu daralt">
+            <ChevronsLeft size={16} />
+          </button>
         </div>
-        <nav className="reference-top-nav" aria-label="Ana modul menusu">
-          {topGroups.map((group) => (
-            <div className="reference-top-group" key={group.label} onMouseEnter={() => setActiveMenu(group.label)}>
-              <button
-                type="button"
-                className={isGroupActive(group) || activeMenu === group.label ? 'active' : undefined}
-                aria-label={group.label}
-                onClick={() => setActiveMenu(group.label)}
-              >
-                {menuLabels[group.label] || group.label}
-                <ChevronDown size={13} />
-              </button>
-            </div>
-          ))}
-          {currentGroup ? (
-            <div className="reference-mega-menu" onMouseEnter={() => setActiveMenu(currentGroup.label)}>
-              <div>
-                <strong>{currentGroup.label}</strong>
-                {currentGroup.items.slice(0, 8).map(({ to, label }) => (
-                  <Link key={`${currentGroup.label}-${to}-${label}`} to={to}>{label}</Link>
-                ))}
-              </div>
-              <div>
-                <strong>Diger</strong>
-                {currentGroup.items.slice(8, 16).map(({ to, label }) => (
-                  <Link key={`${currentGroup.label}-more-${to}-${label}`} to={to}>{label}</Link>
-                ))}
-                {currentGroup.items.length <= 8 ? <span>Bu modulde tum islemler sol listede.</span> : null}
-              </div>
+
+        <div className="balina-workspace">
+          <div>
+            <span>Firma</span>
+            <strong>Balina Dijital</strong>
+          </div>
+          <button type="button" className="notification-dot" aria-label="Bildirimler">
+            <Bell size={15} />
+            <small>3</small>
+          </button>
+        </div>
+
+        <div className="quick-action-wrap">
+          <button type="button" className="quick-action balina-quick-action" onClick={() => setQuickOpen((value) => !value)}>
+            <Plus size={17} />
+            <span>Hizli Islem</span>
+          </button>
+          {quickOpen ? (
+            <div className="quick-action-menu balina-quick-menu">
+              {quickItems.map((item) => (
+                <Link key={`quick-${item.to}-${item.label}`} to={item.to} onClick={() => setQuickOpen(false)}>
+                  {item.label}
+                </Link>
+              ))}
             </div>
           ) : null}
-        </nav>
-        <div className="reference-top-actions">
-          <div className="sidebar-search">
-            <Search size={15} />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Hizli Arama" />
-          </div>
-          <button type="button" className="reference-cache-button">JETCache</button>
-          <Link className="reference-view-link" to="/"><Eye size={15} /> Siteyi Goruntule</Link>
-          <Link className="reference-help-link" to="/help-center"><HelpCircle size={15} /> Yardim</Link>
-          <div className="workspace-card">
-            <div>
-              <span>Hosgeldiniz,</span>
-              <strong>ayaz</strong>
-            </div>
-            <button type="button" className="icon-button"><Bell size={14} /><small>3</small></button>
-          </div>
         </div>
-      </aside>
-      <aside className="reference-rail" aria-label="Hizli modul ikonlari">
-        <button type="button" className="quick-action" onClick={() => setQuickOpen((value) => !value)} aria-label="Hizli Islem"><Plus size={18} /></button>
-        {quickOpen ? (
-          <div className="quick-action-menu rail-menu">
-            {quickItems.map((item) => <Link key={`quick-${item.to}-${item.label}`} to={item.to} onClick={() => setQuickOpen(false)}>{item.label}</Link>)}
-          </div>
-        ) : null}
-        <nav className="sidebar-nav">
-          {railItems.map(({ to, label, icon: Icon, end }) => (
-            <NavLink key={`rail-${to}-${label}`} to={to} end={end} title={label} className={({ isActive }) => {
-              const current = isActive || (!end && location.pathname.startsWith(to));
-              return current ? 'active' : undefined;
-            }}>
-              <Icon size={19} />
-              <span>{label}</span>
-            </NavLink>
-          ))}
+
+        <label className="balina-sidebar-search">
+          <Search size={15} />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Modul veya islem ara" />
+        </label>
+
+        <nav className="sidebar-nav balina-nav" aria-label="Panel modulleri">
+          {visibleGroups.map((group) => {
+            const active = groupIsActive(location.pathname, group);
+            const open = openGroups[group.label];
+
+            return (
+              <div className={`balina-nav-group ${active ? 'active' : ''}`} key={group.label}>
+                <button type="button" className="nav-group-toggle" aria-label={group.label} onClick={() => toggleGroup(group.label)}>
+                  <span>{groupLabelMap[group.label] || group.label}</span>
+                  <ChevronDown size={14} className={open ? 'open' : ''} />
+                </button>
+                {open ? (
+                  <div className="balina-nav-items">
+                    {group.items.map(({ to, label, icon: Icon, end }) => (
+                      <NavLink
+                        key={`${group.label}-${to}-${label}`}
+                        to={to}
+                        end={end}
+                        title={label}
+                        onClick={() => setDrawerOpen(false)}
+                        className={({ isActive }) => (isActive || (!end && location.pathname.startsWith(to)) ? 'active' : undefined)}
+                      >
+                        <Icon size={18} />
+                        <span>{label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
         </nav>
+
+        <div className="balina-sidebar-footer">
+          <span>{userName}</span>
+          <small>Aktif oturum</small>
+        </div>
       </aside>
     </>
   );
