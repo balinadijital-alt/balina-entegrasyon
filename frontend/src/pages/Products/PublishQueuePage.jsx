@@ -40,7 +40,7 @@ function statusLabel(status) {
 function statusClass(status) {
   const normalized = statusLabel(status);
   if (['success', 'queued', 'running', 'submitted', 'processing'].includes(normalized)) return 'status-pill ready';
-  if (['failed', 'rejected'].includes(normalized)) return 'status-pill blocked';
+  if (['failed', 'rejected', 'partial_success'].includes(normalized)) return 'status-pill blocked';
   return 'status-pill';
 }
 
@@ -67,6 +67,10 @@ function missingFromMessage(message = '') {
   if (text.includes('marka')) return ['brand_mapping'];
   if (text.includes('nitelik') || text.includes('ozellik') || text.includes('özellik') || text.includes('attribute')) return ['attribute_mappings'];
   return [];
+}
+
+function itemFixTarget(item = {}) {
+  return fixTarget(missingFromMessage(`${item.error_code || ''} ${item.message || item.error_message || ''}`));
 }
 
 export function PublishQueuePage() {
@@ -166,8 +170,8 @@ export function PublishQueuePage() {
 
       <section className="monitor-kpi-strip">
         <div className="success"><span>Basarili</span><strong>{statusCounts.success || 0}</strong></div>
-        <div className="pending"><span>Bekleyen</span><strong>{(statusCounts.queued || 0) + (statusCounts.running || 0)}</strong></div>
-        <div className="danger"><span>Hatali</span><strong>{(statusCounts.failed || 0) + (statusCounts.rejected || 0)}</strong></div>
+        <div className="pending"><span>Bekleyen</span><strong>{(statusCounts.queued || 0) + (statusCounts.running || 0) + (statusCounts.submitted || 0) + (statusCounts.processing || 0)}</strong></div>
+        <div className="danger"><span>Hatali</span><strong>{(statusCounts.failed || 0) + (statusCounts.rejected || 0) + (statusCounts.partial_success || 0)}</strong></div>
       </section>
 
       <section className="queue-monitor-simple">
@@ -185,6 +189,9 @@ export function PublishQueuePage() {
             <option value="">Tum durumlar</option>
             <option value="queued">queued</option>
             <option value="running">running</option>
+            <option value="submitted">submitted</option>
+            <option value="processing">processing</option>
+            <option value="partial_success">partial_success</option>
             <option value="success">success</option>
             <option value="failed">failed</option>
             <option value="rejected">rejected</option>
@@ -229,9 +236,15 @@ export function PublishQueuePage() {
             {Array.isArray(selectedDraft.result_summary?.summary?.items) && selectedDraft.result_summary.summary.items.length > 0 && (
               <div className="monitor-batch-items">
                 {selectedDraft.result_summary.summary.items.slice(0, 8).map((item, index) => (
-                  <span className={item.status === 'success' ? 'ready' : 'blocked'} key={`${item.barcode || item.sku || index}`}>
-                    {item.barcode || item.sku || `Satir ${index + 1}`}: {item.status}{item.message ? ` - ${item.message}` : ''}
-                  </span>
+                  <div className={item.status === 'success' ? 'ready monitor-batch-item' : 'blocked monitor-batch-item'} key={`${item.barcode || item.sku || index}`}>
+                    <strong>{item.sku || item.barcode || `Satir ${index + 1}`}: {item.status}</strong>
+                    <small>Urun #{item.product_id || '-'} • Barkod {item.barcode || '-'} • Hesap {item.marketplace_account_id || '-'} • Provider {item.provider_state || '-'}</small>
+                    {(item.error_code || item.message) && <span>{item.error_code ? `${item.error_code}: ` : ''}{item.message}</span>}
+                    {item.status !== 'success' && (() => {
+                      const target = itemFixTarget(item);
+                      return <Link className="table-action-link" to={target.href}>{target.label}</Link>;
+                    })()}
+                  </div>
                 ))}
               </div>
             )}

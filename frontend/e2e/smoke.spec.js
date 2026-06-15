@@ -165,4 +165,62 @@ test.describe('operasyon paneli smoke testleri', () => {
     await expect(page.locator('.mapping-full-panel')).toContainText('Varyant Eşleştirme');
     expect(consoleErrors).toEqual([]);
   });
+
+  test('publish monitor submitted processing partial states and batch details render', async ({ page }) => {
+    const consoleErrors = collectConsoleErrors(page);
+    await authenticate(page);
+
+    const drafts = [
+      {
+        id: 501,
+        marketplace_code: 'trendyol',
+        status: 'partial_success',
+        batch_request_id: 'batch-partial',
+        error_message: 'Kategori eslesmesi eksik',
+        created_at: '2026-06-15T10:00:00Z',
+        result_summary: {
+          summary: {
+            items: [
+              {
+                product_id: 10,
+                sku: 'SKU-10',
+                barcode: '86910',
+                marketplace_account_id: 7,
+                status: 'failed',
+                provider_state: 'unapproved',
+                error_code: 'CATEGORY_MISSING',
+                message: 'Kategori eslesmesi eksik',
+              },
+            ],
+          },
+        },
+      },
+      { id: 502, marketplace_code: 'trendyol', status: 'submitted', batch_request_id: 'batch-submitted', created_at: '2026-06-15T10:10:00Z' },
+      { id: 503, marketplace_code: 'trendyol', status: 'processing', batch_request_id: 'batch-processing', created_at: '2026-06-15T10:20:00Z' },
+    ];
+
+    await page.route('**/api/**', async (route) => {
+      if (route.request().url().includes('/api/marketplace-publish-drafts')) {
+        await route.fulfill({ json: { data: drafts } });
+        return;
+      }
+
+      await route.abort('failed');
+    });
+
+    await page.goto('/products/publish-queue');
+    await expect(page.locator('.page-header h1')).toContainText('Pazaryeri Monitoru');
+    await expect(page.locator('.monitor-kpi-strip')).toContainText('2');
+    await expect(page.locator('.monitor-kpi-strip')).toContainText('1');
+    await expect(page.locator('.status-pill', { hasText: 'partial_success' })).toBeVisible();
+    await expect(page.locator('.status-pill', { hasText: 'submitted' })).toBeVisible();
+    await expect(page.locator('.status-pill', { hasText: 'processing' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Detay' }).first().click();
+    await expect(page.locator('.monitor-batch-item')).toContainText('SKU-10');
+    await expect(page.locator('.monitor-batch-item')).toContainText('Hesap 7');
+    await expect(page.locator('.monitor-batch-item')).toContainText('CATEGORY_MISSING');
+    await expect(page.locator('.monitor-batch-item')).toContainText('Kategori eşleştir');
+    expect(consoleErrors).toEqual([]);
+  });
 });

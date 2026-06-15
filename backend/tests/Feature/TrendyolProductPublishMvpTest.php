@@ -6,11 +6,15 @@ use App\Models\Company;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceCatalogAttribute;
 use App\Models\MarketplaceCatalogAttributeValue;
+use App\Models\MarketplaceBrandMapping;
 use App\Models\MarketplaceCategoryMapping;
 use App\Models\MarketplacePublishDraft;
 use App\Models\Product;
+use App\Models\ProductMarketplaceStatus;
 use App\Models\User;
 use App\Services\Marketplaces\MarketplacePublishService;
+use App\Services\Marketplaces\TrendyolService;
+use App\Services\Products\ProductReadinessService;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -251,6 +255,145 @@ class TrendyolProductPublishMvpTest extends TestCase
             ->assertJsonPath('result_summary.summary.general_error', 'Batch genel hata');
     }
 
+    public function test_bulk_provider_state_resolver_does_not_query_per_product(): void
+    {
+        $account = $this->trendyolAccount();
+        $products = collect(range(1, 120))->map(fn (int $index) => $this->readyProduct([
+            'sku' => "SKU-BULK-{$index}",
+            'barcode' => "869BULK{$index}",
+        ]));
+
+        Http::fakeSequence()
+            ->push([
+                'content' => $products->take(70)->map(fn (Product $product) => [
+                    'barcode' => $product->barcode,
+                    'stockCode' => $product->sku,
+                ])->values()->all(),
+                'totalPages' => 1,
+            ])
+            ->push([
+                'content' => $products->slice(70, 25)->map(fn (Product $product) => [
+                    'barcode' => $product->barcode,
+                    'stockCode' => $product->sku,
+                ])->values()->all(),
+                'totalPages' => 1,
+            ]);
+
+        $states = app(TrendyolService::class)->resolveProductProviderStates($account, $products);
+
+        $this->assertSame('approved', $states[$products[0]->id]);
+        $this->assertSame('unapproved', $states[$products[70]->id]);
+        $this->assertSame('not_found', $states[$products[119]->id]);
+        Http::assertSentCount(2);
+    }
+
+    public function test_provider_state_resolver_reuses_duplicate_barcode_or_sku_matches(): void
+    {
+        $account = $this->trendyolAccount();
+        $first = $this->readyProduct(['sku' => 'SKU-DUP-A', 'barcode' => '869DUP']);
+        $second = $this->readyProduct(['sku' => 'SKU-DUP-B', 'barcode' => '869DUP']);
+
+        Http::fakeSequence()
+            ->push(['content' => [['barcode' => '869DUP', 'stockCode' => 'SKU-DUP-A']], 'totalPages' => 1])
+            ->push(['content' => [], 'totalPages' => 1]);
+
+        $states = app(TrendyolService::class)->resolveProductProviderStates($account, collect([$first, $second]));
+
+        $this->assertSame('approved', $states[$first->id]);
+        $this->assertSame('approved', $states[$second->id]);
+        Http::assertSentCount(1);
+    }
+
+    public function test_provider_state_api_error_marks_unknown_without_throwing(): void
+    {
+        $account = $this->trendyolAccount();
+        $product = $this->readyProduct(['sku' => 'SKU-UNKNOWN', 'barcode' => '869UNKNOWN']);
+
+        Http::fake(['*' => Http::response(['message' => 'Provider gecici hata'], 500)]);
+
+        $states = app(TrendyolService::class)->resolveProductProviderStates($account, collect([$product]));
+
+        $this->assertSame('unknown', $states[$product->id]);
+        $this->assertDatabaseHas('product_marketplace_statuses', [
+            'product_id' => $product->id,
+            'marketplace_account_id' => $account->id,
+            'provider_state' => 'unknown',
+        ]);
+    }
+
+    public function test_readiness_is_account_aware_when_mapping_is_account_scoped(): void
+    {
+        $accountA = $this->trendyolAccount(['name' => 'Magaza A']);
+        $accountB = $this->trendyolAccount(['name' => 'Magaza B']);
+        $product = $this->readyProduct();
+        $this->categoryMapping(['metadata' => ['marketplace_account_id' => $accountA->id]]);
+
+        $service = app(ProductReadinessService::class);
+        $reportA = $service->check($product, 'trendyol', $accountA)['marketplaces']['trendyol'];
+        $reportB = $service->check($product, 'trendyol', $accountB)['marketplaces']['trendyol'];
+
+        $this->assertSame($accountA->id, $reportA['marketplace_account_id']);
+        $this->assertTrue($reportA['checks']['category_mapping']);
+        $this->assertFalse($reportB['checks']['category_mapping']);
+        $this->assertContains('category_mapping', $reportB['missing_fields']);
+    }
+
+    public function test_publish_draft_uses_account_specific_readiness(): void
+    {
+        $accountA = $this->trendyolAccount(['name' => 'Magaza A']);
+        $accountB = $this->trendyolAccount(['name' => 'Magaza B']);
+        $product = $this->readyProduct();
+        $this->categoryMapping(['metadata' => ['marketplace_account_id' => $accountA->id]]);
+
+        $response = $this->postJson('/api/marketplace-publish/validate', [
+            'marketplace_account_id' => $accountB->id,
+            'product_ids' => [$product->id],
+        ])->assertCreated()
+            ->assertJsonPath('status', 'blocked')
+            ->json();
+
+        $this->assertContains('category_mapping', $response['readiness_report'][$product->id]['missing_fields']);
+    }
+
+    public function test_batch_unknown_status_is_recheck_needed_not_failed(): void
+    {
+        $account = $this->trendyolAccount();
+        $product = $this->readyProduct();
+        $draft = $this->readyDraft($account, [$product->id], ['status' => 'submitted', 'batch_request_id' => 'batch-unknown']);
+
+        Http::fake(['*' => Http::response(['items' => [['barcode' => $product->barcode, 'status' => 'MYSTERY']]])]);
+
+        $this->postJson("/api/marketplace-publish-drafts/{$draft->id}/batch-result")
+            ->assertOk()
+            ->assertJsonPath('status', 'processing')
+            ->assertJsonPath('result_summary.summary.unknown_count', 1);
+
+        $this->assertDatabaseHas('product_marketplace_statuses', [
+            'product_id' => $product->id,
+            'marketplace_account_id' => $account->id,
+            'status' => 'unknown',
+            'provider_state' => 'unknown',
+        ]);
+    }
+
+    public function test_batch_result_reprocess_is_idempotent_per_account_product(): void
+    {
+        $account = $this->trendyolAccount();
+        $product = $this->readyProduct();
+        $draft = $this->readyDraft($account, [$product->id], ['status' => 'submitted', 'batch_request_id' => 'batch-idempotent']);
+
+        Http::fake(['*' => Http::response(['items' => [['barcode' => $product->barcode, 'status' => 'SUCCESS']]])]);
+
+        $this->postJson("/api/marketplace-publish-drafts/{$draft->id}/batch-result")->assertOk();
+        $this->postJson("/api/marketplace-publish-drafts/{$draft->id}/batch-result")->assertOk();
+
+        $this->assertSame(1, ProductMarketplaceStatus::query()
+            ->where('product_id', $product->id)
+            ->where('marketplace_account_id', $account->id)
+            ->where('marketplace_code', 'trendyol')
+            ->count());
+    }
+
     public function test_marketplace_publish_mvp_migration_rolls_back_and_migrates_again(): void
     {
         $this->artisan('migrate:rollback', ['--step' => 1])->assertExitCode(0);
@@ -320,9 +463,9 @@ class TrendyolProductPublishMvpTest extends TestCase
         ], $overrides));
     }
 
-    private function categoryMapping(): MarketplaceCategoryMapping
+    private function categoryMapping(array $overrides = []): MarketplaceCategoryMapping
     {
-        return MarketplaceCategoryMapping::create([
+        return MarketplaceCategoryMapping::create(array_merge([
             'company_id' => $this->company->id,
             'marketplace_code' => 'trendyol',
             'local_category_name' => 'Kanvas Tablo',
@@ -330,6 +473,6 @@ class TrendyolProductPublishMvpTest extends TestCase
             'marketplace_category_name' => 'Kanvas Tablo',
             'marketplace_category_path' => 'Ev > Dekorasyon > Kanvas Tablo',
             'status' => 'active',
-        ]);
+        ], $overrides));
     }
 }

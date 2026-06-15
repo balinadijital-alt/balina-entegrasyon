@@ -3898,21 +3898,28 @@ a {
   margin-top: 10px;
 }
 
-.monitor-batch-items span {
+.monitor-batch-item {
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
+  display: grid;
   font-size: 13px;
+  gap: 5px;
   padding: 9px 11px;
 }
 
-.monitor-batch-items span.ready {
+.monitor-batch-item small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.monitor-batch-item.ready {
   background: rgba(34, 197, 94, 0.08);
   border-color: rgba(34, 197, 94, 0.28);
 }
 
-.monitor-batch-items span.blocked {
+.monitor-batch-item.blocked {
   background: rgba(239, 68, 68, 0.08);
   border-color: rgba(239, 68, 68, 0.28);
 }

@@ -35,7 +35,7 @@ class MarketplacePublishService
 
         $reports = $products
             ->mapWithKeys(fn (Product $product) => [
-                $product->id => $this->readiness->check($product, $marketplace->code)['marketplaces'][$marketplace->code],
+                $product->id => $this->readiness->check($product, $marketplace->code, $marketplace)['marketplaces'][$marketplace->code],
             ])
             ->all();
 
@@ -134,7 +134,7 @@ class MarketplacePublishService
 
         $reports = $products
             ->mapWithKeys(fn (Product $product) => [
-                $product->id => $this->readiness->check($product, $marketplace->code)['marketplaces'][$marketplace->code],
+                $product->id => $this->readiness->check($product, $marketplace->code, $marketplace)['marketplaces'][$marketplace->code],
             ]);
 
         if ($reports->contains(fn (array $report) => ! $report['ready'])) {
