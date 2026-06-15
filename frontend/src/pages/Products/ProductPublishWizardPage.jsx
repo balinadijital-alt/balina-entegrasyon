@@ -45,16 +45,16 @@ function marketplaceName(code) {
 
 function fieldFixTarget(product, field) {
   if (field === 'category_mapping' || field === 'marketplace_category') {
-    return `/marketplace-mapping?step=category&category_id=${encodeURIComponent(product.category_id || product.category || '')}`;
+    return `/marketplace-mapping?step=categories&category_id=${encodeURIComponent(product.category_id || product.category || '')}`;
   }
   if (field === 'brand' || field === 'brand_mapping') {
-    return '/marketplace-mapping?step=attribute';
+    return `/marketplace-mapping?step=brands&brand=${encodeURIComponent(product.brand || '')}`;
   }
   if (field === 'attributes' || field === 'required_attributes' || field === 'attribute_mappings') {
-    return `/marketplace-mapping?step=attribute&category_id=${encodeURIComponent(product.category_id || product.category || '')}`;
+    return `/marketplace-mapping?step=attributes&category_id=${encodeURIComponent(product.category_id || product.category || '')}`;
   }
   if (field === 'variant_attributes' || field === 'variant_attribute_mappings') {
-    return `/marketplace-mapping?step=variant&category_id=${encodeURIComponent(product.category_id || product.category || '')}`;
+    return `/marketplace-mapping?step=variants&category_id=${encodeURIComponent(product.category_id || product.category || '')}`;
   }
   return `/products/${product.id}/edit`;
 }
@@ -250,19 +250,14 @@ export function ProductPublishWizardPage() {
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && products.length === 0 ? <LoadingState /> : null}
 
-      <section className="reference-tabs">
-        {['Pazaryeri Entegrasyonlari', 'Pazaryeri Eslestirmeleri', 'Toplu Pazaryeri Islemleri', 'Hepsiburada Islemleri', 'Pazaryeri Monitoru'].map((item) => (
-          <Link
-            className={item === 'Toplu Pazaryeri Islemleri' ? 'active' : ''}
-            to={item === 'Pazaryeri Eslestirmeleri' ? '/marketplace-mapping' : item === 'Pazaryeri Monitoru' ? '/products/publish-queue' : item === 'Pazaryeri Entegrasyonlari' ? '/marketplaces' : '/products/publish-wizard'}
-            key={item}
-          >
-            {item}
-          </Link>
-        ))}
+      <section className="marketplace-module-tabs">
+        <Link to="/marketplaces">Entegrasyonlar</Link>
+        <Link to="/marketplace-mapping">Eşleştirme Merkezi</Link>
+        <Link className="active" to="/products/publish-wizard">Toplu Gönderim</Link>
+        <Link to="/products/publish-queue">Gönderim Kuyruğu</Link>
       </section>
 
-      <section className="reference-info-strip">
+      <section className="balina-flow-hint">
         <CheckCircle2 size={18} />
         <div>
           <strong>Toplu pazaryeri işlemleri ile seçtiğiniz mağazaya hazır ürünleri gönderebilirsiniz.</strong>
@@ -270,7 +265,7 @@ export function ProductPublishWizardPage() {
         </div>
       </section>
 
-      <section className="publish-customer-hero reference-operation-panel">
+      <section className="publish-customer-hero balina-operation-panel">
         <div>
           <span>Filtreleme Secenekleri</span>
           <h2>Yeni pazaryeri islemini buradan baslatin</h2>
@@ -347,9 +342,9 @@ export function ProductPublishWizardPage() {
           <section className="publish-mapping-check">
             {[
               ['Kategori eslesmeleri', mappingHealth.category, '/marketplace-mapping?step=category'],
-              ['Marka bilgisi', mappingHealth.brand, '/marketplace-mapping?step=attribute'],
-              ['Ozellik eslesmeleri', mappingHealth.attributes, '/marketplace-mapping?step=attribute'],
-              ['Varyant eslesmeleri', mappingHealth.variants, '/marketplace-mapping?step=variant'],
+              ['Marka bilgisi', mappingHealth.brand, '/marketplace-mapping?step=brands'],
+              ['Ozellik eslesmeleri', mappingHealth.attributes, '/marketplace-mapping?step=attributes'],
+              ['Varyant eslesmeleri', mappingHealth.variants, '/marketplace-mapping?step=variants'],
             ].map(([label, state, href]) => (
               <div className={state.ok ? 'ready' : 'blocked'} key={label}>
                 <span>{state.ok ? <CheckCircle2 size={17} /> : <AlertTriangle size={17} />} {label}</span>

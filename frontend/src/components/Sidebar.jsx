@@ -78,7 +78,8 @@ export function Sidebar({ navigationGroups = defaultNavigationGroups, panelLabel
       .slice(0, 6);
   }, [navigationGroups]);
 
-  const userName = user?.name || user?.username || user?.email || 'Kullanici';
+  const userName = user?.name || user?.username || user?.email || 'Kullanıcı';
+  const companyName = user?.company?.name || user?.company_name || user?.tenant?.name || 'Aktif çalışma alanı';
   const toggleGroup = (label) => setOpenGroups((current) => ({ ...current, [label]: !current[label] }));
 
   return (
@@ -101,12 +102,11 @@ export function Sidebar({ navigationGroups = defaultNavigationGroups, panelLabel
 
         <div className="balina-workspace">
           <div>
-            <span>Firma</span>
-            <strong>Balina Dijital</strong>
+            <span>Çalışma Alanı</span>
+            <strong>{companyName}</strong>
           </div>
           <button type="button" className="notification-dot" aria-label="Bildirimler">
             <Bell size={15} />
-            <small>3</small>
           </button>
         </div>
 

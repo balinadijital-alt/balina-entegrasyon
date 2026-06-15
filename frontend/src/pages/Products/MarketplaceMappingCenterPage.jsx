@@ -25,10 +25,14 @@ const variantKeys = ['renk', 'beden', 'numara', 'desen', 'cinsiyet'];
 const workflowStepMap = {
   category: 'categories',
   categories: 'categories',
+  brand: 'brands',
+  brands: 'brands',
+  brand_mapping: 'brands',
   attribute: 'attributes',
   attributes: 'attributes',
   variant: 'variants',
   variants: 'variants',
+  readiness: 'readiness',
 };
 
 const pageCopy = {
@@ -396,10 +400,7 @@ export function MarketplaceMappingCenterPage({
     }
     if (stepParam) {
       setActiveTab(stepParam);
-      if (!singleTab) {
-        setWorkflowModal(stepParam);
-        setWorkflowDetail(null);
-      }
+      if (!singleTab) setWorkflowDetail(null);
     }
   }, [searchParams, singleTab]);
 
@@ -408,8 +409,8 @@ export function MarketplaceMappingCenterPage({
   }, [activeTab, marketplaceCode, defaultCompanyId]);
 
   useEffect(() => {
-    setActiveTab(initialTab);
-  }, [initialTab]);
+    if (singleTab) setActiveTab(initialTab);
+  }, [initialTab, singleTab]);
 
   const resetForm = (tab = activeTab) => {
     setEditingId(null);
@@ -614,6 +615,12 @@ export function MarketplaceMappingCenterPage({
         workflowDetail={workflowDetail}
         setWorkflowDetail={setWorkflowDetail}
         switchWorkflowModal={switchWorkflowModal}
+        search={search}
+        setSearch={setSearch}
+        onlyUnmapped={onlyUnmapped}
+        setOnlyUnmapped={setOnlyUnmapped}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
         activeTab={activeTab}
         visibleRows={visibleRows}
         selectRow={selectRow}
@@ -987,60 +994,34 @@ export function MarketplaceVariantMappingPage() {
   return <MarketplaceMappingCenterPage initialTab="variants" singleTab />;
 }
 
-const workflowTabs = ['Pazaryeri Eslestirmeleri', 'Urun Yorumlari', 'Urun Onerileri', 'Toplu Urun Islemleri'];
-
-const workflowSteps = [
-  {
-    key: 'categories',
-    no: 1,
-    title: 'Kategori Eslestir',
-    description: 'Mevcut kategorilerinizi pazaryerindeki kategoriler ile eslestirebilirsiniz.',
-    fields: ['Eslestirilecek Kategori', 'Platform', 'Durum'],
-    button: 'Eslestirmeye Basla',
-  },
-  {
-    key: 'attributes',
-    no: 2,
-    title: 'Ozellik Eslestir',
-    description: 'Eslesmesi tamamlanan kategorilerinizin pazaryeri ozelliklerini de eslestirebilirsiniz. Zorunlu ozellikleri doldurmaniz urun listeleme islemlerinizi hizlandirmaktadir.',
-    fields: ['Eslestirilecek Kategori', 'Platform'],
-    button: 'Eslestirmeye Basla',
-  },
-  {
-    key: 'variants',
-    no: 3,
-    title: 'Varyant Eslestir',
-    description: 'Eslesmesi tamamlanan kategorilerinizin varyantlarini da eslestirebilirsiniz.',
-    fields: ['Eslestirilecek Kategori', 'Platform'],
-    button: 'Eslestirmeye Basla',
-  },
+const marketplaceTabs = [
+  { label: 'Entegrasyonlar', to: '/marketplaces' },
+  { label: 'Eşleştirme Merkezi', to: '/marketplace-mapping' },
+  { label: 'Toplu Gönderim', to: '/products/publish-wizard' },
+  { label: 'Gönderim Kuyruğu', to: '/products/publish-queue' },
 ];
 
-function workflowModalTitle(tab, marketplaceCode) {
-  const provider = marketplaceCode === 'hepsiburada' ? 'Hepsiburada' : 'Trendyol';
-  if (tab === 'categories') return `${provider} Kategori Eslestirme`;
-  if (tab === 'attributes') return `${provider} Ozellik Eslestirme`;
-  if (tab === 'variants') return `${provider} Varyant Eslestirme`;
-  return 'Pazaryeri Eslestirme';
-}
+const sourceFieldOptions = [
+  'brand',
+  'category',
+  'color',
+  'size',
+  'gender',
+  'material',
+  'product.name',
+  'product.description',
+  'variant.renk',
+  'variant.beden',
+];
 
-function workflowModalInfo(tab) {
-  if (tab === 'categories') {
-    return {
-      info: 'Urunlerinizi gondereceginiz pazaryeri kategorilerini secin.',
-      warning: 'Ilgili pazaryeri eslestirmelerini otomatik olarak kaydeder. Hangi kategoriye gondermek istediginizi secmeniz gerekir.',
-    };
-  }
-  if (tab === 'attributes') {
-    return {
-      info: 'Eslestirme Durumu daha once eslestirdiginiz ozelliklerin sayisini gostermektedir.',
-      warning: 'Ilgili kategori icerisinde varyant degerleriniz varsa ozellik kisminda bulunan varyant bilgilerini eslestirmemeniz gerekir.',
-    };
-  }
-  return {
-    info: 'Secilen kategoriye ait tum varyantlar asagida listelenmektedir.',
-    warning: 'Renk, beden ve numara gibi varyant alanlarini pazaryeri attribute karsiliklariyla eslestirin.',
-  };
+function MarketplaceModuleTabs({ active }) {
+  return (
+    <nav className="marketplace-module-tabs" aria-label="Pazaryeri akışı">
+      {marketplaceTabs.map((tab) => (
+        <Link className={active === tab.to ? 'active' : ''} to={tab.to} key={tab.to}>{tab.label}</Link>
+      ))}
+    </nav>
+  );
 }
 
 function MarketplaceMappingWorkflow({
@@ -1054,9 +1035,6 @@ function MarketplaceMappingWorkflow({
   products,
   requiredAttributes,
   missingVariantCount,
-  workflowModal,
-  openWorkflowModal,
-  closeWorkflowModal,
   activeTab,
   visibleRows,
   selectRow,
@@ -1065,64 +1043,79 @@ function MarketplaceMappingWorkflow({
   setValue,
   save,
   loadingAction,
-  companies,
-  localCategories,
-  localBrands,
-  catalogAttributes,
   providerCategories,
   providerBrands,
   providerAttributesByCategory,
   loadProviderAttributes,
-  refreshProviderAttributes,
   cacheStatus,
   canManageCatalog,
   syncLoading,
   syncProviderCatalog,
   valueMapText,
   setValueMapText,
-  workflowDetail,
-  setWorkflowDetail,
   switchWorkflowModal,
+  search,
+  setSearch,
+  onlyUnmapped,
+  setOnlyUnmapped,
+  statusFilter,
+  setStatusFilter,
 }) {
   const navigate = useNavigate();
-  const modalCopy = workflowModalInfo(workflowModal);
-  const modalRows = workflowModal ? visibleRows : [];
   const mappedCategories = rows.categories.filter(isMappedCategory);
-  const workflowCategoryRows = mappedCategories.length > 0 ? mappedCategories : [];
-  const categoryComplete = mappedCategories.length > 0 && Number(summary?.unmapped_category_count || 0) === 0;
-  const categoryStarted = mappedCategories.length > 0;
-  const attributeComplete = categoryStarted && requiredAttributes.length > 0 && Number(summary?.missing_required_attribute_count || 0) === 0;
-  const attributeStarted = rows.attributes.length > 0;
-  const variantComplete = categoryStarted && rows.variants.length > 0 && Number(missingVariantCount || 0) === 0;
-  const stepStates = {
-    categories: categoryComplete ? 'complete' : 'missing',
-    attributes: !categoryStarted ? 'pending' : attributeComplete ? 'complete' : 'missing',
-    variants: !categoryStarted ? 'pending' : variantComplete ? 'complete' : 'missing',
-  };
-  const stepNotes = {
-    categories: categoryStarted ? `${mappedCategories.length} kategori eslesmis` : 'Once kategori secin',
-    attributes: !categoryStarted ? 'Kategori bekleniyor' : attributeStarted ? `${requiredAttributes.length} zorunlu alan tanimli` : 'Ozellik eslesmesi eksik',
-    variants: !categoryStarted ? 'Kategori bekleniyor' : attributeStarted ? `${rows.variants.length} varyant eslesmesi` : 'Once ozellik eslestirmesi onerilir',
-  };
-  const roadmapSteps = [
-    { key: 'categories', no: 1, title: 'Kategori', note: stepNotes.categories, action: 'Kategori eslestir' },
-    { key: 'attributes', no: 2, title: 'Ozellik', note: stepNotes.attributes, action: 'Ozellik eslestir' },
-    { key: 'variants', no: 3, title: 'Varyant', note: stepNotes.variants, action: 'Varyant eslestir' },
-    { key: 'publish', no: 4, title: 'Urun Gonder', note: variantComplete ? 'Gonderime hazir' : 'Eslesmeleri kontrol edin', action: 'Urun gonder' },
+  const selectedCategoryRow = selected?.marketplace_category_id ? selected : mappedCategories[0] || rows.categories[0];
+  const selectedCategoryId = String(selectedCategoryRow?.marketplace_category_id || form.marketplace_category_id || '');
+  const providerAttributeRows = selectedCategoryId ? providerAttributesByCategory[selectedCategoryId] || [] : [];
+  const categoryMissing = Number(summary?.unmapped_category_count || 0);
+  const brandMissing = Number(summary?.unmapped_brand_count || 0);
+  const attributeMissing = Number(summary?.missing_required_attribute_count || 0);
+  const variantMissing = Number(missingVariantCount || 0);
+  const readyCount = Number(summary?.ready_product_count || rows.readiness.filter((row) => row.readiness_status === 'ready').length || 0);
+  const blockedCount = Number(summary?.blocked_product_count || rows.readiness.filter((row) => row.readiness_status === 'blocked').length || 0);
+
+  const workflowSteps = [
+    { key: 'categories', no: 1, title: 'Kategori', text: 'Yerel kategorileri pazaryeri kategori ağacına bağlayın.', missing: categoryMissing, affected: products.filter((product) => product.category).length, cta: 'Kategori seç' },
+    { key: 'brands', no: 2, title: 'Marka', text: 'Marka eşleşmesi olmayan ürünlerin reddedilmesini önleyin.', missing: brandMissing, affected: products.filter((product) => product.brand).length, cta: 'Marka eşleştir' },
+    { key: 'attributes', no: 3, title: 'Özellik / Nitelik', text: 'Zorunlu nitelikleri ürün, varyant veya sabit değerlerden besleyin.', missing: attributeMissing, affected: requiredAttributes.length, cta: 'Nitelik bağla' },
+    { key: 'variants', no: 4, title: 'Varyant', text: 'Renk, beden ve numara gibi varyant alanlarını netleştirin.', missing: variantMissing, affected: rows.variants.length, cta: 'Varyant eşleştir' },
+    { key: 'readiness', no: 5, title: 'Hazırlık Kontrolü', text: 'Hazır, eksik ve blocked ürünleri son kez kontrol edin.', missing: blockedCount, affected: rows.readiness.length, cta: 'Hazırlığı gör' },
   ];
+
+  const stepState = (step) => {
+    if (step.key === 'readiness') return blockedCount > 0 ? 'missing' : readyCount > 0 ? 'complete' : 'pending';
+    if (step.missing > 0) return 'missing';
+    if (step.affected > 0) return 'complete';
+    return step.key === 'categories' ? 'missing' : 'pending';
+  };
+
+  const goStep = (key) => {
+    switchWorkflowModal(key);
+    const next = new URLSearchParams(window.location.search);
+    next.set('step', key);
+    navigate(`/marketplace-mapping?${next.toString()}`, { replace: true });
+  };
+
+  const refreshAll = async () => {
+    if (canManageCatalog && marketplaceCode === 'trendyol') {
+      await syncProviderCatalog('categories');
+      await syncProviderCatalog('brands');
+    }
+  };
 
   return (
     <>
       <PageHeader
-        title="Pazaryeri Eslestirmeleri"
-        description="Urunlerinizi pazaryerlerine gönderebilmek için aşağıdaki adımları sırayla tamamlayın."
+        title="Pazaryeri Hazırlık Merkezi"
+        description="Kategori, marka, nitelik ve varyant eşleştirmelerini sırayla tamamlayın; hazır ürünleri güvenle gönderime alın."
         actions={(
           <>
             <select className="header-select" value={marketplaceCode} onChange={(event) => setMarketplaceCode(event.target.value)}>
               <option value="trendyol">Trendyol</option>
               <option value="hepsiburada">Hepsiburada</option>
             </select>
-            <button type="button" className="secondary-button" disabled={loading} onClick={load}><RefreshCw size={16} /> Yenile</button>
+            <button type="button" className="secondary-button" disabled={loading || Boolean(syncLoading)} onClick={refreshAll}><RefreshCw size={16} /> Katalog verilerini güncelle</button>
+            <button type="button" className="secondary-button" disabled={loading} onClick={load}><RefreshCw size={16} /> Hazırlığı yenile</button>
+            <Link className="button-link" to="/products/publish-wizard"><Send size={16} /> Hazır ürünleri gönder</Link>
           </>
         )}
       />
@@ -1130,135 +1123,339 @@ function MarketplaceMappingWorkflow({
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && !summary ? <LoadingState /> : null}
 
-      <section className="reference-tabs">
-        {['Pazaryeri Eslestirmeleri', 'Kategori Yonetimi', 'Marka Yonetimi', 'Nitelik Yonetimi', 'Toplu Pazaryeri Islemleri', 'Pazaryeri Monitoru'].map((item) => (
-          <Link
-            className={item === 'Pazaryeri Eslestirmeleri' ? 'active' : ''}
-            to={item === 'Toplu Pazaryeri Islemleri' ? '/products/publish-wizard' : item === 'Pazaryeri Monitoru' ? '/products/publish-queue' : '/marketplace-mapping'}
-            key={item}
-          >
-            {item}
-          </Link>
-        ))}
-      </section>
+      <MarketplaceModuleTabs active="/marketplace-mapping" />
 
-      <section className="reference-info-strip">
+      <section className="balina-flow-hint">
         <CheckCircle2 size={18} />
         <div>
-          <strong>Pazaryeri eslestirmeleri ile urunlerinizi Trendyol ve Hepsiburada kategorilerine hazirlayabilirsiniz.</strong>
-          <span>Sıradaki işlem: {!categoryStarted ? 'kategori eşleştirme' : !attributeStarted ? 'özellik eşleştirme' : !variantComplete ? 'varyant eşleştirme' : 'ürün gönderme'}.</span>
+          <strong>Ürünler pazaryerine gönderilmeden önce bu beş adım tamamlanır.</strong>
+          <span>Eksik olan adıma tıklayın; çalışma alanı aynı sayfada açılır.</span>
         </div>
       </section>
 
-      <section className="marketplace-roadmap-shell reference-operation-panel">
-        <div className="marketplace-roadmap-heading">
-          <div>
-            <span>Filtreleme Secenekleri</span>
-            <strong>{!categoryStarted ? 'Kategori eslestirmeyi tamamlayin' : !attributeStarted ? 'Ozellikleri eslestirin' : !variantComplete ? 'Varyantlari kontrol edin' : 'Urunleri gonderime alin'}</strong>
+      <section className="mapping-workflow-board">
+        {workflowSteps.map((step) => {
+          const state = stepState(step);
+          return (
+            <button type="button" className={`mapping-step-card ${activeTab === step.key ? 'active' : ''} ${stepStatusClass(state)}`} key={step.key} onClick={() => goStep(step.key)}>
+              <span>{step.no}</span>
+              <strong>{step.title}</strong>
+              <small>{stepStatusLabel(state)}</small>
+              <p>{step.text}</p>
+              <em>{step.missing > 0 ? `${step.missing} eksik` : `${step.affected} kayıt`}</em>
+              <b>{step.cta}</b>
+            </button>
+          );
+        })}
+      </section>
+
+      <section className="mapping-workbench">
+        <aside className="mapping-workbench-side">
+          <div className="mapping-filter-heading">
+            <SlidersHorizontal size={18} />
+            <strong>Çalışma Alanı</strong>
           </div>
-          <Link className="button-link" to="/products/publish-wizard"><Send size={16} /> Urun gonder</Link>
-        </div>
-        <div className="marketplace-workflow-roadmap">
-          {roadmapSteps.map((step, index) => {
-            const state = step.key === 'publish' ? (variantComplete ? 'complete' : 'pending') : stepStates[step.key];
-            const disabled = step.key !== 'categories' && step.key !== 'publish' && !categoryStarted;
-            return (
-              <div className="marketplace-roadmap-segment" key={step.key}>
-                <button
-                  type="button"
-                  className={`marketplace-roadmap-step ${stepStatusClass(state)}`}
-                  disabled={disabled}
-                  onClick={() => (step.key === 'publish' ? navigate('/products/publish-wizard') : openWorkflowModal(step.key))}
-                >
-                  <span>{step.no}</span>
-                  <strong>{step.title}</strong>
-                  <small>{stepStatusLabel(state)}</small>
-                  <em>{step.note}</em>
-                </button>
-                {index < roadmapSteps.length - 1 && <span className="roadmap-arrow">{'>'}</span>}
-              </div>
-            );
-          })}
-        </div>
-        <div className="marketplace-flow-alert compact reference-warning-line">
-          <AlertTriangle size={18} />
-          <strong>Her adim bir sonrakini acar. Eksik olan karttan baslayin, kaydedin ve sonraki adima gecin.</strong>
-        </div>
-      </section>
-
-      <details className="marketplace-flow-advanced">
-        <summary>Gelismis teknik gorunum ve katalog cache</summary>
-        <CatalogCacheStatusPanel
-          marketplaceCode={marketplaceCode}
-          cacheStatus={cacheStatus}
-          canManageCatalog={canManageCatalog}
-          syncLoading={syncLoading}
-          onSyncCategories={() => syncProviderCatalog('categories')}
-          onSyncBrands={() => syncProviderCatalog('brands')}
-          onSyncAttributes={() => syncProviderCatalog('attributes')}
-        />
-        <div className="quick-fix-strip">
-          <Link className="button-link secondary-link" to="/marketplace-readiness">Hazirlik</Link>
-          <Link className="button-link secondary-link" to="/marketplace-mapping/categories">Kategori detay</Link>
-          <Link className="button-link secondary-link" to="/marketplace-mapping/brands">Marka detay</Link>
-          <Link className="button-link secondary-link" to="/marketplace-mapping/attributes">Ozellik detay</Link>
-          <Link className="button-link secondary-link" to="/marketplace-mapping/variants">Varyant detay</Link>
-        </div>
-      </details>
-
-      {workflowModal && (
-        <div className="workflow-modal-backdrop" role="presentation">
-          <section className="workflow-modal" role="dialog" aria-modal="true" aria-label={workflowModalTitle(workflowModal, marketplaceCode)}>
-            <header className="workflow-modal-header">
-              <div>
-                <span>{marketplaceCode === 'hepsiburada' ? 'Hepsiburada' : 'Trendyol'}</span>
-                <h2>{workflowModalTitle(workflowModal, marketplaceCode)}</h2>
-                <p>{modalCopy.info}</p>
-              </div>
-              <button type="button" className="icon-button" aria-label="Kapat" onClick={closeWorkflowModal}><X size={18} /></button>
-            </header>
-            <div className="workflow-modal-warning">
-              <AlertTriangle size={17} />
-              <span>{modalCopy.warning}</span>
+          <label className="resource-search compact-search">
+            <Search size={16} />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Kategori, marka, ürün veya SKU ara" />
+          </label>
+          <label className="check-row"><input type="checkbox" checked={onlyUnmapped} onChange={(event) => setOnlyUnmapped(event.target.checked)} /> Sadece eşleşmemişleri göster</label>
+          <Field label="Durum">
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option value="">Tüm durumlar</option>
+              {statusOptions.map((status) => <option key={status} value={status}>{mappingStatusLabel(status)}</option>)}
+              <option value="ready">Hazır</option>
+              <option value="blocked">Blocked</option>
+            </select>
+          </Field>
+          <div className="mapping-cache-summary">
+            <span>Kategori cache</span><strong>{cacheStatus.categories.count}</strong><small>{formatCacheDate(cacheStatus.categories.lastSyncedAt)}</small>
+            <span>Marka cache</span><strong>{cacheStatus.brands.count}</strong><small>{formatCacheDate(cacheStatus.brands.lastSyncedAt)}</small>
+            <span>Özellik cache</span><strong>{cacheStatus.attributes.categoryId ? cacheStatus.attributes.count : '-'}</strong><small>{cacheStatus.attributes.categoryId ? formatCacheDate(cacheStatus.attributes.lastSyncedAt) : 'Kategori seçilmedi'}</small>
+          </div>
+          {canManageCatalog && marketplaceCode === 'trendyol' ? (
+            <div className="mapping-cache-actions">
+              <button type="button" className="secondary-button" disabled={Boolean(syncLoading)} onClick={() => syncProviderCatalog('categories')}><RefreshCw size={16} /> Kategorileri Güncelle</button>
+              <button type="button" className="secondary-button" disabled={Boolean(syncLoading)} onClick={() => syncProviderCatalog('brands')}><RefreshCw size={16} /> Markaları Güncelle</button>
+              <button type="button" className="secondary-button" disabled={Boolean(syncLoading) || !selectedCategoryId} onClick={() => syncProviderCatalog('attributes', selectedCategoryId)}><RefreshCw size={16} /> Özellikleri Güncelle</button>
             </div>
-            <div className="workflow-modal-toolbar">
-              <div className="customer-modal-guide">
-                <PackageCheck size={18} />
-                <span>{workflowModal === 'categories' ? 'Ic kategoriyi pazaryeri kategorisiyle eslestir, kaydet ve ozellik adimina gec.' : workflowModal === 'attributes' ? 'Secili kategorinin zorunlu alanlarini tamamla. Marka bilgisi burada ozellikle kontrol edilir.' : 'Renk, beden ve numara gibi varyant alanlarini pazaryeri karsiliklariyla eslestir.'}</span>
-              </div>
-              <span className="customer-modal-count">{modalRows.length || workflowCategoryRows.length || 0} kayit</span>
-            </div>
-            <CustomerMappingModalBody
-              tab={workflowModal}
-              rows={workflowModal === 'categories' ? modalRows : workflowCategoryRows}
-              attributeRows={rows.attributes}
-              variantRows={rows.variants}
+          ) : <div className="soft-empty">Hepsiburada katalog cache sync henüz aktif değil; mevcut eşleşmeler gösterilir.</div>}
+        </aside>
+
+        <main className="mapping-workbench-main">
+          {activeTab === 'categories' && (
+            <CategoryMappingPanel
+              rows={visibleRows}
               selected={selected}
               selectRow={selectRow}
-              setWorkflowDetail={setWorkflowDetail}
-              workflowDetail={workflowDetail}
               form={form}
               setValue={setValue}
               save={save}
               loading={loadingAction}
-              marketplaceCode={marketplaceCode}
               providerCategories={providerCategories}
+              products={products}
+            />
+          )}
+          {activeTab === 'brands' && (
+            <BrandMappingPanel
+              rows={visibleRows}
+              selected={selected}
+              selectRow={selectRow}
+              form={form}
+              setValue={setValue}
+              save={save}
+              loading={loadingAction}
               providerBrands={providerBrands}
-              providerAttributesByCategory={providerAttributesByCategory}
+              products={products}
+            />
+          )}
+          {activeTab === 'attributes' && (
+            <AttributeMappingPanel
+              categoryRows={mappedCategories}
+              selectedCategoryRow={selectedCategoryRow}
+              providerAttributeRows={providerAttributeRows}
+              rows={rows.attributes}
+              form={form}
+              setValue={setValue}
+              save={save}
+              loading={loadingAction}
               loadProviderAttributes={loadProviderAttributes}
-              refreshProviderAttributes={refreshProviderAttributes}
-              cacheStatus={cacheStatus}
-              canManageCatalog={canManageCatalog}
+              selectedCategoryId={selectedCategoryId}
+              valueMapText={valueMapText}
+              setValueMapText={setValueMapText}
               syncLoading={syncLoading}
               syncProviderCatalog={syncProviderCatalog}
-              closeWorkflowModal={closeWorkflowModal}
-              switchWorkflowModal={switchWorkflowModal}
-              attributeStarted={attributeStarted}
+              canManageCatalog={canManageCatalog}
+              marketplaceCode={marketplaceCode}
             />
-          </section>
-        </div>
-      )}
+          )}
+          {activeTab === 'variants' && (
+            <VariantMappingPanel rows={rows.variants} form={form} setValue={setValue} save={save} loading={loadingAction} selectedCategoryRow={selectedCategoryRow} />
+          )}
+          {activeTab === 'readiness' && (
+            <ReadinessPanel rows={rows.readiness} load={load} readyCount={readyCount} blockedCount={blockedCount} />
+          )}
+        </main>
+      </section>
     </>
+  );
+}
+
+function CategoryMappingPanel({ rows, selected, selectRow, form, setValue, save, loading, providerCategories, products }) {
+  const [providerSearch, setProviderSearch] = useState('');
+  const selectedName = form.local_category_name || selected?.local_category_name || rows[0]?.local_category_name || '';
+  const filteredProviders = providerCategories
+    .filter((item) => !providerSearch || `${item.external_id} ${item.name} ${item.path}`.toLocaleLowerCase('tr-TR').includes(providerSearch.toLocaleLowerCase('tr-TR')))
+    .slice(0, 40);
+  const affectedProducts = countBy(products, (product) => product.category === selectedName);
+
+  return (
+    <div className="mapping-panel-grid">
+      <section className="mapping-list-panel">
+        <div className="mapping-panel-title"><span>Kategori Eşleştirme</span><strong>Yerel kategoriler</strong></div>
+        <div className="mapping-scroll-list">
+          {rows.length === 0 ? <div className="soft-empty">Eşleşecek kategori bulunamadı.</div> : rows.map((row, index) => {
+            const mapped = isMappedCategory(row);
+            return (
+              <button type="button" className={selected?.id === row.id ? 'mapping-list-row active' : 'mapping-list-row'} key={row.id || index} onClick={() => selectRow(row)}>
+                <strong>{row.local_category_name || '-'}</strong>
+                <span>{countBy(products, (product) => product.category === row.local_category_name)} ürün</span>
+                <small className={mapped ? 'ready' : 'blocked'}>{mapped ? 'Hazır' : 'Eksik'}</small>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+      <form className="mapping-editor-panel" onSubmit={save}>
+        <div className="mapping-panel-title"><span>Pazaryeri kategorisi</span><strong>{selectedName || 'Kategori seçin'}</strong></div>
+        <p>Ürünlerinizi göndereceğiniz pazaryeri kategorisini seçin. ID, ad ve breadcrumb birlikte kaydedilir.</p>
+        <Field label="Yerel kategori"><input value={form.local_category_name || selectedName} onChange={(event) => setValue('local_category_name', event.target.value)} /></Field>
+        <label className="resource-search compact-search provider-picker-search"><Search size={16} /><input value={providerSearch} onChange={(event) => setProviderSearch(event.target.value)} placeholder="Kategori adı, ID veya kategori yolu ara" /></label>
+        <div className="provider-choice-list">
+          {filteredProviders.length === 0 ? <div className="soft-empty">Henüz pazaryeri kategori verisi yok. Kategorileri Güncelle ile cache’i doldurun.</div> : filteredProviders.map((item) => (
+            <button type="button" className={String(form.marketplace_category_id) === String(item.external_id) ? 'active' : ''} key={item.external_id} onClick={() => { setValue('marketplace_category_id', item.external_id || ''); setValue('marketplace_category_name', item.name || ''); setValue('marketplace_category_path', item.path || item.name || ''); setValue('confidence', 'catalog'); }}>
+              <strong>{item.name}</strong><span>{item.path || item.name}</span><small>ID: {item.external_id}</small>
+            </button>
+          ))}
+        </div>
+        <div className="mapping-mini-grid">
+          <div><small>Pazaryeri kategori ID</small><b>{form.marketplace_category_id || '-'}</b></div>
+          <div><small>Kategori yolu</small><b>{form.marketplace_category_path || '-'}</b></div>
+          <div><small>Etkilenen ürün</small><b>{affectedProducts}</b></div>
+          <div><small>Eşleşme güveni</small><b>{form.confidence || 'manual'}</b></div>
+        </div>
+        <div className="wizard-actions inline-actions"><button disabled={loading}><Save size={16} /> Kategori eşleşmesini kaydet</button></div>
+      </form>
+    </div>
+  );
+}
+
+function BrandMappingPanel({ rows, selected, selectRow, form, setValue, save, loading, providerBrands, products }) {
+  const [providerSearch, setProviderSearch] = useState('');
+  const selectedName = form.local_brand_name || selected?.local_brand_name || rows[0]?.local_brand_name || '';
+  const filteredProviders = providerBrands
+    .filter((item) => !providerSearch || `${item.external_id} ${item.name}`.toLocaleLowerCase('tr-TR').includes(providerSearch.toLocaleLowerCase('tr-TR')))
+    .slice(0, 40);
+  const affectedProducts = countBy(products, (product) => product.brand === selectedName);
+  const suggestion = suggestionFor(selectedName, providerBrands.map((item) => ({ id: item.external_id, name: item.name, confidence: 'catalog' })));
+
+  return (
+    <div className="mapping-panel-grid">
+      <section className="mapping-list-panel">
+        <div className="mapping-panel-title"><span>Marka Eşleştirme</span><strong>Yerel markalar</strong></div>
+        <div className="mapping-scroll-list">
+          {rows.length === 0 ? <div className="soft-empty">Eşleşecek marka bulunamadı.</div> : rows.map((row, index) => {
+            const mapped = Boolean(row.marketplace_brand_id || row.marketplace_brand_name);
+            return (
+              <button type="button" className={selected?.id === row.id ? 'mapping-list-row active' : 'mapping-list-row'} key={row.id || index} onClick={() => selectRow(row)}>
+                <strong>{row.local_brand_name || '-'}</strong>
+                <span>{countBy(products, (product) => product.brand === row.local_brand_name)} ürün</span>
+                <small className={mapped ? 'ready' : 'blocked'}>{mapped ? 'Hazır' : 'Eksik'}</small>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+      <form className="mapping-editor-panel" onSubmit={save}>
+        <div className="mapping-panel-title"><span>Pazaryeri markası</span><strong>{selectedName || 'Marka seçin'}</strong></div>
+        <p>Marka bilgisi ürün listeleme için zorunludur. Marka eşleşmesi olmayan ürünler pazaryerinde reddedilebilir.</p>
+        <Field label="Yerel marka"><input value={form.local_brand_name || selectedName} onChange={(event) => setValue('local_brand_name', event.target.value)} /></Field>
+        {suggestion && <div className="mapping-suggestion"><strong>Öneri</strong><span>{suggestion.name}</span><small>Güven: {suggestion.confidence}</small><button type="button" onClick={() => { setValue('marketplace_brand_id', suggestion.id || ''); setValue('marketplace_brand_name', suggestion.name); setValue('confidence', suggestion.confidence); }}>Öneriyi uygula</button></div>}
+        <label className="resource-search compact-search provider-picker-search"><Search size={16} /><input value={providerSearch} onChange={(event) => setProviderSearch(event.target.value)} placeholder="Marka adı veya ID ara" /></label>
+        <div className="provider-choice-list compact">
+          {filteredProviders.length === 0 ? <div className="soft-empty">Henüz marka verisi yok. Markaları Güncelle ile cache’i doldurun.</div> : filteredProviders.map((item) => (
+            <button type="button" className={String(form.marketplace_brand_id) === String(item.external_id) ? 'active' : ''} key={item.external_id || item.name} onClick={() => { setValue('marketplace_brand_id', item.external_id || ''); setValue('marketplace_brand_name', item.name || ''); setValue('confidence', 'catalog'); }}>
+              <strong>{item.name}</strong><small>ID: {item.external_id || '-'}</small>
+            </button>
+          ))}
+        </div>
+        <div className="mapping-mini-grid">
+          <div><small>Pazaryeri marka ID</small><b>{form.marketplace_brand_id || '-'}</b></div>
+          <div><small>Pazaryeri marka</small><b>{form.marketplace_brand_name || '-'}</b></div>
+          <div><small>Etkilenen ürün</small><b>{affectedProducts}</b></div>
+          <div><small>Eşleşme tipi</small><b>{form.confidence || 'manual'}</b></div>
+        </div>
+        <div className="wizard-actions inline-actions"><button disabled={loading}><Save size={16} /> Marka eşleşmesini kaydet</button></div>
+      </form>
+    </div>
+  );
+}
+
+function AttributeMappingPanel({ categoryRows, selectedCategoryRow, providerAttributeRows, rows, form, setValue, save, loading, loadProviderAttributes, selectedCategoryId, valueMapText, setValueMapText, syncLoading, syncProviderCatalog, canManageCatalog, marketplaceCode }) {
+  const [localCategoryId, setLocalCategoryId] = useState(selectedCategoryId || '');
+  const effectiveCategory = categoryRows.find((row) => String(row.marketplace_category_id) === String(localCategoryId)) || selectedCategoryRow;
+  const attributes = providerAttributeRows.length > 0 ? providerAttributeRows : rows;
+  const sortedAttributes = [...attributes].sort((a, b) => Number(Boolean(b.required)) - Number(Boolean(a.required)));
+
+  useEffect(() => {
+    if (effectiveCategory?.marketplace_category_id) loadProviderAttributes(effectiveCategory.marketplace_category_id);
+  }, [effectiveCategory?.marketplace_category_id]);
+
+  return (
+    <div className="mapping-full-panel">
+      <div className="mapping-panel-title"><span>Özellik / Nitelik Eşleştirme</span><strong>Önce kategori seçin</strong></div>
+      <div className="mapping-category-context">
+        <Field label="Kategori">
+          <select value={localCategoryId || effectiveCategory?.marketplace_category_id || ''} onChange={(event) => { setLocalCategoryId(event.target.value); const row = categoryRows.find((item) => String(item.marketplace_category_id) === String(event.target.value)); if (row) { setValue('marketplace_category_id', row.marketplace_category_id); setValue('local_category_id', row.local_category_id || ''); loadProviderAttributes(row.marketplace_category_id); } }}>
+            <option value="">Kategori seçin</option>
+            {categoryRows.map((row) => <option key={row.id} value={row.marketplace_category_id}>{row.local_category_name} → {row.marketplace_category_path || row.marketplace_category_name}</option>)}
+          </select>
+        </Field>
+        <div><span>Seçilen pazaryeri kategorisi</span><strong>{effectiveCategory?.marketplace_category_path || effectiveCategory?.marketplace_category_name || '-'}</strong></div>
+        {canManageCatalog && marketplaceCode === 'trendyol' && <button type="button" className="secondary-button" disabled={!effectiveCategory?.marketplace_category_id || Boolean(syncLoading)} onClick={() => syncProviderCatalog('attributes', effectiveCategory.marketplace_category_id)}><RefreshCw size={16} /> Özellikleri Güncelle</button>}
+      </div>
+      {attributes.length === 0 && <div className="catalog-cache-empty inline"><AlertTriangle size={16} /><p>Bu kategori için özellik verisi bulunmuyor. Özellikleri Güncelle butonuyla zorunlu nitelikleri çekin.</p></div>}
+      <div className="attribute-mapping-list">
+        {sortedAttributes.map((attribute, index) => {
+          const attributeName = attribute.name || attribute.marketplace_attribute_name;
+          const required = Boolean(attribute.required);
+          return (
+            <form className={`attribute-map-row ${required ? 'required' : ''}`} key={attribute.external_id || attribute.id || index} onSubmit={save}>
+              <div><strong>{attributeName}</strong><span>{required ? 'Zorunlu' : 'Opsiyonel'} · {attribute.value_type || attribute.valueType || 'Değer tipi yok'}</span></div>
+              <select value={form.source_type || 'product_field'} onChange={(event) => setValue('source_type', event.target.value)}>
+                <option value="product_field">Ürün alanı</option>
+                <option value="variant_field">Varyant alanı</option>
+                <option value="fixed_value">Sabit değer</option>
+                <option value="custom_json">JSON/value map</option>
+              </select>
+              <select value={form.source_field || ''} onChange={(event) => { setValue('marketplace_category_id', effectiveCategory?.marketplace_category_id || ''); setValue('marketplace_attribute_id', attribute.external_id || attribute.marketplace_attribute_id || ''); setValue('marketplace_attribute_name', attributeName || ''); setValue('required', required); setValue('value_type', attribute.value_type || ''); setValue('source_field', event.target.value); }}>
+                <option value="">Kaynak alan seç</option>
+                {sourceFieldOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+              <input value={form.fixed_value || ''} onChange={(event) => setValue('fixed_value', event.target.value)} placeholder="Sabit değer" />
+              <button disabled={loading}><Save size={15} /> Kaydet</button>
+            </form>
+          );
+        })}
+      </div>
+      <div className="workflow-modal-warning"><AlertTriangle size={16} /><span>Renk ve beden gibi varyant alanlarını mümkünse Varyant adımında eşleştirin.</span></div>
+      <Field label="JSON / value map"><textarea value={valueMapText} onChange={(event) => setValueMapText(event.target.value)} placeholder='{"Kırmızı":"Red"}' /></Field>
+    </div>
+  );
+}
+
+function VariantMappingPanel({ rows, form, setValue, save, loading, selectedCategoryRow }) {
+  const [autoMessage, setAutoMessage] = useState('');
+  const autoFill = () => {
+    setValue('variant_key', 'renk');
+    setValue('marketplace_attribute_name', 'Renk');
+    setValue('source_field', 'renk');
+    setAutoMessage('Renk alanı renk kaynağına hazırlandı. Beden ve numara için satırları ayrı kaydedin.');
+  };
+  const defaults = [
+    { key: 'renk', label: 'Renk' },
+    { key: 'beden', label: 'Beden' },
+    { key: 'numara', label: 'Numara' },
+  ];
+  return (
+    <div className="mapping-full-panel">
+      <div className="mapping-panel-title"><span>Varyant Eşleştirme</span><strong>{selectedCategoryRow?.local_category_name || 'Kategori bağlamı'}</strong></div>
+      <p>Seçili kategori: {selectedCategoryRow?.marketplace_category_path || selectedCategoryRow?.marketplace_category_name || 'Kategori seçilmedi'}</p>
+      <button type="button" className="secondary-button" onClick={autoFill}>Otomatik Eşleştir</button>
+      {autoMessage && <div className="balina-flow-hint compact"><CheckCircle2 size={16} /><span>{autoMessage}</span></div>}
+      <div className="variant-field-grid">
+        {defaults.map((item) => {
+          const mapped = rows.find((row) => row.variant_key === item.key && row.status === 'active');
+          return (
+            <form className={mapped ? 'variant-field-card ready' : 'variant-field-card'} key={item.key} onSubmit={save}>
+              <strong>{item.label}</strong>
+              <span>{mapped ? 'Tamamlandı' : 'Eksik'}</span>
+              <input value={form.variant_key === item.key ? form.marketplace_attribute_name || '' : mapped?.marketplace_attribute_name || ''} onChange={(event) => { setValue('variant_key', item.key); setValue('marketplace_attribute_name', event.target.value); setValue('source_type', 'variant_field'); setValue('source_field', item.key); }} placeholder={`${item.label} attribute karşılığı`} />
+              <button disabled={loading}><Save size={15} /> Kaydet</button>
+            </form>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ReadinessPanel({ rows, load, readyCount, blockedCount }) {
+  const groups = [
+    { key: 'ready', label: 'Hazır', rows: rows.filter((row) => row.readiness_status === 'ready'), href: '/products/publish-wizard' },
+    { key: 'category', label: 'Kategori eksik', rows: rows.filter((row) => row.missing_category_mapping), href: '/marketplace-mapping?step=categories' },
+    { key: 'brand', label: 'Marka eksik', rows: rows.filter((row) => row.missing_brand_mapping), href: '/marketplace-mapping?step=brands' },
+    { key: 'attributes', label: 'Nitelik eksik', rows: rows.filter((row) => (row.missing_required_attributes || []).length > 0), href: '/marketplace-mapping?step=attributes' },
+    { key: 'variants', label: 'Varyant eksik', rows: rows.filter((row) => (row.missing_variant_attributes || []).length > 0), href: '/marketplace-mapping?step=variants' },
+    { key: 'blocked', label: 'Blocked', rows: rows.filter((row) => row.readiness_status === 'blocked'), href: '/marketplace-mapping?step=categories' },
+  ];
+  return (
+    <div className="mapping-full-panel">
+      <div className="mapping-panel-title"><span>Hazırlık Kontrolü</span><strong>{readyCount} hazır / {blockedCount} blocked</strong></div>
+      <div className="readiness-group-grid">
+        {groups.map((group) => (
+          <section className="readiness-group-card" key={group.key}>
+            <header><strong>{group.label}</strong><span>{group.rows.length}</span></header>
+            <div className="readiness-mini-list">
+              {group.rows.slice(0, 5).map((row) => <div key={`${group.key}-${row.id || row.sku}`}><strong>{row.name || row.sku}</strong><small>{readinessReason(row)}</small></div>)}
+              {group.rows.length === 0 && <small>Bu grupta ürün yok.</small>}
+            </div>
+            <Link className="table-action-link" to={group.href}>{group.key === 'ready' ? 'Toplu gönderime geç' : 'Eksikleri düzelt'}</Link>
+          </section>
+        ))}
+      </div>
+      <div className="wizard-actions inline-actions"><button type="button" className="secondary-button" onClick={load}><RefreshCw size={16} /> Hazırlığı yeniden kontrol et</button><Link className="button-link" to="/products/publish-wizard"><Send size={16} /> Hazır ürünleri gönder</Link></div>
+    </div>
   );
 }
 
@@ -1272,266 +1469,6 @@ const customerAttributeFields = [
   { key: 'piece_count', label: 'Parca Sayisi', required: false },
   { key: 'age_group', label: 'Yas Grubu', required: false },
 ];
-
-function CustomerMappingModalBody({
-  tab,
-  rows,
-  attributeRows,
-  variantRows,
-  selected,
-  selectRow,
-  setWorkflowDetail,
-  workflowDetail,
-  form,
-  setValue,
-  save,
-  loading,
-  marketplaceCode,
-  providerCategories = [],
-  providerBrands = [],
-  providerAttributesByCategory = {},
-  loadProviderAttributes,
-  refreshProviderAttributes,
-  cacheStatus,
-  canManageCatalog,
-  syncLoading,
-  syncProviderCatalog,
-  closeWorkflowModal,
-  switchWorkflowModal,
-  attributeStarted,
-}) {
-  const provider = marketplaceCode === 'hepsiburada' ? 'Hepsiburada' : 'Trendyol';
-  const categoryRows = rows.filter((row) => tab === 'categories' || isMappedCategory(row)).slice(0, 10);
-  const selectProviderCategory = (row, value) => {
-    const match = providerCategories.find((item) => [item.path, item.name, item.external_id].map(String).includes(String(value)));
-    if (selected?.id !== row.id) selectRow(row);
-    setValue('marketplace_category_path', match?.path || value);
-    setValue('marketplace_category_name', match?.name || value);
-    setValue('marketplace_category_id', match?.external_id || '');
-    setValue('confidence', match ? 'catalog' : form.confidence);
-  };
-
-  if (tab === 'categories') {
-    return (
-      <div className="customer-modal-stack">
-        {providerCategories.length === 0 && (
-          <div className="catalog-cache-empty inline">
-            <AlertTriangle size={16} />
-            <p>Henüz pazaryeri kategori verisi bulunmuyor. Kategorileri Güncelle butonuyla Trendyol’dan kategori listesini çekin.</p>
-          </div>
-        )}
-        <div className="customer-modal-count">Sayfada {categoryRows.length || 0} kayit gosteriliyor.</div>
-        <table className="customer-simple-table">
-          <thead>
-            <tr>
-              <th>Urun kategorisi</th>
-              <th>Pazaryeri Kategorisi</th>
-              <th>Sonuc</th>
-              <th>Islem</th>
-            </tr>
-          </thead>
-          <tbody>
-            {categoryRows.length === 0 ? (
-              <tr><td colSpan="4">Kategori kaydi bulunamadi.</td></tr>
-            ) : categoryRows.map((row, index) => (
-              <tr key={row.id || row.local_category_name || index}>
-                <td>
-                  <strong>{row.local_category_name || row.category || '-'}</strong>
-                  <span>Kaynak: urun kategorisi</span>
-                </td>
-                <td>
-                  <input list="provider-category-cache-options" value={selected?.id === row.id ? form.marketplace_category_path || form.marketplace_category_name || '' : row.marketplace_category_path || row.marketplace_category_name || ''} onChange={(event) => selectProviderCategory(row, event.target.value)} placeholder={`${provider} kategori yolu secin`} />
-                  <datalist id="provider-category-cache-options">
-                    {providerCategories.slice(0, 200).map((item) => <option key={item.external_id} value={item.path || item.name}>{item.external_id} - {item.name}</option>)}
-                  </datalist>
-                  {(selected?.id === row.id ? form.marketplace_category_id : row.marketplace_category_id) && (
-                    <small className="catalog-cache-hint">Kategori ID: {selected?.id === row.id ? form.marketplace_category_id : row.marketplace_category_id}</small>
-                  )}
-                </td>
-                <td><span className={`workflow-step-status ${isMappedCategory(row) ? 'ready' : 'blocked'}`}>{isMappedCategory(row) ? 'Tamamlandi' : 'Eksik'}</span></td>
-                <td><button type="button" className="warning-button compact-warning-button" onClick={() => selectRow(row)}>Bu kategoriyi sec</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="wizard-actions inline-actions">
-          <button type="button" className="secondary-button" onClick={closeWorkflowModal}>Kapat</button>
-          <button type="button" disabled={loading || !selected} onClick={save}><Save size={16} /> Kaydet</button>
-          {selected && <button type="button" className="success-button" onClick={() => switchWorkflowModal('attributes')}>Ozellik eslestirmeye gec</button>}
-        </div>
-      </div>
-    );
-  }
-
-  if (tab === 'attributes') {
-    const attributeCount = (category) => attributeRows.filter((row) => String(row.marketplace_category_id || '') === String(category.marketplace_category_id || '')).length;
-    const selectedCategoryId = workflowDetail?.marketplace_category_id ? String(workflowDetail.marketplace_category_id) : '';
-    const selectedAttributeRows = workflowDetail ? attributeRows.filter((row) => String(row.marketplace_category_id || '') === selectedCategoryId) : [];
-    const providerAttributeRows = selectedCategoryId ? providerAttributesByCategory[selectedCategoryId] || [] : [];
-    const attributeCacheLastSyncedAt = selectedCategoryId === cacheStatus?.attributes.categoryId ? cacheStatus.attributes.lastSyncedAt : latestSyncedAt(providerAttributeRows);
-    const checklistFields = providerAttributeRows.length > 0
-      ? providerAttributeRows
-        .map((attribute) => ({
-          key: attribute.external_id,
-          label: attribute.name,
-          required: Boolean(attribute.required),
-          valueType: attribute.value_type,
-          allowCustom: Boolean(attribute.allow_custom),
-          providerAttribute: true,
-        }))
-        .sort((a, b) => Number(Boolean(b.required)) - Number(Boolean(a.required)))
-      : customerAttributeFields;
-    const hasAttribute = (field) => selectedAttributeRows.some((row) => String(row.marketplace_attribute_id || '') === String(field.key) || normalize(row.marketplace_attribute_name).includes(normalize(field.label)));
-    const openAttributes = async (row) => {
-      setWorkflowDetail(row);
-      setValue('local_category_id', row.local_category_id || '');
-      setValue('marketplace_category_id', row.marketplace_category_id || '');
-      if (row.marketplace_category_id && loadProviderAttributes) {
-        await loadProviderAttributes(row.marketplace_category_id);
-      }
-    };
-    return (
-      <div className="customer-modal-stack">
-        <table className="customer-simple-table">
-          <thead>
-            <tr>
-              <th>Kategori</th>
-              <th>Pazaryeri Kategorisi</th>
-              <th>Eksik / Tamam</th>
-              <th>Devam et</th>
-            </tr>
-          </thead>
-          <tbody>
-            {categoryRows.length === 0 ? (
-              <tr><td colSpan="4">Ozellik eslestirmek icin once kategori eslestirmesini tamamlayin.</td></tr>
-            ) : categoryRows.map((row, index) => (
-              <tr key={row.id || index}>
-                <td><strong>{row.local_category_name || '-'}</strong></td>
-                <td><span>{row.marketplace_category_path || row.marketplace_category_name || '-'}</span></td>
-                <td>{attributeCount(row)} / {Math.max(attributeCount(row), (providerAttributesByCategory[row.marketplace_category_id] || customerAttributeFields).length)}</td>
-                <td><button type="button" className="warning-button compact-warning-button" onClick={() => openAttributes(row)}>Alanlari ac</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {workflowDetail && (
-          <section className="customer-sub-modal">
-            <h3>Ozellik Eslestir</h3>
-            <p><strong>Kategori:</strong> {workflowDetail.local_category_name}</p>
-            <p><strong>Pazaryeri:</strong> {workflowDetail.marketplace_category_path || workflowDetail.marketplace_category_name || '-'}</p>
-            {providerAttributeRows.length > 0 && (
-              <p><strong>Cache:</strong> {providerAttributeRows.filter((item) => item.required).length} zorunlu / {providerAttributeRows.length} toplam nitelik</p>
-            )}
-            <div className="catalog-cache-modal-note">
-              <div>
-                <strong>{providerAttributeRows.length > 0 ? 'Zorunlu nitelikler Trendyol katalog cache’den gelir.' : 'Ornek alanlar gosteriliyor.'}</strong>
-                <span>Son guncelleme: {formatCacheDate(attributeCacheLastSyncedAt)}</span>
-              </div>
-              {canManageCatalog && marketplaceCode === 'trendyol' && (
-                <button
-                  type="button"
-                  className="secondary-button"
-                  disabled={Boolean(syncLoading)}
-                  onClick={() => syncProviderCatalog('attributes', selectedCategoryId)}
-                >
-                  <RefreshCw size={16} /> {syncLoading === 'attributes' ? 'Guncelleniyor...' : 'Ozellikleri Guncelle'}
-                </button>
-              )}
-            </div>
-            {providerAttributeRows.length === 0 && (
-              <div className="catalog-cache-empty inline">
-                <AlertTriangle size={16} />
-                <p>Bu kategori için özellik verisi bulunmuyor. Özellikleri Güncelle butonuyla zorunlu nitelikleri çekin.</p>
-              </div>
-            )}
-            <div className="workflow-modal-warning">
-              <AlertTriangle size={16} />
-              <span>Varyant degerleriniz varsa renk/beden gibi alanlari burada degil, varyant eslestirme ekraninda birakin.</span>
-            </div>
-            <div className="brand-required-note">
-              <strong>Marka zorunludur</strong>
-              <span>Marka bilgisi urun listeleme icin zorunludur. Marka eslesmesi olmayan urunler pazaryerinde reddedilebilir.</span>
-            </div>
-            <div className="customer-checklist">
-              {checklistFields.map((field) => (
-                <label className={hasAttribute(field) ? 'complete' : 'missing'} key={field.key}>
-                  <span>{hasAttribute(field) ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}</span>
-                  <strong>{field.label}{field.required && <b>*</b>}</strong>
-                  <small>{hasAttribute(field) ? 'Tamamlandi' : field.valueType ? `${field.valueType} degeri eksik` : 'Eksik'}</small>
-                  <input onChange={(event) => { setValue('marketplace_attribute_id', field.providerAttribute ? field.key : form.marketplace_attribute_id); setValue('marketplace_attribute_name', field.label); setValue('required', Boolean(field.required)); setValue('value_type', field.valueType || ''); setValue('fixed_value', event.target.value); setValue('source_type', 'fixed_value'); }} placeholder={`${field.label} secin veya yazin`} />
-                </label>
-              ))}
-            </div>
-            <div className="wizard-actions inline-actions">
-              <button type="button" className="secondary-button" onClick={() => setWorkflowDetail(null)}>Geri</button>
-              <button type="button" disabled={loading} onClick={save}><Save size={16} /> Kaydet</button>
-            </div>
-          </section>
-        )}
-      </div>
-    );
-  }
-
-  const variantStatus = (key) => variantRows.some((row) => row.variant_key === key && row.status === 'active') ? 'Tamam' : 'Bekliyor';
-  return (
-    <div className="customer-modal-stack">
-      <table className="customer-simple-table">
-          <thead>
-            <tr>
-              <th>Kategori</th>
-              <th>Pazaryeri Kategorisi</th>
-              <th>Renk / Beden</th>
-              <th>Devam et</th>
-            </tr>
-          </thead>
-          <tbody>
-            {categoryRows.length === 0 ? (
-              <tr><td colSpan="4">Varyant eslestirmek icin once kategori eslestirmesini tamamlayin.</td></tr>
-            ) : categoryRows.map((row, index) => (
-              <tr key={row.id || index}>
-              <td><strong>{row.local_category_name || '-'}</strong></td>
-              <td><span>{row.marketplace_category_path || row.marketplace_category_name || '-'}</span></td>
-              <td>{variantStatus('beden')} / {variantStatus('renk')}</td>
-              <td><button type="button" className="warning-button compact-warning-button" onClick={() => setWorkflowDetail(row)}>Varyantlari ac</button></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {workflowDetail && (
-        <section className="customer-sub-modal">
-          <h3>Varyant Eslestir</h3>
-          {!attributeStarted && (
-            <div className="workflow-modal-warning">
-              <AlertTriangle size={16} />
-              <span>Once ilgili kategorinin ozellik eslestirmesini tamamlamaniz onerilir.</span>
-            </div>
-          )}
-          <p><strong>Kategori:</strong> {workflowDetail.local_category_name || '-'}</p>
-          <p><strong>Pazaryeri:</strong> {workflowDetail.marketplace_category_path || workflowDetail.marketplace_category_name || '-'}</p>
-          <p>Secilen kategoriye ait tum varyantlar asagida listelenmektedir.</p>
-          <div className="variant-simple-list">
-            {['Boyut/Ebat', 'Renk'].map((label) => {
-              const key = label === 'Renk' ? 'renk' : 'beden';
-              const complete = variantStatus(key) === 'Tamam';
-              return (
-                <label className={complete ? 'complete' : 'missing'} key={label}>
-                  <span>{complete ? <CheckCircle2 size={20} /> : <AlertTriangle size={20} />}</span>
-                  <strong>{label}</strong>
-                  <small>{complete ? 'Tamamlandi' : 'Eksik'}</small>
-                  <input onChange={(event) => { setValue('variant_key', key); setValue('marketplace_attribute_name', event.target.value || label); setValue('source_field', key); }} placeholder={`${provider} ${label} karsiligi`} />
-                </label>
-              );
-            })}
-          </div>
-          <div className="wizard-actions inline-actions">
-            <button type="button" className="secondary-button" onClick={() => { setValue('variant_key', 'renk'); setValue('marketplace_attribute_name', 'Renk'); setValue('source_field', 'renk'); }}>Otomatik Eslestir</button>
-            <button type="button" disabled={loading} onClick={save}><Save size={16} /> Kaydet</button>
-          </div>
-        </section>
-      )}
-    </div>
-  );
-}
 
 function MappingTable({ activeTab, rows, onSelect }) {
   if (activeTab === 'categories') {

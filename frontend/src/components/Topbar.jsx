@@ -7,7 +7,8 @@ import { Breadcrumbs } from './Breadcrumbs.jsx';
 export function Topbar() {
   const navigate = useNavigate();
   const { logout: logoutUser, user } = useApp();
-  const userName = user?.name || user?.username || user?.email || 'Kullanici';
+  const userName = user?.name || user?.username || user?.email || 'Kullanıcı';
+  const companyName = user?.company?.name || user?.company_name || user?.tenant?.name || 'Aktif firma';
 
   const logout = async () => {
     await logoutUser();
@@ -24,14 +25,11 @@ export function Topbar() {
         </label>
       </div>
       <div className="topbar-user">
-        <select className="company-switcher" defaultValue="balina">
-          <option value="balina">Balina Dijital</option>
-        </select>
+        <div className="company-switcher static-company"><span>{companyName}</span></div>
         <Link className="topbar-link" to="/help-center"><CircleHelp size={16} /> Yardim</Link>
         <Link className="topbar-link" to="/"><ExternalLink size={16} /> Magazayi Ac</Link>
         <button type="button" className="icon-button topbar-notification" aria-label="Bildirimler">
           <Bell size={16} />
-          <small>3</small>
         </button>
         <div className="topbar-profile">
           <span className="role-badge">{primaryRoleLabel(user)}</span>

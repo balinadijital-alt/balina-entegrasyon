@@ -4,7 +4,7 @@ const smokeRoutes = [
   { path: '/dashboard', title: 'Baslangic' },
   { path: '/operations', title: 'Operasyon Merkezi' },
   { path: '/marketplaces', title: 'Pazaryerleri' },
-  { path: '/marketplace-mapping', title: 'Pazaryeri Eslestirmeleri' },
+  { path: '/marketplace-mapping', title: 'Pazaryeri Hazırlık Merkezi' },
   { path: '/marketplace-readiness', title: 'Pazaryeri Hazirlik Merkezi' },
   { path: '/marketplace-mapping/categories', title: 'Kategori Eslestirme' },
   { path: '/marketplace-mapping/brands', title: 'Marka Eslestirme' },
@@ -155,14 +155,14 @@ test.describe('operasyon paneli smoke testleri', () => {
     await authenticate(page);
     await isolateBackendApi(page);
 
-    await page.goto('/marketplace-mapping?step=attribute&marketplace=trendyol&category_id=demo');
-    await expect(page.locator('.page-header h1')).toContainText('Pazaryeri Eslestirmeleri');
-    await expect(page.locator('.workflow-modal')).toBeVisible();
-    await expect(page.locator('.workflow-modal h2')).toContainText('Ozellik Eslestirme');
+    await page.goto('/marketplace-mapping?step=attributes&marketplace=trendyol&category_id=demo');
+    await expect(page.locator('.page-header h1')).toContainText('Pazaryeri Hazırlık Merkezi');
+    await expect(page.locator('.mapping-workflow-board')).toBeVisible();
+    await expect(page.locator('.mapping-full-panel')).toContainText('Özellik / Nitelik Eşleştirme');
 
-    await page.goto('/marketplace-mapping?step=variant&marketplace=trendyol');
-    await expect(page.locator('.workflow-modal')).toBeVisible();
-    await expect(page.locator('.workflow-modal h2')).toContainText('Varyant Eslestirme');
+    await page.goto('/marketplace-mapping?step=variants&marketplace=trendyol');
+    await expect(page.locator('.mapping-workflow-board')).toBeVisible();
+    await expect(page.locator('.mapping-full-panel')).toContainText('Varyant Eşleştirme');
     expect(consoleErrors).toEqual([]);
   });
 });

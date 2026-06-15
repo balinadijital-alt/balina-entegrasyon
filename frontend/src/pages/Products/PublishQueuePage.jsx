@@ -43,16 +43,16 @@ function statusClass(status) {
 
 function fixTarget(missing = []) {
   if (missing.includes('category_mapping') || missing.includes('marketplace_category')) {
-    return { href: '/marketplace-mapping?step=category', label: 'Kategori eslestir' };
+    return { href: '/marketplace-mapping?step=categories', label: 'Kategori eşleştir' };
   }
   if (missing.includes('brand') || missing.includes('brand_mapping')) {
-    return { href: '/marketplace-mapping?step=attribute', label: 'Marka bilgisini tamamla' };
+    return { href: '/marketplace-mapping?step=brands', label: 'Marka bilgisini tamamla' };
   }
   if (missing.includes('attributes') || missing.includes('required_attributes') || missing.includes('attribute_mappings')) {
-    return { href: '/marketplace-mapping?step=attribute', label: 'Ozellik eslestir' };
+    return { href: '/marketplace-mapping?step=attributes', label: 'Özellik eşleştir' };
   }
   if (missing.includes('variant_attributes') || missing.includes('variant_attribute_mappings')) {
-    return { href: '/marketplace-mapping?step=variant', label: 'Varyant eslestir' };
+    return { href: '/marketplace-mapping?step=variants', label: 'Varyant eşleştir' };
   }
   return { href: '/api-logs', label: 'Hata detaylari' };
 }
@@ -124,19 +124,14 @@ export function PublishQueuePage() {
       {error && <ErrorState message={error} onRetry={load} />}
       {loading && drafts.length === 0 ? <LoadingState /> : null}
 
-      <section className="reference-tabs">
-        {['Pazaryeri Entegrasyonlari', 'Pazaryeri Eslestirmeleri', 'Toplu Pazaryeri Islemleri', 'Hepsiburada Islemleri', 'Pazaryeri Monitoru'].map((item) => (
-          <Link
-            className={item === 'Pazaryeri Monitoru' ? 'active' : ''}
-            to={item === 'Pazaryeri Eslestirmeleri' ? '/marketplace-mapping' : item === 'Toplu Pazaryeri Islemleri' ? '/products/publish-wizard' : item === 'Pazaryeri Entegrasyonlari' ? '/marketplaces' : '/products/publish-queue'}
-            key={item}
-          >
-            {item}
-          </Link>
-        ))}
+      <section className="marketplace-module-tabs">
+        <Link to="/marketplaces">Entegrasyonlar</Link>
+        <Link to="/marketplace-mapping">Eşleştirme Merkezi</Link>
+        <Link to="/products/publish-wizard">Toplu Gönderim</Link>
+        <Link className="active" to="/products/publish-queue">Gönderim Kuyruğu</Link>
       </section>
 
-      <section className="reference-info-strip">
+      <section className="balina-flow-hint">
         <AlertTriangle size={18} />
         <div>
           <strong>Pazaryeri monitörü ile gönderim durumlarını, hataları ve tekrar deneme adımlarını takip edebilirsiniz.</strong>
@@ -144,7 +139,7 @@ export function PublishQueuePage() {
         </div>
       </section>
 
-      <section className="monitor-customer-hero reference-operation-panel">
+      <section className="monitor-customer-hero balina-operation-panel">
         <div>
           <span>Filtreleme Secenekleri</span>
           <h2>Gonderimler burada takip edilir</h2>
