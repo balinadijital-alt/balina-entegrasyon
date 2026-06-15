@@ -1794,6 +1794,283 @@ a {
   color: #dbeafe;
 }
 
+/* Mobile polish for the Balina adaptive shell and marketplace workflow */
+
+@media (max-width: 900px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .shell {
+    display: block;
+    min-width: 0;
+  }
+
+  .main-shell {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .balina-sidebar,
+  .sidebar.balina-sidebar,
+  .sidebar.balina-sidebar.compact {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-width: min(340px, 88vw);
+    overflow-y: auto;
+    padding: 16px;
+    position: fixed;
+    width: min(340px, 88vw);
+  }
+
+  .balina-sidebar .balina-brand div,
+  .balina-sidebar .balina-workspace div,
+  .balina-sidebar .balina-quick-action span,
+  .balina-sidebar .balina-sidebar-search input,
+  .balina-sidebar .nav-group-toggle span,
+  .balina-sidebar .balina-nav-items a span,
+  .balina-sidebar .balina-sidebar-footer,
+  .balina-sidebar.compact .balina-brand div,
+  .balina-sidebar.compact .balina-workspace div,
+  .balina-sidebar.compact .balina-quick-action span,
+  .balina-sidebar.compact .balina-sidebar-search input,
+  .balina-sidebar.compact .nav-group-toggle span,
+  .balina-sidebar.compact .balina-nav-items a span,
+  .balina-sidebar.compact .balina-sidebar-footer {
+    display: block;
+  }
+
+  .balina-sidebar .balina-brand,
+  .balina-sidebar .balina-workspace,
+  .balina-sidebar .balina-quick-action,
+  .balina-sidebar .nav-group-toggle,
+  .balina-sidebar .balina-nav-items a,
+  .balina-sidebar .balina-sidebar-search {
+    justify-content: flex-start;
+  }
+
+  .balina-sidebar .balina-brand {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .balina-topbar {
+    align-items: stretch;
+    gap: 10px;
+    min-height: auto;
+    padding: 12px 12px 12px 64px;
+  }
+
+  .topbar-left {
+    min-width: 0;
+  }
+
+  .topbar-user {
+    gap: 8px;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+
+  .topbar-link,
+  .topbar-notification,
+  .topbar-logout {
+    min-height: 38px;
+  }
+
+  .content {
+    padding: 14px;
+  }
+
+  .page-header {
+    border-radius: 14px;
+    padding: 18px;
+  }
+
+  .page-header .page-actions,
+  .page-header [class*="actions"] {
+    align-items: stretch;
+    display: grid;
+    gap: 8px;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .page-header select,
+  .page-header button,
+  .page-header .button-link,
+  .header-select {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .marketplace-module-tabs {
+    border-radius: 12px;
+    margin-inline: -2px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+
+  .marketplace-module-tabs a {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+
+  .balina-flow-hint {
+    align-items: flex-start;
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  .mapping-workflow-board,
+  .mapping-workbench,
+  .mapping-panel-grid,
+  .mapping-category-context,
+  .bulk-operation-form-grid,
+  .publish-mapping-check,
+  .monitor-kpi-strip,
+  .bulk-operation-toolbar,
+  .marketplace-card-grid,
+  .publish-context-strip,
+  .mapping-mini-grid,
+  .variant-field-grid,
+  .readiness-group-grid,
+  .attribute-map-row,
+  .publish-customer-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .mapping-step-card {
+    min-height: auto;
+    padding: 16px;
+  }
+
+  .mapping-workbench-side,
+  .mapping-workbench-main,
+  .mapping-list-panel,
+  .mapping-editor-panel,
+  .mapping-full-panel,
+  .bulk-operation-form-panel,
+  .queue-monitor-simple {
+    border-radius: 14px;
+    padding: 14px;
+  }
+
+  .mapping-scroll-list,
+  .provider-choice-list {
+    max-height: 320px;
+  }
+
+  .mapping-list-row {
+    grid-template-columns: 1fr;
+  }
+
+  .mapping-list-row small {
+    grid-row: auto;
+    width: fit-content;
+  }
+
+  .attribute-map-row input,
+  .attribute-map-row select,
+  .attribute-map-row button,
+  .variant-field-card input,
+  .variant-field-card button {
+    width: 100%;
+  }
+
+  .publish-customer-hero,
+  .monitor-customer-hero,
+  .balina-operation-panel {
+    border-radius: 16px;
+    padding: 18px;
+  }
+
+  .wizard-actions,
+  .inline-actions,
+  .row-actions,
+  .monitor-next-actions,
+  .catalog-cache-actions,
+  .mapping-cache-actions {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .wizard-actions button,
+  .wizard-actions .button-link,
+  .inline-actions button,
+  .inline-actions .button-link,
+  .row-actions button,
+  .row-actions .button-link,
+  .monitor-next-actions .button-link,
+  .catalog-cache-actions button,
+  .mapping-cache-actions button {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .data-table-wrapper,
+  .table-wrapper,
+  .mapping-table-panel,
+  .queue-monitor-simple {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 560px) {
+  .mobile-menu-button {
+    height: 38px;
+    left: 10px;
+    top: 10px;
+    width: 38px;
+  }
+
+  .balina-topbar {
+    padding-left: 56px;
+  }
+
+  .breadcrumbs {
+    display: none;
+  }
+
+  .topbar-link {
+    display: none;
+  }
+
+  .page-header h1 {
+    font-size: 24px;
+  }
+
+  .page-header p,
+  .page-title-block p {
+    font-size: 14px;
+  }
+
+  .mapping-step-card strong,
+  .mapping-panel-title strong {
+    font-size: 19px;
+  }
+
+  .marketplace-module-tabs {
+    padding: 6px;
+  }
+
+  .marketplace-module-tabs a {
+    min-height: 38px;
+    padding: 0 12px;
+  }
+
+  .content {
+    padding: 10px;
+  }
+
+  table {
+    min-width: 620px;
+  }
+}
+
 /* Balina adaptive application shell */
 .shell {
   background: #eef4fb;
