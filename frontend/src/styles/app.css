@@ -1794,6 +1794,262 @@ a {
   color: #dbeafe;
 }
 
+/* Mobile shell hardening: the sidebar must behave as a full drawer, never as a compact desktop rail. */
+@media (max-width: 1024px) {
+  html,
+  body,
+  #root {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .shell,
+  .shell:has(.balina-sidebar.compact),
+  .shell:has(.sidebar.collapsed) {
+    display: block !important;
+    grid-template-columns: 1fr !important;
+    min-width: 0 !important;
+    overflow-x: clip !important;
+    width: 100% !important;
+  }
+
+  .main-shell {
+    grid-column: auto !important;
+    margin: 0 !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .mobile-menu-button {
+    align-items: center !important;
+    background: #0f2a52 !important;
+    border: 1px solid rgb(148 163 184 / 18%) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 14px 32px rgb(15 23 42 / 18%) !important;
+    color: #fff !important;
+    display: inline-flex !important;
+    height: 44px !important;
+    justify-content: center !important;
+    left: max(12px, env(safe-area-inset-left)) !important;
+    position: fixed !important;
+    top: max(12px, env(safe-area-inset-top)) !important;
+    width: 44px !important;
+    z-index: 1100 !important;
+  }
+
+  .mobile-menu-button.is-hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateX(-12px) !important;
+  }
+
+  .sidebar.balina-sidebar,
+  .sidebar.balina-sidebar.compact,
+  .balina-sidebar,
+  .balina-sidebar.compact {
+    bottom: 0 !important;
+    box-shadow: 28px 0 64px rgb(15 23 42 / 32%) !important;
+    display: flex !important;
+    gap: 12px !important;
+    height: 100dvh !important;
+    left: 0 !important;
+    max-height: 100dvh !important;
+    max-width: min(360px, 88vw) !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    padding: calc(16px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom)) !important;
+    position: fixed !important;
+    right: auto !important;
+    top: 0 !important;
+    transform: translateX(-112%) !important;
+    transition: transform 180ms ease, visibility 180ms ease !important;
+    visibility: hidden !important;
+    width: min(360px, 88vw) !important;
+    z-index: 1080 !important;
+  }
+
+  .sidebar.balina-sidebar.drawer-open,
+  .balina-sidebar.drawer-open {
+    pointer-events: auto !important;
+    transform: translateX(0) !important;
+    visibility: visible !important;
+  }
+
+  .sidebar.balina-sidebar:not(.drawer-open),
+  .balina-sidebar:not(.drawer-open) {
+    pointer-events: none !important;
+  }
+
+  .sidebar.balina-sidebar .balina-brand div,
+  .sidebar.balina-sidebar .balina-workspace div,
+  .sidebar.balina-sidebar .balina-quick-action span,
+  .sidebar.balina-sidebar .balina-sidebar-search input,
+  .sidebar.balina-sidebar .nav-group-toggle span,
+  .sidebar.balina-sidebar .balina-nav-items a span,
+  .sidebar.balina-sidebar .balina-sidebar-footer,
+  .sidebar.balina-sidebar.compact .balina-brand div,
+  .sidebar.balina-sidebar.compact .balina-workspace div,
+  .sidebar.balina-sidebar.compact .balina-quick-action span,
+  .sidebar.balina-sidebar.compact .balina-sidebar-search input,
+  .sidebar.balina-sidebar.compact .nav-group-toggle span,
+  .sidebar.balina-sidebar.compact .balina-nav-items a span,
+  .sidebar.balina-sidebar.compact .balina-sidebar-footer {
+    display: revert !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    width: auto !important;
+  }
+
+  .sidebar.balina-sidebar .balina-brand,
+  .sidebar.balina-sidebar .balina-workspace,
+  .sidebar.balina-sidebar .balina-quick-action,
+  .sidebar.balina-sidebar .nav-group-toggle,
+  .sidebar.balina-sidebar .balina-nav-items a,
+  .sidebar.balina-sidebar .balina-sidebar-search,
+  .sidebar.balina-sidebar.compact .balina-brand,
+  .sidebar.balina-sidebar.compact .balina-workspace,
+  .sidebar.balina-sidebar.compact .balina-quick-action,
+  .sidebar.balina-sidebar.compact .nav-group-toggle,
+  .sidebar.balina-sidebar.compact .balina-nav-items a,
+  .sidebar.balina-sidebar.compact .balina-sidebar-search {
+    justify-content: flex-start !important;
+    width: 100% !important;
+  }
+
+  .sidebar.balina-sidebar .nav-group-toggle {
+    justify-content: space-between !important;
+  }
+
+  .sidebar.balina-sidebar .balina-brand div,
+  .sidebar.balina-sidebar .balina-workspace div,
+  .sidebar.balina-sidebar .balina-sidebar-footer {
+    flex-direction: column !important;
+    min-width: 0 !important;
+  }
+
+  .sidebar.balina-sidebar .balina-brand div,
+  .sidebar.balina-sidebar .balina-workspace div {
+    display: flex !important;
+  }
+
+  .sidebar.balina-sidebar .balina-brand strong,
+  .sidebar.balina-sidebar .balina-brand small,
+  .sidebar.balina-sidebar .balina-workspace span,
+  .sidebar.balina-sidebar .balina-workspace strong,
+  .sidebar.balina-sidebar .balina-sidebar-footer span,
+  .sidebar.balina-sidebar .balina-sidebar-footer small {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .sidebar.balina-sidebar .balina-sidebar-footer {
+    display: flex !important;
+  }
+
+  .sidebar.balina-sidebar .balina-nav-items a,
+  .sidebar.balina-sidebar .quick-action,
+  .sidebar.balina-sidebar .balina-sidebar-search {
+    min-height: 46px !important;
+  }
+
+  .sidebar.balina-sidebar .balina-sidebar-search input {
+    min-width: 0 !important;
+  }
+
+  .sidebar.balina-sidebar .sidebar-collapse {
+    display: none !important;
+  }
+
+  .sidebar-close {
+    align-items: center;
+    background: rgb(255 255 255 / 9%);
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: 12px;
+    color: #e5edf8;
+    display: inline-flex;
+    height: 36px;
+    justify-content: center;
+    margin-left: auto;
+    width: 36px;
+  }
+
+  .sidebar-backdrop {
+    background: rgb(15 23 42 / 54%) !important;
+    border: 0 !important;
+    display: block !important;
+    inset: 0 !important;
+    position: fixed !important;
+    z-index: 1060 !important;
+  }
+
+  .balina-topbar {
+    align-items: center !important;
+    gap: 10px !important;
+    min-width: 0 !important;
+    padding: calc(12px + env(safe-area-inset-top)) 12px 12px 68px !important;
+    width: 100% !important;
+  }
+
+  .topbar-left,
+  .topbar-user {
+    min-width: 0 !important;
+  }
+
+  .topbar-left {
+    flex: 1 1 auto !important;
+  }
+
+  .topbar-user {
+    flex: 0 0 auto !important;
+    gap: 8px !important;
+  }
+
+  .breadcrumbs,
+  .global-search,
+  .topbar-link,
+  .company-switcher,
+  .topbar-profile {
+    display: none !important;
+  }
+
+  .content {
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+    padding: 12px !important;
+    width: 100% !important;
+  }
+
+  .panel,
+  .reference-panel,
+  .dashboard-hero,
+  .marketplace-customer-shell,
+  .workflow-workspace,
+  .publish-workspace,
+  .monitor-workspace {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .content {
+    padding: 10px !important;
+  }
+
+  .page-header h1,
+  .hero-copy h2 {
+    font-size: clamp(22px, 8vw, 30px) !important;
+    line-height: 1.12 !important;
+  }
+
+  .button-link,
+  button {
+    max-width: 100%;
+  }
+}
+
 /* Mobile polish for the Balina adaptive shell and marketplace workflow */
 
 @media (max-width: 900px) {

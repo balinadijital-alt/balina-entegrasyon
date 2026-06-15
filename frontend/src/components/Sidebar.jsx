@@ -1,4 +1,4 @@
-import { Bell, ChevronDown, ChevronsLeft, KeyRound, Menu, Plus, Search } from 'lucide-react';
+import { Bell, ChevronDown, ChevronsLeft, KeyRound, Menu, Plus, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { navigationGroups as defaultNavigationGroups } from '../navigation.js';
@@ -38,6 +38,7 @@ export function Sidebar({ navigationGroups = defaultNavigationGroups, panelLabel
   const { user } = useApp();
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [openGroups, setOpenGroups] = useState({});
@@ -70,6 +71,27 @@ export function Sidebar({ navigationGroups = defaultNavigationGroups, panelLabel
     });
   }, [location.pathname, visibleGroups]);
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 1024px)');
+    const handleChange = (event) => {
+      setIsMobile(event.matches);
+      if (event.matches) {
+        setCollapsed(false);
+      } else {
+        setDrawerOpen(false);
+      }
+    };
+
+    handleChange(mediaQuery);
+    mediaQuery.addEventListener('change', handleChange);
+
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [location.pathname]);
+
   const quickItems = useMemo(() => {
     const allItems = navigationGroups.flatMap((group) => group.items);
     return quickActionLabels
@@ -81,23 +103,38 @@ export function Sidebar({ navigationGroups = defaultNavigationGroups, panelLabel
   const userName = user?.name || user?.username || user?.email || 'Kullanıcı';
   const companyName = user?.company?.name || user?.company_name || user?.tenant?.name || 'Aktif çalışma alanı';
   const toggleGroup = (label) => setOpenGroups((current) => ({ ...current, [label]: !current[label] }));
+  const effectiveCollapsed = !isMobile && collapsed;
 
   return (
     <>
-      <button type="button" className="mobile-menu-button" onClick={() => setDrawerOpen(true)} aria-label="Menuyu ac">
+      <button
+        type="button"
+        className={`mobile-menu-button ${drawerOpen ? 'is-hidden' : ''}`}
+        onClick={() => {
+          setCollapsed(false);
+          setDrawerOpen(true);
+        }}
+        aria-label="Menuyu ac"
+      >
         <Menu size={20} />
       </button>
       {drawerOpen ? <button type="button" className="sidebar-backdrop" onClick={() => setDrawerOpen(false)} aria-label="Menuyu kapat" /> : null}
-      <aside className={`sidebar balina-sidebar ${collapsed ? 'compact' : ''} ${drawerOpen ? 'drawer-open' : ''}`}>
+      <aside className={`sidebar balina-sidebar ${effectiveCollapsed ? 'compact' : ''} ${drawerOpen ? 'drawer-open' : ''}`}>
         <div className="balina-brand">
           <span className="balina-brand-mark"><KeyRound size={21} /></span>
           <div>
             <strong>Balina</strong>
             <small>{panelLabel}</small>
           </div>
-          <button type="button" className="sidebar-collapse" onClick={() => setCollapsed((value) => !value)} aria-label="Menuyu daralt">
-            <ChevronsLeft size={16} />
-          </button>
+          {isMobile ? (
+            <button type="button" className="sidebar-close" onClick={() => setDrawerOpen(false)} aria-label="Menuyu kapat">
+              <X size={16} />
+            </button>
+          ) : (
+            <button type="button" className="sidebar-collapse" onClick={() => setCollapsed((value) => !value)} aria-label="Menuyu daralt">
+              <ChevronsLeft size={16} />
+            </button>
+          )}
         </div>
 
         <div className="balina-workspace">
