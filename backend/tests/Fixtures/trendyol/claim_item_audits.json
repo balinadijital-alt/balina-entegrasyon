@@ -1,0 +1,16 @@
+{
+  "audits": [
+    {
+      "claimLineItemId": "LINE-RETURN-001",
+      "status": "Created",
+      "eventDate": "2026-10-15T10:01:00Z",
+      "description": "Masked test audit event"
+    },
+    {
+      "claimLineItemId": "LINE-RETURN-001",
+      "status": "WaitingInAction",
+      "eventDate": "2026-10-15T10:02:00Z",
+      "description": "Masked test audit event updated"
+    }
+  ]
+}

@@ -53,11 +53,19 @@ export function TrendyolPage() {
   const [barcodes, setBarcodes] = useState('');
   const [packageId, setPackageId] = useState('');
   const [invoiceLink, setInvoiceLink] = useState('');
+  const [returnClaims, setReturnClaims] = useState([]);
+  const [returnReasons, setReturnReasons] = useState([]);
+  const [selectedClaimId, setSelectedClaimId] = useState('');
+  const [selectedClaimLineId, setSelectedClaimLineId] = useState('');
+  const [returnReasonId, setReturnReasonId] = useState('');
+  const [returnDescription, setReturnDescription] = useState('');
+  const [returnAudits, setReturnAudits] = useState([]);
   const [result, setResult] = useState(null);
 
   const selectedAccount = useMemo(() => accounts.find((account) => String(account.id) === String(accountId)), [accounts, accountId]);
   const canManageMarketplaces = hasPermission(user, 'marketplaces.manage');
   const canSendMarketplaces = hasPermission(user, 'marketplaces.send');
+  const liveReturnOpsEnabled = selectedAccount?.metadata?.live_return_ops_confirmed === true;
 
   const load = async () => {
     await run(async () => {
@@ -120,6 +128,21 @@ export function TrendyolPage() {
     if (!accountId) notify('error', 'Once Trendyol hesabi seciniz.');
     return !!accountId;
   };
+
+  const loadReturnClaims = async () => {
+    if (!accountRequired()) return;
+    await execute('Iade talepleri', async () => {
+      const response = await api.marketplaces.trendyolReturnClaims(accountId);
+      const claims = asArray(response.claims || response);
+      setReturnClaims(claims);
+      setSelectedClaimId((current) => current || claims[0]?.provider_claim_id || '');
+      return { message: 'Local iade talepleri listelendi.', count: claims.length };
+    });
+  };
+
+  const selectedClaim = useMemo(() => returnClaims.find((claim) => String(claim.provider_claim_id) === String(selectedClaimId)), [returnClaims, selectedClaimId]);
+  const selectedClaimItems = asArray(selectedClaim?.items);
+  const selectedLineIds = selectedClaimLineId ? [selectedClaimLineId] : selectedClaimItems.map((item) => item.provider_claim_line_item_id).filter(Boolean);
 
   const renderActionResult = () => result ? (
     <section className="panel">
@@ -302,7 +325,77 @@ export function TrendyolPage() {
       {activeTab === 'returns' && (
         <section className="panel">
           <h2>Iade Yonetimi</h2>
-          {canSendMarketplaces && <button disabled={!accountId || loading} onClick={() => execute('Iade talepleri', () => api.marketplaces.trendyolReturns(accountId))}>Iade Taleplerini Cek</button>}
+          <p className="muted-text">Canli iade onay/red operasyonlari varsayilan olarak kapali. Aksiyonlar provider'a gitmeden blocked/dry-run log uretir.</p>
+          <div className="bulk-grid">
+            {canSendMarketplaces && <button disabled={!accountId || loading} onClick={() => execute('Iade sync', async () => {
+              const response = await api.marketplaces.trendyolSyncReturnClaims(accountId);
+              setReturnClaims(asArray(response.claims));
+              return response;
+            })}>Iade Taleplerini Senkronize Et</button>}
+            <button disabled={!accountId || loading} onClick={loadReturnClaims}>Local Iadeleri Listele</button>
+            <button disabled={!accountId || loading} onClick={() => execute('Iade sebepleri', async () => {
+              const response = await api.marketplaces.trendyolReturnIssueReasons(accountId);
+              setReturnReasons(asArray(response.reasons));
+              return response;
+            })}>Iade Sebeplerini Yenile</button>
+            <button disabled={!accountId || !selectedClaimId || loading} onClick={() => execute('Audit gecmisi', async () => {
+              const response = await api.marketplaces.trendyolReturnClaimAudits(accountId, selectedClaimId, selectedClaimLineId ? { claimLineItemId: selectedClaimLineId } : {});
+              setReturnAudits(asArray(response.audits));
+              return response;
+            })}>Auditleri Yenile</button>
+          </div>
+          <section className="reference-info-strip warning-strip">
+            <RotateCcw size={18} />
+            <div>
+              <strong>{liveReturnOpsEnabled ? 'Canli iade operasyonlari aktif gorunuyor.' : 'Canli iade operasyonlari kapali.'}</strong>
+              <span>TRENDYOL_LIVE_RETURN_OPS_CONFIRMED=false iken onay ve ret talepleri provider'a gonderilmez, blocked olarak loglanir.</span>
+            </div>
+          </section>
+          <div className="split-panel">
+            <DataTable
+              rows={returnClaims}
+              emptyTitle="Iade talebi yok"
+              emptyText="Iade taleplerini senkronize edin veya local listeyi yenileyin."
+              columns={[
+                { key: 'provider_claim_id', label: 'Claim ID' },
+                { key: 'status', label: 'Durum' },
+                { key: 'provider_order_number', label: 'Siparis' },
+                { key: 'items', label: 'Kalem', render: (row) => asArray(row.items).length },
+                { key: 'updated_at', label: 'Guncelleme', render: (row) => formatDate(row.updated_at) },
+                { key: 'select', label: '', render: (row) => <button type="button" className="small-action" onClick={() => { setSelectedClaimId(row.provider_claim_id); setSelectedClaimLineId(asArray(row.items)[0]?.provider_claim_line_item_id || ''); }}>Sec</button> },
+              ]}
+            />
+            <div className="panel compact-panel">
+              <h3>Iade Detayi</h3>
+              <DetailItem label="Claim" value={selectedClaim?.provider_claim_id || '-'} />
+              <DetailItem label="Durum" value={selectedClaim?.status || '-'} />
+              <DetailItem label="Paket" value={selectedClaim?.provider_shipment_package_id || '-'} />
+              <select value={selectedClaimLineId} onChange={(event) => setSelectedClaimLineId(event.target.value)}>
+                <option value="">Tum kalemler</option>
+                {selectedClaimItems.map((item) => <option key={item.id} value={item.provider_claim_line_item_id}>{item.barcode || item.sku || item.provider_claim_line_item_id} - {item.status}</option>)}
+              </select>
+              <select value={returnReasonId} onChange={(event) => setReturnReasonId(event.target.value)}>
+                <option value="">Ret sebebi seciniz</option>
+                {returnReasons.map((reason) => <option key={reason.id} value={reason.id}>{reason.name || reason.id}</option>)}
+              </select>
+              <textarea value={returnDescription} onChange={(event) => setReturnDescription(event.target.value)} placeholder="Ret aciklamasi" rows={3} />
+              <div className="bulk-grid">
+                {canSendMarketplaces && <button disabled={!accountId || !selectedClaimId || selectedLineIds.length === 0 || loading} onClick={() => execute('Iade onayi', () => api.marketplaces.trendyolApproveReturnClaim(accountId, selectedClaimId, { claimLineItemIds: selectedLineIds }))}>Iadeyi Onayla</button>}
+                {canSendMarketplaces && <button disabled={!accountId || !selectedClaimId || !selectedClaimLineId || !returnReasonId || loading} onClick={() => execute('Iade ret talebi', () => api.marketplaces.trendyolCreateReturnIssue(accountId, selectedClaimId, { claimLineItemId: selectedClaimLineId, reasonId: returnReasonId, description: returnDescription }))}>Iade Ret Talebi Olustur</button>}
+              </div>
+              <h3>Kalemler</h3>
+              {selectedClaimItems.map((item) => (
+                <div className="reference-list-row" key={item.id}>
+                  <strong>{item.barcode || item.sku || item.provider_claim_line_item_id}</strong>
+                  <span>{item.quantity} adet - {item.reason_name || item.reason_id || 'Sebep yok'} - {item.status || '-'}</span>
+                </div>
+              ))}
+              <h3>Audit Gecmisi</h3>
+              {returnAudits.length === 0 ? <p className="muted-text">Audit gecmisi henuz yuklenmedi.</p> : returnAudits.map((audit, index) => (
+                <pre className="json-preview small-json" key={index}>{JSON.stringify(audit, null, 2)}</pre>
+              ))}
+            </div>
+          </div>
         </section>
       )}
 

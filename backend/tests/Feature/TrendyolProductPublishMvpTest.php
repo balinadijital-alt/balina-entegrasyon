@@ -601,12 +601,14 @@ class TrendyolProductPublishMvpTest extends TestCase
 
     public function test_marketplace_publish_mvp_migration_rolls_back_and_migrates_again(): void
     {
-        $this->artisan('migrate:rollback', ['--step' => 1])->assertExitCode(0);
+        $this->artisan('migrate:rollback', ['--step' => 2])->assertExitCode(0);
+        $this->assertFalse(\Illuminate\Support\Facades\Schema::hasTable('marketplace_return_claims'));
         $this->assertFalse(\Illuminate\Support\Facades\Schema::hasColumn('marketplace_publish_drafts', 'operation_name'));
 
         $this->artisan('migrate')->assertExitCode(0);
         $this->assertTrue(\Illuminate\Support\Facades\Schema::hasColumn('marketplace_publish_drafts', 'operation_name'));
         $this->assertTrue(\Illuminate\Support\Facades\Schema::hasColumn('product_marketplace_statuses', 'marketplace_account_id'));
+        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('marketplace_return_claims'));
     }
 
     private function trendyolAccount(array $overrides = []): MarketplaceAccount

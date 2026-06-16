@@ -1,0 +1,4 @@
+{
+  "code": "CLAIM_APPROVE_CONFLICT",
+  "message": "Claim line item cannot be approved in current state."
+}

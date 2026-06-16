@@ -1,0 +1,12 @@
+{
+  "reasons": [
+    {
+      "id": "201",
+      "name": "Eksik veya hatali urun"
+    },
+    {
+      "reasonId": "202",
+      "reasonName": "Urun yeniden satisa uygun degil"
+    }
+  ]
+}

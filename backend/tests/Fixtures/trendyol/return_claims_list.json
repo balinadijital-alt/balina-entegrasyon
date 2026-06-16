@@ -1,0 +1,39 @@
+{
+  "content": [
+    {
+      "id": "CLAIM-TEST-001",
+      "orderNumber": "ORDER-TEST-001",
+      "shipmentPackageId": "PKG-TEST-001",
+      "status": "Created",
+      "claimDate": "2026-10-15T10:00:00Z",
+      "customerFirstName": "Masked",
+      "customerLastName": "Customer",
+      "claimLineItems": [
+        {
+          "claimLineItemId": "LINE-RETURN-001",
+          "barcode": "BARCODE-RETURN-001",
+          "merchantSku": "SKU-RETURN-001",
+          "quantity": 1,
+          "status": "WaitingInAction",
+          "reason": {
+            "id": "101",
+            "name": "Test reason"
+          }
+        },
+        {
+          "claimLineItemId": "LINE-RETURN-002",
+          "product": {
+            "barcode": "BARCODE-RETURN-002",
+            "stockCode": "SKU-RETURN-002"
+          },
+          "quantity": 1,
+          "claimItemStatus": "WaitingInAction"
+        }
+      ]
+    }
+  ],
+  "page": 0,
+  "size": 50,
+  "totalPages": 1,
+  "hasMore": false
+}

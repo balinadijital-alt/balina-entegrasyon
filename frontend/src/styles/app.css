@@ -1451,6 +1451,49 @@ a {
   font-weight: 800;
 }
 
+.warning-strip {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #c2410c;
+  margin-top: 16px;
+}
+
+.warning-strip strong {
+  color: #9a3412;
+}
+
+.split-panel {
+  align-items: start;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, .8fr);
+  margin-top: 16px;
+}
+
+.small-action {
+  min-height: 34px;
+  padding: 7px 12px;
+}
+
+.reference-list-row {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+}
+
+.reference-list-row strong {
+  color: #0f172a;
+}
+
+.reference-list-row span {
+  color: #64748b;
+  font-size: 13px;
+}
+
 .reference-operation-panel {
   background: #1f4aa8;
   border-color: #1d4ed8;
@@ -11699,6 +11742,11 @@ tbody td:last-child .row-actions:focus-within {
   max-height: 360px;
   overflow: auto;
   padding: 14px;
+}
+
+.json-preview.small-json {
+  max-height: 180px;
+  white-space: pre-wrap;
 }
 
 .row-actions {

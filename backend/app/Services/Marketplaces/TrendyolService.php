@@ -5,6 +5,9 @@ namespace App\Services\Marketplaces;
 use App\Exceptions\MarketplaceApiException;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplacePublishDraft;
+use App\Models\MarketplaceReturnClaim;
+use App\Models\MarketplaceReturnClaimItem;
+use App\Models\MarketplaceReturnOperation;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -465,16 +468,177 @@ class TrendyolService extends AbstractMarketplaceService
 
     public function returns(MarketplaceAccount $account, array $query = []): array
     {
-        return $this->genericSellerGet($account, 'returns', '/integration/order/sellers/%s/claims', $query);
+        return $this->syncReturnClaims($account, $query);
     }
 
     public function answerReturn(MarketplaceAccount $account, string $claimId, bool $approve, array $payload = []): array
     {
-        $action = $approve ? 'approve' : 'reject';
-        $endpoint = "/integration/order/sellers/{$account->supplier_id}/claims/{$claimId}/items/{$action}";
-        $response = $this->request($account, 'POST', $endpoint, $payload);
+        return $approve
+            ? $this->approveClaimLineItems($account, $claimId, $payload['claimLineItemIds'] ?? $payload['claim_line_item_ids'] ?? [])
+            : $this->createClaimIssue($account, $claimId, $payload);
+    }
 
-        return ['message' => $approve ? 'Iade onay istegi gonderildi.' : 'Iade red istegi gonderildi.', 'result' => $response->json()];
+    public function syncReturnClaims(MarketplaceAccount $account, array $query = []): array
+    {
+        $this->assertTrendyolAccount($account);
+
+        $endpoint = "/integration/order/sellers/{$account->supplier_id}/claims";
+        $start = isset($query['startDate']) ? Carbon::parse($query['startDate']) : now()->subDays(30);
+        $end = isset($query['endDate']) ? Carbon::parse($query['endDate']) : now();
+        $page = (int) ($query['page'] ?? 0);
+        $size = min((int) ($query['size'] ?? 50), 200);
+        $synced = 0;
+
+        do {
+            $response = $this->request($account, 'GET', $endpoint, array_filter([
+                'startDate' => $start->valueOf(),
+                'endDate' => $end->valueOf(),
+                'status' => $query['status'] ?? null,
+                'page' => $page,
+                'size' => $size,
+            ]));
+            $raw = $response->json();
+            $claims = collect($raw['content'] ?? $raw['claims'] ?? $raw['items'] ?? [])
+                ->filter(fn ($claim) => is_array($claim))
+                ->values();
+            $claims->each(fn (array $claim) => $this->upsertReturnClaim($account, $claim));
+            $synced += $claims->count();
+            $totalPages = (int) ($raw['totalPages'] ?? $raw['totalPage'] ?? 0);
+            $hasMore = (bool) ($raw['hasMore'] ?? false);
+            $page++;
+        } while ($claims->isNotEmpty() && $page < 50 && ($hasMore || ($totalPages > 0 && $page < $totalPages)));
+
+        $this->logReturnOperation($account, null, null, 'return_claim_sync', [
+            'status' => $query['status'] ?? null,
+            'startDate' => $start->toISOString(),
+            'endDate' => $end->toISOString(),
+        ], 'success', null, "Trendyol iade talepleri senkronize edildi: {$synced}", ['count' => $synced]);
+
+        return [
+            'message' => 'Trendyol iade talepleri cekildi.',
+            'count' => $synced,
+            'claims' => MarketplaceReturnClaim::with(['items', 'operations'])
+                ->where('marketplace_account_id', $account->id)
+                ->latest('updated_at')
+                ->limit(50)
+                ->get(),
+        ];
+    }
+
+    public function localReturnClaims(MarketplaceAccount $account): array
+    {
+        $this->assertTrendyolAccount($account);
+
+        return [
+            'claims' => MarketplaceReturnClaim::with(['items', 'operations' => fn ($query) => $query->latest()->limit(20)])
+                ->where('marketplace_account_id', $account->id)
+                ->latest('updated_at')
+                ->limit(50)
+                ->get(),
+        ];
+    }
+
+    public function getClaimIssueReasons(MarketplaceAccount $account, array $query = []): array
+    {
+        $this->assertTrendyolAccount($account);
+        $endpoint = "/integration/order/sellers/{$account->supplier_id}/claims/issue-reasons";
+        $response = $this->request($account, 'GET', $endpoint, $query);
+        $raw = $response->json();
+        $reasons = collect($raw['reasons'] ?? $raw['content'] ?? $raw)
+            ->filter(fn ($reason) => is_array($reason))
+            ->map(fn (array $reason) => [
+                'id' => (string) ($reason['id'] ?? $reason['reasonId'] ?? $reason['code'] ?? ''),
+                'name' => (string) ($reason['name'] ?? $reason['reasonName'] ?? $reason['description'] ?? ''),
+                'raw' => $this->maskProviderPayload($reason),
+            ])
+            ->filter(fn (array $reason) => $reason['id'] !== '')
+            ->values()
+            ->all();
+
+        $this->logReturnOperation($account, null, null, 'return_reason_sync', $query, 'success', null, 'Trendyol iade red sebepleri cekildi.', ['count' => count($reasons)]);
+
+        return ['message' => 'Iade red sebepleri cekildi.', 'reasons' => $reasons];
+    }
+
+    public function createClaimIssue(MarketplaceAccount $account, string $claimId, array $payload): array
+    {
+        $this->assertTrendyolAccount($account);
+        $lineItemId = (string) ($payload['claimLineItemId'] ?? $payload['claim_line_item_id'] ?? '');
+        $reasonId = (string) ($payload['reasonId'] ?? $payload['reason_id'] ?? '');
+        $claim = $this->findReturnClaim($account, $claimId);
+        $item = $lineItemId ? $this->findReturnClaimItem($account, $lineItemId) : null;
+        $request = [
+            'claimLineItemId' => $lineItemId,
+            'reasonId' => $reasonId,
+            'description' => $payload['description'] ?? null,
+        ];
+
+        if ($lineItemId === '' || $reasonId === '') {
+            throw new MarketplaceApiException('claimLineItemId ve reasonId zorunludur.', 422);
+        }
+
+        if (! $this->returnWritesEnabled()) {
+            return $this->logReturnOperation($account, $claim, $item, 'return_claim_issue_create', $request, 'blocked', 'live_return_ops_disabled', 'TRENDYOL_LIVE_RETURN_OPS_CONFIRMED=false oldugu icin iade red talebi provider tarafina gonderilmedi.');
+        }
+
+        $endpoint = "/integration/order/sellers/{$account->supplier_id}/claims/{$claimId}/items/issue";
+
+        try {
+            $response = $this->request($account, 'POST', $endpoint, $request);
+
+            return $this->logReturnOperation($account, $claim, $item, 'return_claim_issue_create', $request, 'success', null, 'Iade red talebi Trendyol tarafina gonderildi.', $response->json());
+        } catch (MarketplaceApiException $exception) {
+            return $this->logReturnOperation($account, $claim, $item, 'return_claim_issue_create', $request, 'failed', 'provider_error', $exception->getMessage(), $exception->details);
+        }
+    }
+
+    public function approveClaimLineItems(MarketplaceAccount $account, string $claimId, array $lineItemIds): array
+    {
+        $this->assertTrendyolAccount($account);
+        $lineItemIds = collect($lineItemIds)->filter()->map(fn ($id) => (string) $id)->values()->all();
+        $claim = $this->findReturnClaim($account, $claimId);
+        $request = ['claimLineItemIds' => $lineItemIds];
+
+        if ($lineItemIds === []) {
+            throw new MarketplaceApiException('claimLineItemIds zorunludur.', 422);
+        }
+
+        if (! $this->returnWritesEnabled()) {
+            return $this->logReturnOperation($account, $claim, null, 'return_claim_approve', $request, 'blocked', 'live_return_ops_disabled', 'TRENDYOL_LIVE_RETURN_OPS_CONFIRMED=false oldugu icin iade onayi provider tarafina gonderilmedi.');
+        }
+
+        $endpoint = "/integration/order/sellers/{$account->supplier_id}/claims/{$claimId}/items/approve";
+
+        try {
+            $response = $this->request($account, 'POST', $endpoint, $request);
+            MarketplaceReturnClaimItem::where('marketplace_account_id', $account->id)
+                ->whereIn('provider_claim_line_item_id', $lineItemIds)
+                ->update(['status' => 'approved']);
+
+            return $this->logReturnOperation($account, $claim, null, 'return_claim_approve', $request, 'success', null, 'Iade onayi Trendyol tarafina gonderildi.', $response->json());
+        } catch (MarketplaceApiException $exception) {
+            return $this->logReturnOperation($account, $claim, null, 'return_claim_approve', $request, 'failed', 'provider_error', $exception->getMessage(), $exception->details);
+        }
+    }
+
+    public function getClaimItemAudits(MarketplaceAccount $account, string $claimId, array $query = []): array
+    {
+        $this->assertTrendyolAccount($account);
+        $claim = $this->findReturnClaim($account, $claimId);
+        $claimLineItemId = $query['claimLineItemId'] ?? $query['claim_line_item_id'] ?? null;
+        $item = $claimLineItemId ? $this->findReturnClaimItem($account, (string) $claimLineItemId) : null;
+        $endpoint = "/integration/order/sellers/{$account->supplier_id}/claims/{$claimId}/items/audits";
+        $response = $this->request($account, 'GET', $endpoint, array_filter(['claimLineItemId' => $claimLineItemId]));
+        $raw = $response->json();
+        $audits = collect($raw['audits'] ?? $raw['content'] ?? $raw)
+            ->filter(fn ($audit) => is_array($audit))
+            ->map(fn (array $audit) => $this->maskProviderPayload($audit))
+            ->values()
+            ->all();
+
+        $this->logReturnOperation($account, $claim, $item, 'return_claim_audit_sync', ['claimLineItemId' => $claimLineItemId], 'success', null, 'Iade audit gecmisi cekildi.', ['audits' => $audits]);
+
+        return ['message' => 'Iade audit gecmisi cekildi.', 'audits' => $audits];
     }
 
     public function questions(MarketplaceAccount $account, array $query = []): array
@@ -689,6 +853,135 @@ class TrendyolService extends AbstractMarketplaceService
     private function testOrderWritesEnabled(): bool
     {
         return filter_var(config('marketplaces.trendyol.live_test_order_confirmed', false), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function upsertReturnClaim(MarketplaceAccount $account, array $claim): MarketplaceReturnClaim
+    {
+        $claimId = (string) ($claim['id'] ?? $claim['claimId'] ?? $claim['claimNumber'] ?? Str::uuid());
+        $localClaim = MarketplaceReturnClaim::updateOrCreate(
+            ['marketplace_account_id' => $account->id, 'provider_claim_id' => $claimId],
+            [
+                'marketplace_code' => 'trendyol',
+                'provider_order_number' => $claim['orderNumber'] ?? $claim['orderId'] ?? null,
+                'provider_shipment_package_id' => $claim['shipmentPackageId'] ?? $claim['packageNumber'] ?? null,
+                'status' => $claim['status'] ?? $claim['claimStatus'] ?? null,
+                'customer_masked' => $this->maskedCustomerName($claim),
+                'claim_date' => $this->providerDate($claim['claimDate'] ?? $claim['createdDate'] ?? null),
+                'last_synced_at' => now(),
+                'provider_payload' => $this->maskProviderPayload($claim),
+            ]
+        );
+
+        collect($claim['items'] ?? $claim['claimItems'] ?? $claim['claimLineItems'] ?? $claim['lines'] ?? [])
+            ->filter(fn ($item) => is_array($item))
+            ->each(fn (array $item, int $index) => $this->upsertReturnClaimItem($account, $localClaim, $item, $index));
+
+        return $localClaim->fresh(['items']);
+    }
+
+    private function upsertReturnClaimItem(MarketplaceAccount $account, MarketplaceReturnClaim $claim, array $item, int $index): MarketplaceReturnClaimItem
+    {
+        $lineId = (string) ($item['claimLineItemId'] ?? $item['claimItemId'] ?? $item['lineItemId'] ?? $item['id'] ?? $index);
+
+        return MarketplaceReturnClaimItem::updateOrCreate(
+            ['marketplace_account_id' => $account->id, 'provider_claim_line_item_id' => $lineId],
+            [
+                'marketplace_return_claim_id' => $claim->id,
+                'barcode' => $item['barcode'] ?? data_get($item, 'product.barcode'),
+                'sku' => $item['merchantSku'] ?? $item['sku'] ?? $item['stockCode'] ?? data_get($item, 'product.stockCode'),
+                'quantity' => max((int) ($item['quantity'] ?? 1), 1),
+                'status' => $item['status'] ?? $item['claimItemStatus'] ?? $claim->status,
+                'reason_id' => $item['reasonId'] ?? data_get($item, 'reason.id'),
+                'reason_name' => $item['reasonName'] ?? data_get($item, 'reason.name'),
+                'provider_payload' => $this->maskProviderPayload($item),
+            ]
+        );
+    }
+
+    private function logReturnOperation(MarketplaceAccount $account, ?MarketplaceReturnClaim $claim, ?MarketplaceReturnClaimItem $item, string $operationType, array $request, string $status, ?string $errorCode, string $message, mixed $response = null): array
+    {
+        $operation = MarketplaceReturnOperation::create([
+            'marketplace_account_id' => $account->id,
+            'marketplace_code' => 'trendyol',
+            'marketplace_return_claim_id' => $claim?->id,
+            'marketplace_return_claim_item_id' => $item?->id,
+            'operation_type' => $operationType,
+            'request_payload' => $this->maskProviderPayload($request),
+            'response_payload' => is_array($response) ? $this->maskProviderPayload($response) : null,
+            'status' => $status,
+            'error_code' => $errorCode,
+            'error_message' => $status === 'success' ? null : $message,
+        ]);
+
+        return [
+            'message' => $message,
+            'status' => $status,
+            'operation_type' => $operationType,
+            'error_code' => $errorCode,
+            'provider_called' => $status === 'success' || $status === 'failed',
+            'operation' => $operation->fresh(),
+        ];
+    }
+
+    private function findReturnClaim(MarketplaceAccount $account, string $claimId): ?MarketplaceReturnClaim
+    {
+        return MarketplaceReturnClaim::where('marketplace_account_id', $account->id)
+            ->where('provider_claim_id', $claimId)
+            ->first();
+    }
+
+    private function findReturnClaimItem(MarketplaceAccount $account, string $lineItemId): ?MarketplaceReturnClaimItem
+    {
+        return MarketplaceReturnClaimItem::where('marketplace_account_id', $account->id)
+            ->where('provider_claim_line_item_id', $lineItemId)
+            ->first();
+    }
+
+    private function maskedCustomerName(array $payload): ?string
+    {
+        $name = trim((string) (($payload['customerFirstName'] ?? '').' '.($payload['customerLastName'] ?? '')));
+        if ($name === '') {
+            $name = (string) ($payload['customerName'] ?? data_get($payload, 'customer.fullName') ?? '');
+        }
+
+        return $name === '' ? null : '[masked-customer]';
+    }
+
+    private function providerDate(mixed $value): ?Carbon
+    {
+        if (! $value) {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            return Carbon::createFromTimestampMs((int) $value);
+        }
+
+        return Carbon::parse($value);
+    }
+
+    private function returnWritesEnabled(): bool
+    {
+        return filter_var(config('marketplaces.trendyol.live_return_ops_confirmed', false), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function maskProviderPayload(array $payload): array
+    {
+        $sensitiveKeys = ['api_key', 'apiSecret', 'api_secret', 'authorization', 'token', 'supplierId'];
+        $piiKeys = ['firstName', 'lastName', 'fullName', 'customerName', 'customerFirstName', 'customerLastName', 'email', 'phone', 'address', 'identityNumber', 'taxNumber', 'tckn'];
+
+        foreach ($payload as $key => $value) {
+            if (is_array($value)) {
+                $payload[$key] = $this->maskProviderPayload($value);
+                continue;
+            }
+
+            if (in_array((string) $key, $sensitiveKeys, true) || in_array((string) $key, $piiKeys, true)) {
+                $payload[$key] = '[masked]';
+            }
+        }
+
+        return $payload;
     }
 
     private function request(MarketplaceAccount $account, string $method, string $endpoint, array $payload = []): Response

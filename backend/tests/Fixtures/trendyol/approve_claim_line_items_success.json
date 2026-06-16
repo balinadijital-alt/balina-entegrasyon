@@ -1,0 +1,5 @@
+{
+  "status": "SUCCESS",
+  "claimId": "CLAIM-TEST-001",
+  "approvedLineItemIds": ["LINE-RETURN-001"]
+}

@@ -1,0 +1,4 @@
+{
+  "code": "CLAIM_STATE_CONFLICT",
+  "message": "Claim line item is not eligible for issue creation."
+}

@@ -264,7 +264,82 @@ class TrendyolController extends Controller
 
     public function returns(MarketplaceAccount $marketplace, TrendyolService $service, Request $request): JsonResponse
     {
+        $this->abortIfNotTenant($request, $marketplace);
+
         return $this->respond(fn () => $service->returns($marketplace, $request->query()));
+    }
+
+    public function returnClaims(MarketplaceAccount $marketplace, TrendyolService $service, Request $request): JsonResponse
+    {
+        $this->abortIfNotTenant($request, $marketplace);
+
+        return $this->respond(fn () => $service->localReturnClaims($marketplace));
+    }
+
+    public function syncReturnClaims(MarketplaceAccount $marketplace, TrendyolService $service, Request $request, AuditLogger $audit): JsonResponse
+    {
+        $this->abortIfNotTenant($request, $marketplace);
+        $audit->logAction($request, 'marketplace', 'returns.claims.sync', $marketplace, [
+            'marketplace_code' => $marketplace->code,
+            'marketplace_account_id' => $marketplace->id,
+        ], null, $request->query());
+
+        return $this->respond(fn () => $service->syncReturnClaims($marketplace, $request->query()));
+    }
+
+    public function returnIssueReasons(MarketplaceAccount $marketplace, TrendyolService $service, Request $request): JsonResponse
+    {
+        $this->abortIfNotTenant($request, $marketplace);
+
+        return $this->respond(fn () => $service->getClaimIssueReasons($marketplace, $request->query()));
+    }
+
+    public function createReturnIssue(MarketplaceAccount $marketplace, TrendyolService $service, string $claimId, Request $request, AuditLogger $audit): JsonResponse
+    {
+        $this->abortIfNotTenant($request, $marketplace);
+
+        $data = $request->validate([
+            'claimLineItemId' => ['required_without:claim_line_item_id', 'string', 'max:128'],
+            'claim_line_item_id' => ['nullable', 'string', 'max:128'],
+            'reasonId' => ['required_without:reason_id', 'string', 'max:128'],
+            'reason_id' => ['nullable', 'string', 'max:128'],
+            'description' => ['nullable', 'string', 'max:500'],
+        ]);
+        $audit->logAction($request, 'marketplace', 'returns.issue.create', $marketplace, [
+            'marketplace_code' => $marketplace->code,
+            'marketplace_account_id' => $marketplace->id,
+            'claim_id' => $claimId,
+        ], null, ['claim_line_item_id' => $data['claimLineItemId'] ?? $data['claim_line_item_id'] ?? null, 'reason_id' => $data['reasonId'] ?? $data['reason_id'] ?? null]);
+
+        return $this->respond(fn () => response()->json($service->createClaimIssue($marketplace, $claimId, $data), 201));
+    }
+
+    public function approveReturnClaim(MarketplaceAccount $marketplace, TrendyolService $service, string $claimId, Request $request, AuditLogger $audit): JsonResponse
+    {
+        $this->abortIfNotTenant($request, $marketplace);
+
+        $data = $request->validate([
+            'claimLineItemIds' => ['required_without:claim_line_item_ids', 'array', 'min:1'],
+            'claimLineItemIds.*' => ['string', 'max:128'],
+            'claim_line_item_ids' => ['nullable', 'array', 'min:1'],
+            'claim_line_item_ids.*' => ['string', 'max:128'],
+        ]);
+        $ids = $data['claimLineItemIds'] ?? $data['claim_line_item_ids'] ?? [];
+        $audit->logAction($request, 'marketplace', 'returns.approve', $marketplace, [
+            'marketplace_code' => $marketplace->code,
+            'marketplace_account_id' => $marketplace->id,
+            'claim_id' => $claimId,
+            'line_count' => count($ids),
+        ]);
+
+        return $this->respond(fn () => response()->json($service->approveClaimLineItems($marketplace, $claimId, $ids), 201));
+    }
+
+    public function returnClaimAudits(MarketplaceAccount $marketplace, TrendyolService $service, string $claimId, Request $request): JsonResponse
+    {
+        $this->abortIfNotTenant($request, $marketplace);
+
+        return $this->respond(fn () => $service->getClaimItemAudits($marketplace, $claimId, $request->query()));
     }
 
     public function answerReturn(MarketplaceAccount $marketplace, TrendyolService $service, string $claimId, Request $request, AuditLogger $audit): JsonResponse

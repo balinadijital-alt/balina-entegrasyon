@@ -200,6 +200,12 @@ Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(fun
         Route::post('/orders/{order}/package-status', [TrendyolController::class, 'updatePackageStatus'])->middleware('permission:marketplaces.send');
         Route::post('/orders/{order}/cancel-item', [TrendyolController::class, 'cancelPackageItem'])->middleware('permission:marketplaces.send');
         Route::post('/webhook/packages', [TrendyolController::class, 'webhookPackages'])->middleware('permission:marketplaces.send');
+        Route::get('/returns/claims', [TrendyolController::class, 'returnClaims']);
+        Route::post('/returns/claims/sync', [TrendyolController::class, 'syncReturnClaims'])->middleware('permission:marketplaces.send');
+        Route::get('/returns/issue-reasons', [TrendyolController::class, 'returnIssueReasons']);
+        Route::post('/returns/{claimId}/issue', [TrendyolController::class, 'createReturnIssue'])->middleware('permission:marketplaces.send');
+        Route::post('/returns/{claimId}/approve', [TrendyolController::class, 'approveReturnClaim'])->middleware('permission:marketplaces.send');
+        Route::get('/returns/{claimId}/audits', [TrendyolController::class, 'returnClaimAudits']);
         Route::get('/returns', [TrendyolController::class, 'returns']);
         Route::post('/returns/{claimId}/answer', [TrendyolController::class, 'answerReturn'])->middleware('permission:marketplaces.send');
         Route::get('/questions', [TrendyolController::class, 'questions']);
