@@ -310,6 +310,23 @@ class TrendyolProductPublishMvpTest extends TestCase
             ->assertJsonPath('result_summary.summary.items.0.provider_state', 'approved');
     }
 
+    public function test_live_fixture_batch_success_response_uses_nested_stock_code(): void
+    {
+        $account = $this->trendyolAccount();
+        $product = $this->readyProduct(['sku' => 'TY-TEST-***', 'barcode' => 'TYTEST***']);
+        $draft = $this->readyDraft($account, [$product->id], ['status' => 'submitted', 'batch_request_id' => 'masked-live-batch-id']);
+
+        Http::fake(['*' => Http::response($this->fixture('live_product_publish_batch_success'))]);
+
+        $this->postJson("/api/marketplace-publish-drafts/{$draft->id}/batch-result")
+            ->assertOk()
+            ->assertJsonPath('status', 'completed')
+            ->assertJsonPath('result_summary.summary.items.0.sku', 'TY-TEST-***')
+            ->assertJsonPath('result_summary.summary.items.0.barcode', 'TYTEST***')
+            ->assertJsonPath('result_summary.summary.items.0.marketplace_account_id', $account->id)
+            ->assertJsonPath('result_summary.summary.items.0.provider_state', 'approved');
+    }
+
     public function test_fixture_batch_partial_failure_isolates_item_statuses(): void
     {
         $account = $this->trendyolAccount();

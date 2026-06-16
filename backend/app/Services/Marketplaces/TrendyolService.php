@@ -728,8 +728,8 @@ class TrendyolService extends AbstractMarketplaceService
         }
 
         $items->each(function (array $item) use ($account, $batchRequestId, $draft, &$summary) {
-            $barcode = $this->batchItemValue($item, ['barcode', 'requestItem.barcode', 'item.barcode']);
-            $sku = $this->batchItemValue($item, ['stockCode', 'stock_code', 'sku', 'requestItem.stockCode', 'item.stockCode']);
+            $barcode = $this->batchItemValue($item, ['barcode', 'requestItem.barcode', 'requestItem.product.barcode', 'item.barcode']);
+            $sku = $this->batchItemValue($item, ['stockCode', 'stock_code', 'sku', 'requestItem.stockCode', 'requestItem.product.stockCode', 'item.stockCode']);
             $state = $this->normalizeBatchStatus((string) $this->batchItemValue($item, ['status', 'state', 'result.status']));
             $errorCode = $this->batchItemErrorCode($item);
             $message = $this->safeProviderMessage($this->batchItemMessage($item));

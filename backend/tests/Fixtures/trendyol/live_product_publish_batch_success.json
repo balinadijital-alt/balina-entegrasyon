@@ -1,0 +1,91 @@
+{
+    "items": [
+        {
+            "status": "SUCCESS",
+            "requestItem": {
+                "barcode": "TYTEST***",
+                "product": {
+                    "title": "Balina Test Kanvas Tablo",
+                    "images": [
+                        {
+                            "url": "https://picsum.photos/seed/balina-trendyol-test/800/800"
+                        }
+                    ],
+                    "origin": null,
+                    "barcode": "TYTEST***",
+                    "brandId": 1512612,
+                    "vatRate": 20,
+                    "quantity": 1,
+                    "sgrPrice": null,
+                    "listPrice": 129.9,
+                    "lotNumber": null,
+                    "salePrice": 99.9,
+                    "stockCode": "TY-TEST-***",
+                    "attributes": [
+                        {
+                            "attributeId": 20,
+                            "attributeValueId": 654756,
+                            "customAttributeValue": "Doğa"
+                        },
+                        {
+                            "attributeId": 92,
+                            "attributeValueId": 144074,
+                            "customAttributeValue": "10 x 20"
+                        },
+                        {
+                            "attributeId": 5,
+                            "attributeValueId": 587,
+                            "customAttributeValue": "Çerçevesiz"
+                        },
+                        {
+                            "attributeId": 14,
+                            "attributeValueId": 88,
+                            "customAttributeValue": "Kanvas"
+                        },
+                        {
+                            "attributeId": 18,
+                            "attributeValueId": 10561792,
+                            "customAttributeValue": "1"
+                        },
+                        {
+                            "attributeId": 1192,
+                            "attributeValueId": 10617344,
+                            "customAttributeValue": "TR"
+                        },
+                        {
+                            "attributeId": 348,
+                            "attributeValueId": 686230,
+                            "customAttributeValue": "Çok Renkli"
+                        },
+                        {
+                            "attributeId": 47,
+                            "attributeValueId": null,
+                            "customAttributeValue": "Çok Renkli"
+                        }
+                    ],
+                    "categoryId": 842,
+                    "description": "Balina entegrasyon Trendyol MVP dogrulama icin hazirlanan tek SKU test urunudur.",
+                    "currencyType": null,
+                    "productMainId": "TY-TEST-***",
+                    "cargoCompanyId": null,
+                    "dimensionalWeight": 1,
+                    "shipmentAddressId": null,
+                    "returningAddressId": null,
+                    "specialConsumptionTax": null
+                }
+            },
+            "failureReasons": []
+        }
+    ],
+    "notes": null,
+    "status": "COMPLETED",
+    "itemCount": 1,
+    "objectKey": null,
+    "sourceType": "API",
+    "creationDate": 1781575916717,
+    "batchRequestId": "masked-live-batch-id",
+    "storeFrontCode": null,
+    "failedItemCount": 0,
+    "batchRequestType": "ProductV2OnBoarding",
+    "lastModification": 1781575916717
+}
