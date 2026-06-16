@@ -147,6 +147,53 @@ class TrendyolController extends Controller
         return $this->respond(fn () => $service->pullOrdersStream($marketplace, $request->query()));
     }
 
+    public function createTestOrder(MarketplaceAccount $marketplace, TrendyolService $service, Request $request, AuditLogger $audit): JsonResponse
+    {
+        $this->abortIfNotTenant($request, $marketplace);
+
+        $data = $request->validate([
+            'customer' => ['required', 'array'],
+            'invoiceAddress' => ['required', 'array'],
+            'shippingAddress' => ['required', 'array'],
+            'seller' => ['required', 'array'],
+            'lines' => ['required', 'array', 'min:1', 'max:1'],
+            'lines.*.barcode' => ['required', 'string', 'max:128'],
+            'lines.*.quantity' => ['required', 'integer', 'min:1'],
+            'lines.*.price' => ['required', 'numeric', 'min:0'],
+            'lines.*.productName' => ['required', 'string', 'max:255'],
+        ]);
+
+        $audit->logAction($request, 'marketplace', 'test_order.create', $marketplace, [
+            'marketplace_code' => $marketplace->code,
+            'marketplace_account_id' => $marketplace->id,
+            'lines_count' => count($data['lines']),
+            'stage_environment' => data_get($marketplace->metadata, 'environment') === 'stage',
+        ]);
+
+        return $this->respond(fn () => response()->json($service->createTestOrder($marketplace, $data), 201));
+    }
+
+    public function updateTestOrderStatus(MarketplaceAccount $marketplace, TrendyolService $service, string $packageId, Request $request, AuditLogger $audit): JsonResponse
+    {
+        $this->abortIfNotTenant($request, $marketplace);
+
+        $data = $request->validate([
+            'status' => ['required', 'string', 'in:Shipped,AtCollectionPoint,Delivered,UnDelivered,Returned'],
+            'lines' => ['required', 'array', 'min:1'],
+            'params' => ['nullable', 'array'],
+        ]);
+
+        $audit->logAction($request, 'marketplace', 'test_order.status_update', $marketplace, [
+            'marketplace_code' => $marketplace->code,
+            'marketplace_account_id' => $marketplace->id,
+            'package_id' => $packageId,
+            'status' => $data['status'],
+            'stage_environment' => data_get($marketplace->metadata, 'environment') === 'stage',
+        ]);
+
+        return $this->respond(fn () => response()->json($service->updateTestOrderStatus($marketplace, $packageId, $data), 201));
+    }
+
     public function updatePackageStatus(MarketplaceAccount $marketplace, Order $order, MarketplaceOrderOperationService $service, Request $request, AuditLogger $audit): JsonResponse
     {
         $this->abortIfNotTenant($request, $marketplace);

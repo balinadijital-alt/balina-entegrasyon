@@ -4,6 +4,7 @@ return [
     'trendyol' => [
         'base_url' => env('TRENDYOL_BASE_URL', 'https://apigw.trendyol.com'),
         'stage_base_url' => env('TRENDYOL_STAGE_BASE_URL', 'https://stageapigw.trendyol.com'),
+        'live_test_order_confirmed' => env('TRENDYOL_LIVE_TEST_ORDER_CONFIRMED', false),
         'timeout' => env('TRENDYOL_TIMEOUT', 20),
         'rate_limit_attempts' => env('TRENDYOL_RATE_LIMIT_ATTEMPTS', 50),
         'rate_limit_decay' => env('TRENDYOL_RATE_LIMIT_DECAY', 10),

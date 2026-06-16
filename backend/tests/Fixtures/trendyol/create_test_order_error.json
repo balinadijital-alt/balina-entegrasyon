@@ -1,0 +1,10 @@
+{
+    "status": "ERROR",
+    "message": "Test order payload is invalid.",
+    "errors": [
+        {
+            "code": "TEST_ORDER_VALIDATION",
+            "message": "Line barcode is required."
+        }
+    ]
+}

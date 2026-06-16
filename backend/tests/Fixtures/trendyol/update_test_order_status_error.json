@@ -1,0 +1,10 @@
+{
+    "status": "ERROR",
+    "message": "Test order status cannot be changed.",
+    "errors": [
+        {
+            "code": "TEST_ORDER_STATUS_CONFLICT",
+            "message": "Package status is not valid for this transition."
+        }
+    ]
+}

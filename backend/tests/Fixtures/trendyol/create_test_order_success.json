@@ -1,0 +1,6 @@
+{
+    "status": "SUCCESS",
+    "message": "Test order created.",
+    "shipmentPackageId": "PKG-TEST-001",
+    "orderNumber": "ORDER-TEST-001"
+}

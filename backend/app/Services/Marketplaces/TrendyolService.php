@@ -423,6 +423,46 @@ class TrendyolService extends AbstractMarketplaceService
         ];
     }
 
+    public function createTestOrder(MarketplaceAccount $account, array $payload): array
+    {
+        $this->assertTrendyolAccount($account);
+        $endpoint = '/integration/test/order/orders/core';
+        $payload = $this->testOrderPayload($payload);
+
+        if (! $this->isStageAccount($account)) {
+            return $this->logTestOrderOperation($account, 'POST', $endpoint, 'test_order_create', $payload, 'blocked', 'stage_environment_required', 'Test siparisi sadece Trendyol stage hesabi ile olusturulabilir.');
+        }
+
+        if (! $this->testOrderWritesEnabled()) {
+            return $this->logTestOrderOperation($account, 'POST', $endpoint, 'test_order_create', $payload, 'blocked', 'live_test_order_not_confirmed', 'TRENDYOL_LIVE_TEST_ORDER_CONFIRMED=false oldugu icin test siparisi provider tarafina gonderilmedi.');
+        }
+
+        try {
+            $response = $this->testOrderRequest($account, 'POST', $endpoint, $payload);
+
+            return $this->logTestOrderOperation($account, 'POST', $endpoint, 'test_order_create', $payload, 'success', null, 'Trendyol stage test siparisi olusturuldu.', $response->json(), $response->status());
+        } catch (MarketplaceApiException $exception) {
+            return $this->logTestOrderOperation($account, 'POST', $endpoint, 'test_order_create', $payload, 'failed', 'provider_error', $exception->getMessage(), $exception->details, $exception->statusCode);
+        }
+    }
+
+    public function updateTestOrderStatus(MarketplaceAccount $account, string $packageId, array $payload): array
+    {
+        $this->assertTrendyolAccount($account);
+        $endpoint = "/integration/test/order/sellers/{$account->supplier_id}/shipment-packages/{$packageId}/status";
+        $payload = $this->maskTestOrderPayload($payload);
+
+        if (! $this->isStageAccount($account)) {
+            return $this->logTestOrderOperation($account, 'PUT', $endpoint, 'test_order_status_update', $payload, 'blocked', 'stage_environment_required', 'Test siparis status guncellemesi sadece Trendyol stage hesabi ile kullanilabilir.');
+        }
+
+        if (! $this->testOrderWritesEnabled()) {
+            return $this->logTestOrderOperation($account, 'PUT', $endpoint, 'test_order_status_update', $payload, 'blocked', 'live_test_order_not_confirmed', 'TRENDYOL_LIVE_TEST_ORDER_CONFIRMED=false oldugu icin test siparis status guncellemesi provider tarafina gonderilmedi.');
+        }
+
+        return $this->logTestOrderOperation($account, 'PUT', $endpoint, 'test_order_status_update', $payload, 'blocked', 'test_order_status_update_deferred', 'updateTestOrderStatus provider cagrisi ayri canli dogrulama sprintine ertelendi.');
+    }
+
     public function returns(MarketplaceAccount $account, array $query = []): array
     {
         return $this->genericSellerGet($account, 'returns', '/integration/order/sellers/%s/claims', $query);
@@ -525,6 +565,130 @@ class TrendyolService extends AbstractMarketplaceService
             'provider_status' => 'cancelled',
             'result' => $response->json(),
         ];
+    }
+
+    private function testOrderPayload(array $payload): array
+    {
+        return array_replace_recursive([
+            'customer' => [
+                'firstName' => 'Test',
+                'lastName' => 'Customer',
+                'email' => 'test@example.invalid',
+                'phone' => '5550000000',
+            ],
+            'invoiceAddress' => [
+                'fullName' => 'Test Customer',
+                'address' => 'Test Address',
+                'city' => 'Test City',
+                'district' => 'Test District',
+            ],
+            'shippingAddress' => [
+                'fullName' => 'Test Customer',
+                'address' => 'Test Address',
+                'city' => 'Test City',
+                'district' => 'Test District',
+            ],
+            'seller' => [
+                'sellerId' => 'masked-seller',
+            ],
+        ], $payload);
+    }
+
+    private function logTestOrderOperation(MarketplaceAccount $account, string $method, string $endpoint, string $operationType, array $payload, string $status, ?string $errorCode, string $message, mixed $providerResponse = null, ?int $statusCode = null): array
+    {
+        $response = array_filter([
+            'status' => $status,
+            'operation_type' => $operationType,
+            'error_code' => $errorCode,
+            'message' => $message,
+            'provider_response' => is_array($providerResponse) ? $this->maskTestOrderPayload($providerResponse) : null,
+        ], fn ($value) => $value !== null);
+
+        $this->log($account, $method, $endpoint, [
+            'operation_type' => $operationType,
+            'dry_run' => $status === 'blocked',
+            'payload' => $this->maskTestOrderPayload($payload),
+        ], $statusCode, $response, microtime(true), $status === 'failed' || $status === 'blocked' ? $message : null);
+
+        return [
+            'message' => $message,
+            'status' => $status,
+            'operation_type' => $operationType,
+            'error_code' => $errorCode,
+            'provider_called' => $status === 'success' || $status === 'failed',
+            'result' => $response,
+        ];
+    }
+
+    private function testOrderRequest(MarketplaceAccount $account, string $method, string $endpoint, array $payload): Response
+    {
+        $this->throttle($account, $endpoint);
+
+        $response = Http::withBasicAuth($account->api_key, $account->api_secret)
+            ->baseUrl((string) config('marketplaces.trendyol.stage_base_url'))
+            ->timeout((int) config('marketplaces.trendyol.timeout', 20))
+            ->retry(3, 750, throw: false)
+            ->acceptJson()
+            ->withHeaders([
+                'User-Agent' => $this->userAgent($account),
+                'Content-Type' => 'application/json',
+                'sellerID' => (string) $account->supplier_id,
+            ])
+            ->send($method, $endpoint, ['json' => $payload]);
+
+        if (! $response->successful()) {
+            $message = $response->json('message')
+                ?? $response->json('error')
+                ?? $response->json('errors.0.message')
+                ?? 'Trendyol test siparisi istegi basarisiz oldu.';
+
+            throw new MarketplaceApiException($message, $response->status(), $response->json());
+        }
+
+        return $response;
+    }
+
+    private function maskTestOrderPayload(array $payload): array
+    {
+        $sensitiveKeys = ['api_key', 'apiSecret', 'api_secret', 'authorization', 'token'];
+        $piiKeys = ['firstName', 'lastName', 'fullName', 'email', 'phone', 'address'];
+
+        foreach ($payload as $key => $value) {
+            if (is_array($value)) {
+                $payload[$key] = $this->maskTestOrderPayload($value);
+                continue;
+            }
+
+            if (in_array((string) $key, $sensitiveKeys, true)) {
+                $payload[$key] = '[masked]';
+                continue;
+            }
+
+            if (in_array((string) $key, $piiKeys, true) && ! $this->isSafeTestValue((string) $value)) {
+                $payload[$key] = '[test-masked]';
+            }
+        }
+
+        return $payload;
+    }
+
+    private function isSafeTestValue(string $value): bool
+    {
+        $value = Str::lower($value);
+
+        return str_contains($value, 'test')
+            || str_contains($value, 'example.invalid')
+            || str_contains($value, 'masked');
+    }
+
+    private function isStageAccount(MarketplaceAccount $account): bool
+    {
+        return data_get($account->metadata, 'environment') === 'stage';
+    }
+
+    private function testOrderWritesEnabled(): bool
+    {
+        return filter_var(config('marketplaces.trendyol.live_test_order_confirmed', false), FILTER_VALIDATE_BOOLEAN);
     }
 
     private function request(MarketplaceAccount $account, string $method, string $endpoint, array $payload = []): Response

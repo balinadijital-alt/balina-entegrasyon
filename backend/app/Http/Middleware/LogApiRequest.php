@@ -44,6 +44,25 @@ class LogApiRequest
 
         $payload = $request->except(['password', 'password_confirmation', 'api_key', 'api_secret', 'client_secret', 'webhook_secret']);
 
-        return $payload === [] ? null : $payload;
+        return $payload === [] ? null : $this->maskPayload($payload);
+    }
+
+    private function maskPayload(array $payload): array
+    {
+        $sensitive = ['password', 'password_confirmation', 'api_key', 'api_secret', 'client_secret', 'webhook_secret', 'authorization', 'token'];
+        $pii = ['firstName', 'lastName', 'fullName', 'email', 'phone', 'address', 'identityNumber', 'taxNumber', 'tckn'];
+
+        foreach ($payload as $key => $value) {
+            if (is_array($value)) {
+                $payload[$key] = $this->maskPayload($value);
+                continue;
+            }
+
+            if (in_array((string) $key, $sensitive, true) || in_array((string) $key, $pii, true)) {
+                $payload[$key] = '[masked]';
+            }
+        }
+
+        return $payload;
     }
 }

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Company;
+use App\Models\ApiLog;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplaceOrderOperation;
 use App\Models\Order;
@@ -31,11 +32,13 @@ class TrendyolOrderOpsTest extends TestCase
         $this->user->assignRole('company_admin');
         Sanctum::actingAs($this->user);
         $this->setLiveOrderOpsFlag(false);
+        $this->setLiveTestOrderFlag(false);
     }
 
     protected function tearDown(): void
     {
         $this->setLiveOrderOpsFlag(false);
+        $this->setLiveTestOrderFlag(false);
 
         parent::tearDown();
     }
@@ -284,6 +287,156 @@ class TrendyolOrderOpsTest extends TestCase
         }
     }
 
+    public function test_create_test_order_is_blocked_when_confirmation_flag_is_false(): void
+    {
+        $account = $this->trendyolAccount();
+        Http::fake();
+
+        $this->postJson("/api/marketplaces/{$account->id}/trendyol/test-orders", $this->testOrderPayload())
+            ->assertCreated()
+            ->assertJsonPath('status', 'blocked')
+            ->assertJsonPath('error_code', 'live_test_order_not_confirmed')
+            ->assertJsonPath('provider_called', false);
+
+        Http::assertNothingSent();
+        $this->assertDatabaseHas('api_logs', [
+            'company_id' => $account->company_id,
+            'marketplace_code' => 'trendyol',
+            'method' => 'POST',
+            'endpoint' => '/integration/test/order/orders/core',
+            'error_message' => 'TRENDYOL_LIVE_TEST_ORDER_CONFIRMED=false oldugu icin test siparisi provider tarafina gonderilmedi.',
+        ]);
+    }
+
+    public function test_create_test_order_is_blocked_for_production_account(): void
+    {
+        $this->setLiveTestOrderFlag(true);
+        $account = $this->trendyolAccount(['metadata' => ['environment' => 'production']]);
+        Http::fake();
+
+        $this->postJson("/api/marketplaces/{$account->id}/trendyol/test-orders", $this->testOrderPayload())
+            ->assertCreated()
+            ->assertJsonPath('status', 'blocked')
+            ->assertJsonPath('error_code', 'stage_environment_required')
+            ->assertJsonPath('provider_called', false);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_create_test_order_stage_account_with_confirmation_uses_fake_provider_and_logs_success(): void
+    {
+        $this->setLiveTestOrderFlag(true);
+        $account = $this->trendyolAccount();
+        Http::fake(['https://stageapigw.trendyol.com/*' => Http::response($this->fixture('create_test_order_success.json'))]);
+
+        $this->postJson("/api/marketplaces/{$account->id}/trendyol/test-orders", $this->testOrderPayload())
+            ->assertCreated()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('provider_called', true)
+            ->assertJsonPath('result.provider_response.shipmentPackageId', 'PKG-TEST-001');
+
+        Http::assertSent(fn ($request) => $request->method() === 'POST'
+            && str_starts_with($request->url(), 'https://stageapigw.trendyol.com/integration/test/order/orders/core')
+            && $request->hasHeader('sellerID', '12345'));
+        $this->assertDatabaseHas('api_logs', [
+            'marketplace_code' => 'trendyol',
+            'method' => 'POST',
+            'endpoint' => '/integration/test/order/orders/core',
+            'status_code' => 200,
+        ]);
+    }
+
+    public function test_create_test_order_provider_error_is_normalized_and_logged(): void
+    {
+        $this->setLiveTestOrderFlag(true);
+        $account = $this->trendyolAccount();
+        Http::fake(['https://stageapigw.trendyol.com/*' => Http::response($this->fixture('create_test_order_error.json'), 422)]);
+
+        $this->postJson("/api/marketplaces/{$account->id}/trendyol/test-orders", $this->testOrderPayload())
+            ->assertCreated()
+            ->assertJsonPath('status', 'failed')
+            ->assertJsonPath('error_code', 'provider_error')
+            ->assertJsonPath('provider_called', true);
+
+        $this->assertDatabaseHas('api_logs', [
+            'marketplace_code' => 'trendyol',
+            'method' => 'POST',
+            'endpoint' => '/integration/test/order/orders/core',
+            'status_code' => 422,
+        ]);
+    }
+
+    public function test_update_test_order_status_is_blocked_when_confirmation_flag_is_false(): void
+    {
+        $account = $this->trendyolAccount();
+        Http::fake();
+
+        $this->postJson("/api/marketplaces/{$account->id}/trendyol/test-orders/PKG-TEST-001/status", [
+            'status' => 'Shipped',
+            'lines' => [['lineId' => 'LINE-TEST-1', 'quantity' => 1]],
+            'params' => ['trackingNumber' => 'TRACK-TEST'],
+        ])->assertCreated()
+            ->assertJsonPath('status', 'blocked')
+            ->assertJsonPath('error_code', 'live_test_order_not_confirmed')
+            ->assertJsonPath('provider_called', false);
+
+        Http::assertNothingSent();
+        $this->assertDatabaseHas('api_logs', [
+            'marketplace_code' => 'trendyol',
+            'method' => 'PUT',
+            'endpoint' => '/integration/test/order/sellers/12345/shipment-packages/PKG-TEST-001/status',
+        ]);
+    }
+
+    public function test_update_test_order_status_is_blocked_for_production_account(): void
+    {
+        $this->setLiveTestOrderFlag(true);
+        $account = $this->trendyolAccount(['metadata' => ['environment' => 'production']]);
+        Http::fake();
+
+        $this->postJson("/api/marketplaces/{$account->id}/trendyol/test-orders/PKG-TEST-001/status", [
+            'status' => 'Delivered',
+            'lines' => [['lineId' => 'LINE-TEST-1', 'quantity' => 1]],
+        ])->assertCreated()
+            ->assertJsonPath('status', 'blocked')
+            ->assertJsonPath('error_code', 'stage_environment_required');
+
+        Http::assertNothingSent();
+    }
+
+    public function test_test_order_fixtures_and_logs_do_not_contain_secrets_or_real_pii(): void
+    {
+        $files = [
+            'create_test_order_success.json',
+            'create_test_order_error.json',
+            'update_test_order_status_success.json',
+            'update_test_order_status_error.json',
+        ];
+
+        foreach ($files as $file) {
+            $content = file_get_contents($this->trendYolFixturePath($file));
+            $this->assertJson($content);
+            $this->assertStringNotContainsString('Author'.'ization', $content);
+            $this->assertStringNotContainsString('Bearer ', $content);
+            $this->assertStringNotContainsString('apiKey', $content);
+            $this->assertStringNotContainsString('apiSecret', $content);
+            $this->assertStringNotContainsString('supplierId', $content);
+            $this->assertDoesNotMatchRegularExpression('/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i', $content);
+            $this->assertDoesNotMatchRegularExpression('/\+?\d[\d\s().-]{8,}\d/', $content);
+        }
+
+        $account = $this->trendyolAccount();
+        $this->postJson("/api/marketplaces/{$account->id}/trendyol/test-orders", $this->testOrderPayload([
+            'customer' => ['firstName' => 'Realish', 'lastName' => 'Person', 'email' => 'person@example.com', 'phone' => '+90 555 111 22 33'],
+            'shippingAddress' => ['fullName' => 'Realish Person', 'address' => 'Some Real Street'],
+        ]))->assertCreated();
+
+        $serialized = json_encode(ApiLog::latest('id')->firstOrFail()->toArray(), JSON_UNESCAPED_UNICODE);
+        $this->assertStringNotContainsString('person@example.com', $serialized);
+        $this->assertStringNotContainsString('+90 555 111 22 33', $serialized);
+        $this->assertStringNotContainsString('Some Real Street', $serialized);
+    }
+
     private function trendYolFixturePath(string $file): string
     {
         return base_path("tests/Fixtures/trendyol/{$file}");
@@ -292,6 +445,39 @@ class TrendyolOrderOpsTest extends TestCase
     private function fixture(string $file): array
     {
         return json_decode(file_get_contents($this->trendYolFixturePath($file)), true);
+    }
+
+    private function testOrderPayload(array $overrides = []): array
+    {
+        return array_replace_recursive([
+            'customer' => [
+                'firstName' => 'Test',
+                'lastName' => 'Customer',
+                'email' => 'test@example.invalid',
+                'phone' => '5550000000',
+            ],
+            'invoiceAddress' => [
+                'fullName' => 'Test Customer',
+                'address' => 'Test Address',
+                'city' => 'Test City',
+                'district' => 'Test District',
+            ],
+            'shippingAddress' => [
+                'fullName' => 'Test Customer',
+                'address' => 'Test Address',
+                'city' => 'Test City',
+                'district' => 'Test District',
+            ],
+            'seller' => [
+                'sellerId' => 'masked-seller',
+            ],
+            'lines' => [[
+                'barcode' => 'BARCODE-TEST-001',
+                'quantity' => 1,
+                'price' => 100,
+                'productName' => 'Masked Test Product',
+            ]],
+        ], $overrides);
     }
 
     private function trendyolAccount(array $overrides = []): MarketplaceAccount
@@ -345,5 +531,14 @@ class TrendyolOrderOpsTest extends TestCase
         putenv("TRENDYOL_LIVE_ORDER_OPS_CONFIRMED={$value}");
         $_ENV['TRENDYOL_LIVE_ORDER_OPS_CONFIRMED'] = $value;
         $_SERVER['TRENDYOL_LIVE_ORDER_OPS_CONFIRMED'] = $value;
+    }
+
+    private function setLiveTestOrderFlag(bool $enabled): void
+    {
+        $value = $enabled ? 'true' : 'false';
+        putenv("TRENDYOL_LIVE_TEST_ORDER_CONFIRMED={$value}");
+        $_ENV['TRENDYOL_LIVE_TEST_ORDER_CONFIRMED'] = $value;
+        $_SERVER['TRENDYOL_LIVE_TEST_ORDER_CONFIRMED'] = $value;
+        config(['marketplaces.trendyol.live_test_order_confirmed' => $value]);
     }
 }
