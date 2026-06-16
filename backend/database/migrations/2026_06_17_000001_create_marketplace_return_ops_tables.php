@@ -12,7 +12,7 @@ return new class extends Migration
         if (! Schema::hasTable('marketplace_return_claims')) {
             Schema::create('marketplace_return_claims', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('marketplace_account_id')->constrained('marketplace_accounts')->cascadeOnDelete();
+                $table->unsignedBigInteger('marketplace_account_id');
                 $table->string('marketplace_code')->default('trendyol');
                 $table->string('provider_claim_id', 191);
                 $table->string('provider_order_number')->nullable();
@@ -23,6 +23,8 @@ return new class extends Migration
                 $table->timestamp('last_synced_at')->nullable();
                 $table->json('provider_payload')->nullable();
                 $table->timestamps();
+
+                $table->foreign('marketplace_account_id', 'mr_claims_account_fk')->references('id')->on('marketplace_accounts')->cascadeOnDelete();
             });
         }
 
@@ -40,10 +42,10 @@ return new class extends Migration
         if (! Schema::hasTable('marketplace_return_claim_items')) {
             Schema::create('marketplace_return_claim_items', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('marketplace_return_claim_id')->constrained('marketplace_return_claims')->cascadeOnDelete();
-                $table->foreignId('marketplace_account_id')->constrained('marketplace_accounts')->cascadeOnDelete();
-                $table->foreignId('product_id')->nullable()->constrained('products')->nullOnDelete();
-                $table->foreignId('order_item_id')->nullable()->constrained('order_items')->nullOnDelete();
+                $table->unsignedBigInteger('marketplace_return_claim_id');
+                $table->unsignedBigInteger('marketplace_account_id');
+                $table->unsignedBigInteger('product_id')->nullable();
+                $table->unsignedBigInteger('order_item_id')->nullable();
                 $table->string('provider_claim_line_item_id', 191);
                 $table->string('barcode')->nullable();
                 $table->string('sku')->nullable();
@@ -53,6 +55,11 @@ return new class extends Migration
                 $table->string('reason_name')->nullable();
                 $table->json('provider_payload')->nullable();
                 $table->timestamps();
+
+                $table->foreign('marketplace_return_claim_id', 'mr_items_claim_fk')->references('id')->on('marketplace_return_claims')->cascadeOnDelete();
+                $table->foreign('marketplace_account_id', 'mr_items_account_fk')->references('id')->on('marketplace_accounts')->cascadeOnDelete();
+                $table->foreign('product_id', 'mr_items_product_fk')->references('id')->on('products')->nullOnDelete();
+                $table->foreign('order_item_id', 'mr_items_order_item_fk')->references('id')->on('order_items')->nullOnDelete();
             });
         }
 
@@ -74,10 +81,10 @@ return new class extends Migration
         if (! Schema::hasTable('marketplace_return_operations')) {
             Schema::create('marketplace_return_operations', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('marketplace_account_id')->constrained('marketplace_accounts')->cascadeOnDelete();
+                $table->unsignedBigInteger('marketplace_account_id');
                 $table->string('marketplace_code')->default('trendyol');
-                $table->foreignId('marketplace_return_claim_id')->nullable()->constrained('marketplace_return_claims')->nullOnDelete();
-                $table->foreignId('marketplace_return_claim_item_id')->nullable()->constrained('marketplace_return_claim_items')->nullOnDelete();
+                $table->unsignedBigInteger('marketplace_return_claim_id')->nullable();
+                $table->unsignedBigInteger('marketplace_return_claim_item_id')->nullable();
                 $table->string('operation_type', 96);
                 $table->json('request_payload')->nullable();
                 $table->json('response_payload')->nullable();
@@ -85,6 +92,10 @@ return new class extends Migration
                 $table->string('error_code')->nullable();
                 $table->text('error_message')->nullable();
                 $table->timestamps();
+
+                $table->foreign('marketplace_account_id', 'mr_ops_account_fk')->references('id')->on('marketplace_accounts')->cascadeOnDelete();
+                $table->foreign('marketplace_return_claim_id', 'mr_ops_claim_fk')->references('id')->on('marketplace_return_claims')->nullOnDelete();
+                $table->foreign('marketplace_return_claim_item_id', 'mr_ops_item_fk')->references('id')->on('marketplace_return_claim_items')->nullOnDelete();
             });
         }
 
