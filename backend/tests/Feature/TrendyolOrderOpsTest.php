@@ -226,6 +226,64 @@ class TrendyolOrderOpsTest extends TestCase
         $this->assertStringNotContainsString('Author'.'ization', $serialized);
     }
 
+    public function test_live_readonly_empty_fixtures_parse_without_network_or_duplicates(): void
+    {
+        $account = $this->trendyolAccount();
+        Http::fakeSequence()
+            ->push($this->fixture('live_shipment_packages_empty.json'))
+            ->push($this->fixture('live_shipment_packages_stream_page_1.json'));
+
+        $sync = app(TrendyolService::class)->syncShipmentPackages($account, [
+            'statuses' => ['Created'],
+            'startDate' => now()->subDays(30)->toISOString(),
+            'endDate' => now()->toISOString(),
+            'size' => 10,
+        ]);
+        $stream = app(TrendyolService::class)->pullOrdersStream($account->fresh(), ['size' => 10]);
+
+        $this->assertSame(0, $sync['count']);
+        $this->assertSame(0, $stream['count']);
+        $this->assertFalse($stream['has_more']);
+        $this->assertSame('', $stream['next_cursor']);
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('order_items', 0);
+        Http::assertSentCount(2);
+    }
+
+    public function test_live_readonly_fixtures_do_not_contain_secrets_or_customer_pii(): void
+    {
+        $files = [
+            'live_shipment_packages_empty.json',
+            'live_shipment_packages_stream_page_1.json',
+        ];
+        $needles = [
+            'Author'.'ization',
+            'Bearer ',
+            'apiKey',
+            'apiSecret',
+            'token',
+            'supplierId',
+            'customer',
+            'address',
+            'phone',
+            'email',
+            'tckn',
+            'taxNumber',
+        ];
+
+        foreach ($files as $file) {
+            $content = file_get_contents($this->trendYolFixturePath($file));
+            $this->assertJson($content);
+
+            foreach ($needles as $needle) {
+                $this->assertStringNotContainsString($needle, $content);
+            }
+
+            $this->assertDoesNotMatchRegularExpression('/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i', $content);
+            $this->assertDoesNotMatchRegularExpression('/\+?\d[\d\s().-]{8,}\d/', $content);
+        }
+    }
+
     private function trendYolFixturePath(string $file): string
     {
         return base_path("tests/Fixtures/trendyol/{$file}");
