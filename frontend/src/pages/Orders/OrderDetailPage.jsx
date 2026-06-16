@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Banknote, FileText, MessageSquarePlus, PackageCheck, ReceiptText, RotateCcw, Truck } from 'lucide-react';
-import { api } from '../../api/client.js';
+import { AlertTriangle, ArrowLeft, Banknote, FileText, MessageSquarePlus, PackageCheck, ReceiptText, RotateCcw, Truck } from 'lucide-react';
+import { api, asArray } from '../../api/client.js';
 import { DataTable } from '../../components/DataTable.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
@@ -33,7 +33,7 @@ const statusFlow = {
 };
 
 function payloadItems(order) {
-  return order?.payload?.lines || order?.payload?.items || order?.payload?.orderLines || [];
+  return asArray(order?.items).length ? asArray(order.items) : (order?.payload?.lines || order?.payload?.items || order?.payload?.orderLines || []);
 }
 
 function addressText(address) {
@@ -58,11 +58,18 @@ export function OrderDetailPage() {
   const [nextStatus, setNextStatus] = useState('preparing');
   const [note, setNote] = useState('');
   const [resolution, setResolution] = useState({ type: 'problem', reason: '' });
+  const [packageStatus, setPackageStatus] = useState('Picking');
+  const [cancelLineId, setCancelLineId] = useState('');
+  const [cancelReasonId, setCancelReasonId] = useState('');
+  const [cancelDescription, setCancelDescription] = useState('Tedarik edilemedi');
 
   const items = useMemo(() => payloadItems(order), [order]);
   const latestShipment = order?.shipments?.[0];
   const latestInvoice = order?.invoices?.[0];
   const latestPayment = order?.payments?.[0];
+  const marketplaceAccountId = order?.marketplace_account_id || order?.marketplaceAccount?.id;
+  const providerPackageId = order?.provider_shipment_package_id || order?.marketplace_order_id;
+  const marketplaceOps = asArray(order?.marketplace_operations || order?.marketplaceOperations);
 
   const load = async () => {
     await run(async () => {
@@ -77,6 +84,8 @@ export function OrderDetailPage() {
       setSelectedShippingAccount((shippingResponse.data || [])[0]?.id || '');
       setSelectedAccountingAccount((accountingResponse.data || [])[0]?.id || '');
       setNextStatus(orderResponse.status || 'preparing');
+      setPackageStatus(orderResponse.provider_package_status || 'Picking');
+      setCancelLineId(asArray(orderResponse.items)[0]?.provider_line_id || '');
     });
   };
 
@@ -226,6 +235,41 @@ export function OrderDetailPage() {
     }, { onError: (message) => notify('error', message) });
   };
 
+  const updateTrendyolPackageStatus = async () => {
+    if (!marketplaceAccountId || !providerPackageId) {
+      notify('error', 'Trendyol magazasi veya paket ID bulunamadi.');
+      return;
+    }
+
+    await run(async () => {
+      const response = await api.marketplaces.trendyolUpdatePackageStatus(marketplaceAccountId, order.id, {
+        shipmentPackageId: providerPackageId,
+        status: packageStatus,
+      });
+      notify('success', response.operation?.error_message || response.message);
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
+  const cancelTrendyolItem = async () => {
+    if (!marketplaceAccountId || !providerPackageId || !cancelLineId || !cancelReasonId.trim()) {
+      notify('error', 'Paket ID, line ID ve reasonId zorunludur.');
+      return;
+    }
+
+    await run(async () => {
+      const response = await api.marketplaces.trendyolCancelPackageItem(marketplaceAccountId, order.id, {
+        shipmentPackageId: providerPackageId,
+        lineId: cancelLineId,
+        quantity: 1,
+        reasonId: cancelReasonId,
+        description: cancelDescription,
+      });
+      notify('success', response.operation?.error_message || response.message);
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
   if (loading && !order) return <LoadingState />;
 
   return (
@@ -319,8 +363,10 @@ export function OrderDetailPage() {
                 emptyText="Pazaryeri payload icinde urun satiri bulunamadi."
                 columns={[
                   { key: 'name', label: 'Urun', render: (row) => row.name || row.productName || row.title || 'Siparis kalemi' },
-                  { key: 'sku', label: 'SKU', render: (row) => row.sku || row.merchantSku || '-' },
+                  { key: 'sku', label: 'SKU', render: (row) => row.sku || row.merchantSku || row.stockCode || '-' },
+                  { key: 'barcode', label: 'Barkod', render: (row) => row.barcode || '-' },
                   { key: 'quantity', label: 'Adet', render: (row) => row.quantity || row.qty || 1 },
+                  { key: 'provider_status', label: 'Provider', render: (row) => row.provider_status || row.status || '-' },
                   { key: 'total', label: 'Tutar', render: (row) => row.total || row.amount || row.price || '-' },
                 ]}
               />
@@ -332,6 +378,78 @@ export function OrderDetailPage() {
               <div><strong>Fatura</strong>{statusBadge(latestInvoice?.invoice_number || latestInvoice?.status || order.invoice_status)}</div>
             </div>
           </section>
+
+          {order.marketplace_code === 'trendyol' && (
+            <section className="panel trendyol-order-ops">
+              <div className="panel-heading">
+                <div>
+                  <span>Trendyol Paket Operasyonu</span>
+                  <h2>Paket durumu ve tedarik aksiyonlari</h2>
+                </div>
+                <Truck size={18} />
+              </div>
+              <div className="ops-warning">
+                <AlertTriangle size={18} />
+                <span>Canli paket status update/cancel islemleri guvenlik flag'i kapaliyken provider'a gonderilmez; islem dry-run olarak loglanir.</span>
+              </div>
+              <div className="trendyol-ops-grid">
+                <div>
+                  <span>Magaza</span>
+                  <strong>{order.marketplaceAccount?.name || marketplaceAccountId || '-'}</strong>
+                </div>
+                <div>
+                  <span>Shipment Package ID</span>
+                  <strong>{providerPackageId || '-'}</strong>
+                </div>
+                <div>
+                  <span>Paket Status</span>
+                  <strong>{order.provider_package_status || order.shipping_status || '-'}</strong>
+                </div>
+                <div>
+                  <span>Kargo</span>
+                  <strong>{order.cargo_provider_name || order.cargo_tracking_number || '-'}</strong>
+                </div>
+              </div>
+              <div className="trendyol-ops-actions">
+                <label>
+                  Paket status
+                  <select value={packageStatus} onChange={(event) => setPackageStatus(event.target.value)}>
+                    <option value="Picking">Picking</option>
+                    <option value="Invoiced">Invoiced</option>
+                    <option value="Shipped">Shipped</option>
+                    <option value="Delivered">Delivered</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </label>
+                <button type="button" disabled={loading || !marketplaceAccountId} onClick={updateTrendyolPackageStatus}>Paket Durumunu Kaydet</button>
+                <label>
+                  Iptal line
+                  <select value={cancelLineId} onChange={(event) => setCancelLineId(event.target.value)}>
+                    <option value="">Line sec</option>
+                    {items.map((item, index) => <option key={`${item.provider_line_id || item.lineId || index}`} value={item.provider_line_id || item.lineId || ''}>{item.provider_line_id || item.lineId || item.sku || `Kalem ${index + 1}`}</option>)}
+                  </select>
+                </label>
+                <label>
+                  Reason ID
+                  <input value={cancelReasonId} onChange={(event) => setCancelReasonId(event.target.value)} placeholder="Trendyol reasonId" />
+                </label>
+                <label>
+                  Aciklama
+                  <input value={cancelDescription} onChange={(event) => setCancelDescription(event.target.value)} />
+                </label>
+                <button type="button" className="secondary-button" disabled={loading || !marketplaceAccountId} onClick={cancelTrendyolItem}>Tedarik Edememe Bildir</button>
+              </div>
+              <div className="orders-history-list">
+                {marketplaceOps.length ? marketplaceOps.slice(0, 6).map((operation) => (
+                  <div key={operation.id}>
+                    <strong>{operation.operation_type} - {operation.status}</strong>
+                    <span>{operation.error_message || operation.provider_shipment_package_id || '-'}</span>
+                    <small>{operation.created_at}</small>
+                  </div>
+                )) : <div><strong>Operasyon kaydi yok</strong><span>Paket status ve tedarik aksiyonlari burada izlenir.</span></div>}
+              </div>
+            </section>
+          )}
 
           <section className="order-operation-grid">
             <div className="panel operation-card">

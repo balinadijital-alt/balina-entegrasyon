@@ -1,0 +1,4 @@
+{
+  "message": "Line item cannot be cancelled",
+  "code": "LINE_CONFLICT"
+}

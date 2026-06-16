@@ -1,0 +1,4 @@
+{
+  "message": "Package status transition is not allowed",
+  "code": "STATUS_CONFLICT"
+}

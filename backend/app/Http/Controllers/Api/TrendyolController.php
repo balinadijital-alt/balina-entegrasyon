@@ -8,6 +8,8 @@ use App\Jobs\Trendyol\PullTrendyolOrdersJob;
 use App\Jobs\Trendyol\SendProductsToTrendyolJob;
 use App\Jobs\Trendyol\UpdateTrendyolPriceInventoryJob;
 use App\Models\MarketplaceAccount;
+use App\Models\Order;
+use App\Services\Marketplaces\MarketplaceOrderOperationService;
 use App\Services\Audit\AuditLogger;
 use App\Services\Queue\SyncRunService;
 use App\Services\Marketplaces\TrendyolService;
@@ -143,6 +145,63 @@ class TrendyolController extends Controller
     public function pullOrdersStream(MarketplaceAccount $marketplace, TrendyolService $service, Request $request): JsonResponse
     {
         return $this->respond(fn () => $service->pullOrdersStream($marketplace, $request->query()));
+    }
+
+    public function updatePackageStatus(MarketplaceAccount $marketplace, Order $order, MarketplaceOrderOperationService $service, Request $request, AuditLogger $audit): JsonResponse
+    {
+        $this->abortIfNotTenant($request, $marketplace);
+        $this->abortIfNotTenant($request, $order);
+
+        $data = $request->validate([
+            'shipmentPackageId' => ['nullable', 'string', 'max:128'],
+            'shipment_package_id' => ['nullable', 'string', 'max:128'],
+            'status' => ['required', 'string', 'in:Picking,Invoiced,Shipped,Delivered,Cancelled'],
+            'lines' => ['nullable', 'array'],
+            'lines.*.lineId' => ['nullable', 'string', 'max:128'],
+            'lines.*.provider_line_id' => ['nullable', 'string', 'max:128'],
+            'lines.*.quantity' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $audit->logAction($request, 'marketplace', 'orders.package_status', $marketplace, [
+            'marketplace_code' => $marketplace->code,
+            'marketplace_account_id' => $marketplace->id,
+            'order_id' => $order->id,
+            'status' => $data['status'],
+        ], null, $data);
+
+        return $this->respond(fn () => response()->json([
+            'message' => 'Trendyol paket operasyonu kaydedildi.',
+            'operation' => $service->updatePackageStatus($marketplace, $order, $data),
+        ], 201));
+    }
+
+    public function cancelPackageItem(MarketplaceAccount $marketplace, Order $order, MarketplaceOrderOperationService $service, Request $request, AuditLogger $audit): JsonResponse
+    {
+        $this->abortIfNotTenant($request, $marketplace);
+        $this->abortIfNotTenant($request, $order);
+
+        $data = $request->validate([
+            'shipmentPackageId' => ['nullable', 'string', 'max:128'],
+            'shipment_package_id' => ['nullable', 'string', 'max:128'],
+            'lineId' => ['required_without:provider_line_id', 'string', 'max:128'],
+            'provider_line_id' => ['nullable', 'string', 'max:128'],
+            'quantity' => ['required', 'integer', 'min:1'],
+            'reasonId' => ['required_without:reason_id', 'string', 'max:128'],
+            'reason_id' => ['nullable', 'string', 'max:128'],
+            'description' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $audit->logAction($request, 'marketplace', 'orders.cancel_item', $marketplace, [
+            'marketplace_code' => $marketplace->code,
+            'marketplace_account_id' => $marketplace->id,
+            'order_id' => $order->id,
+            'line_id' => $data['lineId'] ?? $data['provider_line_id'] ?? null,
+        ], null, $data);
+
+        return $this->respond(fn () => response()->json([
+            'message' => 'Trendyol tedarik edememe operasyonu kaydedildi.',
+            'operation' => $service->cancelPackageItem($marketplace, $order, $data),
+        ], 201));
     }
 
     public function webhookPackages(MarketplaceAccount $marketplace, TrendyolService $service, Request $request, AuditLogger $audit): JsonResponse

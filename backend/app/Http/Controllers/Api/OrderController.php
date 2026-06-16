@@ -21,7 +21,15 @@ class OrderController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json(Order::query()
-            ->with(['company:id,name', 'shipments.account.carrier:id,code,name', 'payments.account.provider:id,code,name', 'invoices:id,order_id,status,invoice_number,pdf_path,pdf_url'])
+            ->with([
+                'company:id,name',
+                'marketplaceAccount:id,name,code',
+                'items:id,order_id,marketplace_account_id,provider_line_id,barcode,sku,name,quantity,unit_price,provider_status,cancel_reason_id',
+                'marketplaceOperations:id,order_id,order_item_id,operation_type,status,error_code,error_message,provider_shipment_package_id,created_at',
+                'shipments.account.carrier:id,code,name',
+                'payments.account.provider:id,code,name',
+                'invoices:id,order_id,status,invoice_number,pdf_path,pdf_url',
+            ])
             ->when($this->tenantCompanyId($request), fn ($query, $companyId) => $query->where('company_id', $companyId))
             ->when($request->filled('company_id'), fn ($query) => $query->where('company_id', $request->integer('company_id')))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
@@ -55,6 +63,9 @@ class OrderController extends Controller
 
         return response()->json($order->load([
             'company',
+            'marketplaceAccount:id,name,code',
+            'items.operations',
+            'marketplaceOperations.orderItem',
             'shipments.account.carrier',
             'payments.account.provider',
             'invoices.account.integration',

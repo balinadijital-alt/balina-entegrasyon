@@ -1,0 +1,23 @@
+{
+  "content": [
+    {
+      "id": 900002,
+      "orderNumber": "TY-ORDER-900002",
+      "packageNumber": "PKG-900002",
+      "status": "Picking",
+      "customerName": "Masked Customer",
+      "totalPrice": 650,
+      "lines": [
+        {
+          "lineId": "702",
+          "barcode": "869000000902",
+          "stockCode": "TY-SKU-902",
+          "productName": "Picking Product",
+          "quantity": 2,
+          "status": "Picking"
+        }
+      ]
+    }
+  ],
+  "totalPages": 1
+}

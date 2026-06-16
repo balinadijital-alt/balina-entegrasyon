@@ -115,7 +115,8 @@ function formatDate(value) {
 }
 
 function payloadItems(order) {
-  return asArray(order?.payload?.lines || order?.payload?.items || order?.payload?.orderLines);
+  const persistedItems = asArray(order?.items);
+  return persistedItems.length ? persistedItems : asArray(order?.payload?.lines || order?.payload?.items || order?.payload?.orderLines);
 }
 
 function itemCount(order) {
@@ -555,6 +556,7 @@ function OrderDetailPanel({ order, loading, onCreateShipment, onCreateInvoice, o
   const payment = latestPayment(order);
   const invoice = latestInvoice(order);
   const histories = asArray(order.operation_histories || order.operationHistories);
+  const marketplaceOps = asArray(order.marketplace_operations || order.marketplaceOperations);
   const notes = asArray(order.notes);
 
   return (
@@ -577,6 +579,24 @@ function OrderDetailPanel({ order, loading, onCreateShipment, onCreateInvoice, o
         <DetailItem label="Fatura" value={invoice?.invoice_number || statusLabels[invoiceStatus(order)] || invoiceStatus(order) || '-'} />
         <DetailItem label="Risk" value={orderRisk(order)} />
       </div>
+
+      {order.marketplace_code === 'trendyol' && (
+        <div className="orders-trendyol-package-card">
+          <div>
+            <span>Trendyol Paket</span>
+            <strong>{order.provider_shipment_package_id || order.marketplace_order_id || '-'}</strong>
+          </div>
+          <div>
+            <span>Status</span>
+            <strong>{order.provider_package_status || order.shipping_status || '-'}</strong>
+          </div>
+          <div>
+            <span>Kargo</span>
+            <strong>{order.cargo_provider_name || order.cargo_tracking_number || '-'}</strong>
+          </div>
+          <small>Canli paket operasyonlari guvenlik onayi olmadan provider'a gonderilmez.</small>
+        </div>
+      )}
 
       <div className={orderRisk(order) === 'Normal' ? 'orders-success-card' : 'orders-error-card'}>
         {orderRisk(order) === 'Normal' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
@@ -602,7 +622,7 @@ function OrderDetailPanel({ order, loading, onCreateShipment, onCreateInvoice, o
           {items.length ? items.slice(0, 4).map((item, index) => (
             <div key={`${item.sku || item.barcode || index}`}>
               <strong>{item.name || item.product_name || item.title || 'Urun'}</strong>
-              <span>{item.quantity || item.qty || 1} adet - {formatMoney(item.total || item.amount || item.price)}</span>
+              <span>{item.sku || item.merchantSku || '-'} / {item.barcode || '-'} - {item.quantity || item.qty || 1} adet</span>
             </div>
           )) : <div><strong>Kalem bilgisi yok</strong><span>Toplam urun adedi: {itemCount(order)}</span></div>}
         </div>
@@ -622,13 +642,20 @@ function OrderDetailPanel({ order, loading, onCreateShipment, onCreateInvoice, o
       <div>
         <h3 className="orders-detail-subtitle">Operasyon gecmisi</h3>
         <div className="orders-history-list">
+          {marketplaceOps.slice(0, 4).map((operation) => (
+            <div key={`marketplace-${operation.id}`}>
+              <strong>{operation.operation_type} - {operation.status}</strong>
+              <span>{operation.error_message || operation.provider_shipment_package_id || '-'}</span>
+              <small>{formatDate(operation.created_at)}</small>
+            </div>
+          ))}
           {histories.length ? histories.slice(0, 5).map((history) => (
             <div key={history.id}>
               <strong>{history.event}</strong>
               <span>{statusLabels[history.from_status] || history.from_status || '-'} {'->'} {statusLabels[history.to_status] || history.to_status || '-'}</span>
               <small>{formatDate(history.created_at)}</small>
             </div>
-          )) : <div><strong>Gecmis yok</strong><span>Operasyon aksiyonlari burada listelenir.</span></div>}
+          )) : marketplaceOps.length === 0 ? <div><strong>Gecmis yok</strong><span>Operasyon aksiyonlari burada listelenir.</span></div> : null}
         </div>
       </div>
 

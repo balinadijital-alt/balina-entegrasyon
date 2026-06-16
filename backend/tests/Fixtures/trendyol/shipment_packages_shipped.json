@@ -1,0 +1,25 @@
+{
+  "content": [
+    {
+      "id": 900004,
+      "orderNumber": "TY-ORDER-900004",
+      "packageNumber": "PKG-900004",
+      "status": "Shipped",
+      "cargoProviderName": "Test Cargo",
+      "cargoTrackingNumber": "TRK900004",
+      "customerName": "Masked Customer",
+      "totalPrice": 950,
+      "lines": [
+        {
+          "lineId": "704",
+          "barcode": "869000000904",
+          "stockCode": "TY-SKU-904",
+          "productName": "Shipped Product",
+          "quantity": 1,
+          "status": "Shipped"
+        }
+      ]
+    }
+  ],
+  "totalPages": 1
+}

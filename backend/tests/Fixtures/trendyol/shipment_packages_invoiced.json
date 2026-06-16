@@ -1,0 +1,23 @@
+{
+  "content": [
+    {
+      "id": 900003,
+      "orderNumber": "TY-ORDER-900003",
+      "packageNumber": "PKG-900003",
+      "status": "Invoiced",
+      "customerName": "Masked Customer",
+      "totalPrice": 800,
+      "lines": [
+        {
+          "lineId": "703",
+          "barcode": "869000000903",
+          "merchantSku": "TY-SKU-903",
+          "productName": "Invoiced Product",
+          "quantity": 1,
+          "status": "Invoiced"
+        }
+      ]
+    }
+  ],
+  "totalPages": 1
+}

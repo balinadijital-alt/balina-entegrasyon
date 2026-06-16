@@ -195,6 +195,8 @@ Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(fun
         Route::put('/products/archive', [TrendyolController::class, 'archiveProducts'])->middleware('permission:marketplaces.send');
         Route::post('/pull-orders', [TrendyolController::class, 'pullOrders'])->middleware('permission:marketplaces.send');
         Route::get('/orders/stream', [TrendyolController::class, 'pullOrdersStream']);
+        Route::post('/orders/{order}/package-status', [TrendyolController::class, 'updatePackageStatus'])->middleware('permission:marketplaces.send');
+        Route::post('/orders/{order}/cancel-item', [TrendyolController::class, 'cancelPackageItem'])->middleware('permission:marketplaces.send');
         Route::post('/webhook/packages', [TrendyolController::class, 'webhookPackages'])->middleware('permission:marketplaces.send');
         Route::get('/returns', [TrendyolController::class, 'returns']);
         Route::post('/returns/{claimId}/answer', [TrendyolController::class, 'answerReturn'])->middleware('permission:marketplaces.send');

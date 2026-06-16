@@ -1,0 +1,21 @@
+{
+  "content": [
+    {
+      "id": 910002,
+      "orderNumber": "TY-STREAM-2",
+      "packageNumber": "PKG-STREAM-2",
+      "status": "Delivered",
+      "customerName": "Masked Stream Customer",
+      "lines": [
+        {
+          "lineId": "802",
+          "barcode": "869000001002",
+          "stockCode": "TY-STREAM-SKU-2",
+          "quantity": 1
+        }
+      ]
+    }
+  ],
+  "hasMore": false,
+  "nextCursor": null
+}

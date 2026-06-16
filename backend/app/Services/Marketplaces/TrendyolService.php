@@ -6,6 +6,7 @@ use App\Exceptions\MarketplaceApiException;
 use App\Models\MarketplaceAccount;
 use App\Models\MarketplacePublishDraft;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductMarketplaceStatus;
 use App\Services\Products\ProductVariantPayloadResolver;
@@ -304,35 +305,79 @@ class TrendyolService extends AbstractMarketplaceService
         return $this->pullOrders($account);
     }
 
-    public function pullOrders(MarketplaceAccount $account): array
+    public function pullOrders(MarketplaceAccount $account, array $query = []): array
+    {
+        return $this->syncShipmentPackages($account, $query);
+    }
+
+    public function syncShipmentPackages(MarketplaceAccount $account, array $query = []): array
     {
         $this->assertTrendyolAccount($account);
 
         $end = now();
         $start = $account->last_order_sync_at?->copy()->subMinutes(10) ?? now()->subDays(7);
         $endpoint = "/integration/order/sellers/{$account->supplier_id}/orders";
-        $query = [
-            'status' => 'Created',
-            'startDate' => $start->valueOf(),
-            'endDate' => $end->valueOf(),
-            'orderByField' => 'PackageLastModifiedDate',
-            'orderByDirection' => 'DESC',
-            'size' => 50,
-        ];
+        $statuses = collect($query['statuses'] ?? $query['status'] ?? [
+            'Created',
+            'Picking',
+            'Invoiced',
+            'Shipped',
+            'Delivered',
+            'Cancelled',
+            'Returned',
+            'UnDelivered',
+            'Awaiting',
+        ])->flatten()->filter()->values();
+        $startDate = isset($query['startDate']) ? Carbon::parse($query['startDate']) : $start;
+        $endDate = isset($query['endDate']) ? Carbon::parse($query['endDate']) : $end;
+        $size = min((int) ($query['size'] ?? 50), 200);
+        $synced = 0;
+        $statusCounts = [];
 
-        $response = $this->request($account, 'GET', $endpoint, $query);
-        $orders = collect($response->json('content', []));
+        foreach ($statuses as $status) {
+            $page = 0;
 
-        $orders->each(fn (array $order) => $this->upsertOrder($account, $order));
+            do {
+                $response = $this->request($account, 'GET', $endpoint, array_filter([
+                    'status' => $status,
+                    'startDate' => $startDate->valueOf(),
+                    'endDate' => $endDate->valueOf(),
+                    'orderByField' => 'PackageLastModifiedDate',
+                    'orderByDirection' => 'DESC',
+                    'page' => $page,
+                    'size' => $size,
+                ]));
+
+                $orders = collect($response->json('content', $response->json('shipmentPackages', [])))
+                    ->filter(fn ($item) => is_array($item))
+                    ->values();
+
+                $orders->each(fn (array $order) => $this->upsertLocalOrderFromShipmentPackage($account, $order));
+                $synced += $orders->count();
+                $statusCounts[$status] = ($statusCounts[$status] ?? 0) + $orders->count();
+                $raw = $response->json();
+                $totalPages = (int) ($raw['totalPages'] ?? $raw['totalPage'] ?? 0);
+                $hasMore = (bool) ($raw['hasMore'] ?? $raw['has_more'] ?? false);
+                $page++;
+            } while ($orders->isNotEmpty() && $page < 50 && ($hasMore || ($totalPages > 0 && $page < $totalPages)));
+        }
 
         $account->update([
             'last_order_sync_at' => Carbon::now(),
             'last_error' => null,
+            'metadata' => array_merge($account->metadata ?? [], [
+                'last_order_status_counts' => $statusCounts,
+                'last_order_sync_range' => [
+                    'startDate' => $startDate->toISOString(),
+                    'endDate' => $endDate->toISOString(),
+                ],
+            ]),
         ]);
 
         return [
             'message' => 'Trendyol siparisleri cekildi.',
-            'count' => $orders->count(),
+            'count' => $synced,
+            'status_counts' => $statusCounts,
             'synced_at' => now()->toISOString(),
         ];
     }
@@ -343,18 +388,31 @@ class TrendyolService extends AbstractMarketplaceService
 
         $end = isset($query['lastModifiedEndDate']) ? Carbon::parse($query['lastModifiedEndDate']) : now();
         $start = isset($query['lastModifiedStartDate']) ? Carbon::parse($query['lastModifiedStartDate']) : $end->copy()->subDays(14);
+        $metadata = $account->metadata ?? [];
+        $cursor = $query['nextCursor'] ?? data_get($metadata, 'trendyol_order_stream.next_cursor');
         $endpoint = "/integration/order/sellers/{$account->supplier_id}/orders/stream";
         $response = $this->request($account, 'GET', $endpoint, array_filter([
             'size' => $query['size'] ?? 50,
-            'nextCursor' => $query['nextCursor'] ?? null,
+            'nextCursor' => $cursor,
             'packageItemStatuses' => $query['packageItemStatuses'] ?? null,
             'lastModifiedStartDate' => $start->valueOf(),
             'lastModifiedEndDate' => $end->valueOf(),
         ]));
 
         $orders = collect($response->json('content', $response->json('shipmentPackages', [])));
-        $orders->each(fn (array $order) => $this->upsertOrder($account, $order));
-        $account->update(['last_order_sync_at' => now(), 'last_error' => null]);
+        $orders->each(fn (array $order) => $this->upsertLocalOrderFromShipmentPackage($account, $order));
+        $nextCursor = $response->json('nextCursor');
+        $account->update([
+            'last_order_sync_at' => now(),
+            'last_error' => null,
+            'metadata' => array_merge($metadata, [
+                'trendyol_order_stream' => [
+                    'next_cursor' => $nextCursor,
+                    'has_more' => (bool) $response->json('hasMore', false),
+                    'last_synced_at' => now()->toISOString(),
+                ],
+            ]),
+        ]);
 
         return [
             'message' => 'Trendyol stream siparisleri cekildi.',
@@ -416,11 +474,56 @@ class TrendyolService extends AbstractMarketplaceService
     public function webhookPackages(MarketplaceAccount $account, array $payload): array
     {
         $orders = collect($payload['packages'] ?? $payload['content'] ?? [$payload])->filter(fn ($item) => is_array($item));
-        $orders->each(fn (array $order) => $this->upsertOrder($account, $order));
+        $orders->each(fn (array $order) => $this->upsertLocalOrderFromShipmentPackage($account, $order));
 
         return [
             'message' => 'Trendyol webhook paketleri islendi.',
             'count' => $orders->count(),
+        ];
+    }
+
+    public function updatePackageStatus(MarketplaceAccount $account, string $shipmentPackageId, string $status, array $lines = []): array
+    {
+        $this->assertTrendyolAccount($account);
+
+        $payload = [
+            'status' => $status,
+            'lines' => collect($lines)->map(fn ($line) => array_filter([
+                'lineId' => (string) ($line['lineId'] ?? $line['provider_line_id'] ?? ''),
+                'quantity' => (int) ($line['quantity'] ?? 1),
+            ]))->values()->all(),
+        ];
+        $endpoint = "/integration/order/sellers/{$account->supplier_id}/shipment-packages/{$shipmentPackageId}";
+        $response = $this->request($account, 'PUT', $endpoint, $payload);
+
+        return [
+            'message' => 'Trendyol paket durumu guncellendi.',
+            'status' => 'success',
+            'provider_status' => $status,
+            'result' => $response->json(),
+        ];
+    }
+
+    public function cancelOrderPackageItem(MarketplaceAccount $account, string $shipmentPackageId, string $lineId, int $quantity, string $reasonId, ?string $description = null): array
+    {
+        $this->assertTrendyolAccount($account);
+
+        $payload = [
+            'lines' => [[
+                'lineId' => $lineId,
+                'quantity' => $quantity,
+            ]],
+            'reasonId' => $reasonId,
+            'description' => $description,
+        ];
+        $endpoint = "/integration/order/sellers/{$account->supplier_id}/shipment-packages/{$shipmentPackageId}/items/unsupplied";
+        $response = $this->request($account, 'PUT', $endpoint, array_filter($payload, fn ($value) => $value !== null));
+
+        return [
+            'message' => 'Trendyol tedarik edememe bildirimi gonderildi.',
+            'status' => 'success',
+            'provider_status' => 'cancelled',
+            'result' => $response->json(),
         ];
     }
 
@@ -897,20 +1000,94 @@ class TrendyolService extends AbstractMarketplaceService
         return 'unknown';
     }
 
-    private function upsertOrder(MarketplaceAccount $account, array $order): Order
+    public function normalizeShipmentPackage(array $order): array
     {
-        return Order::updateOrCreate(
-            ['marketplace_code' => 'trendyol', 'marketplace_order_id' => (string) ($order['id'] ?? $order['orderNumber'] ?? $order['packageNumber'] ?? Str::uuid())],
+        $packageId = (string) ($order['packageNumber'] ?? $order['shipmentPackageId'] ?? data_get($order, 'shipmentPackage.id') ?? $order['id'] ?? Str::uuid());
+        $orderNumber = (string) ($order['orderNumber'] ?? $order['orderId'] ?? $order['id'] ?? $packageId);
+        $providerStatus = (string) ($order['status'] ?? data_get($order, 'lines.0.status', 'Created'));
+        $lines = collect($order['lines'] ?? $order['items'] ?? $order['orderLines'] ?? [])
+            ->filter(fn ($line) => is_array($line))
+            ->values();
+
+        return [
+            'marketplace_order_id' => $orderNumber,
+            'provider_order_number' => $orderNumber,
+            'provider_shipment_package_id' => $packageId,
+            'provider_package_status' => $providerStatus,
+            'provider_status' => $providerStatus,
+            'status' => $this->normalizeOrderStatus($providerStatus),
+            'customer_name' => trim(($order['customerFirstName'] ?? '').' '.($order['customerLastName'] ?? '')) ?: ($order['customerName'] ?? data_get($order, 'shipmentAddress.fullName')),
+            'customer_email' => $order['customerEmail'] ?? data_get($order, 'invoiceAddress.email'),
+            'customer_phone' => $order['customerPhone'] ?? data_get($order, 'shipmentAddress.phone') ?? data_get($order, 'invoiceAddress.phone'),
+            'shipping_address' => $order['shipmentAddress'] ?? $order['shippingAddress'] ?? null,
+            'billing_address' => $order['invoiceAddress'] ?? $order['billingAddress'] ?? null,
+            'total_amount' => $order['totalPrice'] ?? $order['grossAmount'] ?? $order['totalAmount'] ?? 0,
+            'cargo_provider_id' => data_get($order, 'cargoProviderId') ?? data_get($order, 'cargoProvider.id'),
+            'cargo_provider_name' => data_get($order, 'cargoProviderName') ?? data_get($order, 'cargoProvider.name') ?? data_get($order, 'cargoProvider'),
+            'cargo_tracking_number' => data_get($order, 'cargoTrackingNumber') ?? data_get($order, 'trackingNumber'),
+            'lines' => $lines,
+        ];
+    }
+
+    public function upsertLocalOrderFromShipmentPackage(MarketplaceAccount $account, array $order): Order
+    {
+        $normalized = $this->normalizeShipmentPackage($order);
+        $localOrder = Order::updateOrCreate(
+            [
+                'marketplace_code' => 'trendyol',
+                'marketplace_order_id' => $normalized['marketplace_order_id'],
+            ],
             [
                 'company_id' => $account->company_id,
-                'customer_name' => trim(($order['customerFirstName'] ?? '').' '.($order['customerLastName'] ?? '')) ?: ($order['customerName'] ?? null),
-                'customer_email' => $order['customerEmail'] ?? null,
-                'customer_phone' => $order['customerPhone'] ?? null,
-                'shipping_address' => $order['shipmentAddress'] ?? $order['shippingAddress'] ?? null,
-                'billing_address' => $order['invoiceAddress'] ?? $order['billingAddress'] ?? null,
-                'total_amount' => $order['totalPrice'] ?? $order['grossAmount'] ?? 0,
-                'status' => $this->normalizeOrderStatus($order['status'] ?? data_get($order, 'lines.0.status', 'new')),
+                'marketplace_account_id' => $account->id,
+                'provider_order_number' => $normalized['provider_order_number'],
+                'provider_shipment_package_id' => $normalized['provider_shipment_package_id'],
+                'provider_package_status' => $normalized['provider_package_status'],
+                'provider_status' => $normalized['provider_status'],
+                'cargo_provider_id' => $normalized['cargo_provider_id'],
+                'cargo_provider_name' => $normalized['cargo_provider_name'],
+                'cargo_tracking_number' => $normalized['cargo_tracking_number'],
+                'customer_name' => $normalized['customer_name'],
+                'customer_email' => $normalized['customer_email'],
+                'customer_phone' => $normalized['customer_phone'],
+                'shipping_address' => $normalized['shipping_address'],
+                'billing_address' => $normalized['billing_address'],
+                'total_amount' => $normalized['total_amount'],
+                'status' => $normalized['status'],
+                'shipping_status' => $this->normalizeShippingStatus($normalized['provider_package_status']),
                 'payload' => $order,
+                'provider_payload' => $order,
+                'last_synced_at' => now(),
+            ]
+        );
+
+        $normalized['lines']->each(fn (array $line, int $index) => $this->upsertOrderItem($account, $localOrder, $line, $index));
+
+        return $localOrder->fresh(['items']);
+    }
+
+    private function upsertOrder(MarketplaceAccount $account, array $order): Order
+    {
+        return $this->upsertLocalOrderFromShipmentPackage($account, $order);
+    }
+
+    private function upsertOrderItem(MarketplaceAccount $account, Order $order, array $line, int $index): OrderItem
+    {
+        $lineId = (string) ($line['id'] ?? $line['lineId'] ?? $line['orderLineId'] ?? $line['shipmentPackageLineId'] ?? $index);
+        $quantity = (int) ($line['quantity'] ?? $line['qty'] ?? 1);
+
+        return $order->items()->updateOrCreate(
+            ['provider_line_id' => $lineId],
+            [
+                'marketplace_account_id' => $account->id,
+                'marketplace_code' => 'trendyol',
+                'barcode' => $line['barcode'] ?? data_get($line, 'product.barcode'),
+                'sku' => $line['merchantSku'] ?? $line['sku'] ?? $line['stockCode'] ?? data_get($line, 'product.stockCode'),
+                'name' => $line['productName'] ?? $line['name'] ?? data_get($line, 'product.name'),
+                'quantity' => max($quantity, 1),
+                'unit_price' => $line['price'] ?? $line['amount'] ?? $line['discountedPrice'] ?? data_get($line, 'price.amount'),
+                'provider_status' => $line['status'] ?? $order->provider_package_status,
+                'provider_payload' => $line,
             ]
         );
     }
@@ -922,9 +1099,26 @@ class TrendyolService extends AbstractMarketplaceService
             'picking', 'invoiced' => 'preparing',
             'shipped' => 'shipped',
             'delivered' => 'delivered',
-            'cancelled' => 'cancelled',
-            'returned' => 'returned',
+            'cancelled', 'canceled', 'unsupplied' => 'cancelled',
+            'returned', 'undelivered' => 'returned',
             default => 'new',
+        };
+    }
+
+    private function normalizeShippingStatus(?string $status): ?string
+    {
+        if (! filled($status)) {
+            return null;
+        }
+
+        return match (strtolower((string) $status)) {
+            'created', 'awaiting' => 'created',
+            'picking', 'invoiced' => 'preparing',
+            'shipped' => 'shipped',
+            'delivered' => 'delivered',
+            'cancelled', 'canceled', 'unsupplied' => 'cancelled',
+            'returned', 'undelivered' => 'returned',
+            default => Str::lower((string) $status),
         };
     }
 

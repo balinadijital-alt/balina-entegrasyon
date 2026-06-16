@@ -160,6 +160,8 @@ export const api = {
     trendyolArchiveProducts: (id, payload) => http.put(`/marketplaces/${id}/trendyol/products/archive`, payload).then((response) => response.data),
     trendyolPullOrders: (id) => http.post(`/marketplaces/${id}/trendyol/pull-orders`).then((response) => response.data),
     trendyolOrdersStream: (id, params) => http.get(`/marketplaces/${id}/trendyol/orders/stream`, { params }).then((response) => response.data),
+    trendyolUpdatePackageStatus: (id, orderId, payload) => http.post(`/marketplaces/${id}/trendyol/orders/${orderId}/package-status`, payload).then((response) => response.data),
+    trendyolCancelPackageItem: (id, orderId, payload) => http.post(`/marketplaces/${id}/trendyol/orders/${orderId}/cancel-item`, payload).then((response) => response.data),
     trendyolReturns: (id, params) => http.get(`/marketplaces/${id}/trendyol/returns`, { params }).then((response) => response.data),
     trendyolQuestions: (id, params) => http.get(`/marketplaces/${id}/trendyol/questions`, { params }).then((response) => response.data),
     trendyolSendInvoiceLink: (id, packageId, payload) => http.post(`/marketplaces/${id}/trendyol/shipment-packages/${packageId}/invoice-link`, payload).then((response) => response.data),

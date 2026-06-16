@@ -1,0 +1,36 @@
+{
+  "content": [
+    {
+      "id": 900001,
+      "orderNumber": "TY-ORDER-900001",
+      "packageNumber": "PKG-900001",
+      "status": "Created",
+      "customerFirstName": "Test",
+      "customerLastName": "Customer",
+      "customerEmail": "masked@example.test",
+      "customerPhone": "+905*********",
+      "totalPrice": 1200.5,
+      "cargoProviderId": 10,
+      "cargoProviderName": "Test Cargo",
+      "cargoTrackingNumber": "TRK900001",
+      "shipmentAddress": {
+        "fullName": "Test Customer",
+        "address": "Masked address",
+        "city": "Istanbul"
+      },
+      "lines": [
+        {
+          "id": 701,
+          "barcode": "869000000901",
+          "merchantSku": "TY-SKU-901",
+          "productName": "Masked Test Product",
+          "quantity": 1,
+          "price": 1200.5,
+          "status": "Created"
+        }
+      ]
+    }
+  ],
+  "totalPages": 1,
+  "hasMore": false
+}

@@ -14069,6 +14069,90 @@ tbody td:last-child .row-actions:focus-within {
   min-height: 38px;
 }
 
+.trendyol-order-ops {
+  display: grid;
+  gap: 18px;
+}
+
+.ops-warning {
+  align-items: center;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  color: #9a3412;
+  display: flex;
+  font-weight: 700;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.trendyol-ops-grid,
+.orders-trendyol-package-card {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.trendyol-ops-grid div,
+.orders-trendyol-package-card div {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.trendyol-ops-grid span,
+.orders-trendyol-package-card span {
+  color: #64748b;
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.trendyol-ops-grid strong,
+.orders-trendyol-package-card strong {
+  color: #0f172a;
+  display: block;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+
+.trendyol-ops-actions {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.trendyol-ops-actions label {
+  color: #64748b;
+  display: grid;
+  font-size: 12px;
+  font-weight: 800;
+  gap: 6px;
+  text-transform: uppercase;
+}
+
+.trendyol-ops-actions input,
+.trendyol-ops-actions select {
+  min-width: 0;
+}
+
+.orders-trendyol-package-card {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  border-radius: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 14px;
+}
+
+.orders-trendyol-package-card small {
+  color: #1d4ed8;
+  font-weight: 700;
+  grid-column: 1 / -1;
+}
+
 .saas-page {
   display: grid;
   gap: 18px;
@@ -15309,6 +15393,9 @@ tbody td:last-child .row-actions:focus-within {
   .orders-layout,
   .orders-detail-grid,
   .orders-detail-actions,
+  .trendyol-ops-grid,
+  .trendyol-ops-actions,
+  .orders-trendyol-package-card,
   .saas-hero,
   .saas-stat-grid,
   .saas-plan-grid,

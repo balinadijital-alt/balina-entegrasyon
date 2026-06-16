@@ -12,8 +12,16 @@ class Order extends Model
 {
     protected $fillable = [
         'company_id',
+        'marketplace_account_id',
         'marketplace_code',
         'marketplace_order_id',
+        'provider_order_number',
+        'provider_shipment_package_id',
+        'provider_package_status',
+        'provider_status',
+        'cargo_provider_id',
+        'cargo_provider_name',
+        'cargo_tracking_number',
         'customer_name',
         'customer_email',
         'customer_phone',
@@ -29,6 +37,8 @@ class Order extends Model
         'problem_note',
         'operation_flags',
         'payload',
+        'provider_payload',
+        'last_synced_at',
     ];
 
     protected function casts(): array
@@ -39,12 +49,29 @@ class Order extends Model
             'billing_address' => 'array',
             'operation_flags' => 'array',
             'payload' => 'array',
+            'provider_payload' => 'array',
+            'last_synced_at' => 'datetime',
         ];
     }
 
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function marketplaceAccount(): BelongsTo
+    {
+        return $this->belongsTo(MarketplaceAccount::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    public function marketplaceOperations(): HasMany
+    {
+        return $this->hasMany(MarketplaceOrderOperation::class)->latest();
     }
 
     public function shipments(): HasMany
