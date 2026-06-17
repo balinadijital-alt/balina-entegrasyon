@@ -38,7 +38,7 @@ Schedule::command('marketplace:dispatch-due-publish-drafts')
     ->withoutOverlapping()
     ->onOneServer();
 
-if ((bool) env('HORIZON_ENABLED', false)) {
+if (filter_var(env('HORIZON_ENABLED', false), FILTER_VALIDATE_BOOL)) {
     Schedule::command('horizon:snapshot')->everyFiveMinutes();
 }
 
