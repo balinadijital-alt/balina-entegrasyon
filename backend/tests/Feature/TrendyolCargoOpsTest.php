@@ -43,28 +43,30 @@ class TrendyolCargoOpsTest extends TestCase
     public function test_get_cargo_providers_success_is_normalized(): void
     {
         $account = $this->trendyolAccount();
-        Http::fake(['*' => Http::response($this->fixture('cargo_providers_success.json'))]);
+        Http::fake();
 
         $this->getJson("/api/marketplaces/{$account->id}/trendyol/cargo-providers")
             ->assertOk()
-            ->assertJsonPath('providers.0.id', '10')
-            ->assertJsonPath('providers.0.name', 'Masked Cargo')
-            ->assertJsonPath('providers.1.id', '20')
-            ->assertJsonPath('providers.1.name', 'Masked Express');
+            ->assertJsonPath('providers.0.id', '38')
+            ->assertJsonPath('providers.0.code', 'SENDEOMP')
+            ->assertJsonPath('providers.0.name', 'Kolay Gelsin Marketplace')
+            ->assertJsonPath('source', 'trendyol_shipment_providers_table');
 
-        Http::assertSent(fn ($request) => $request->method() === 'GET'
-            && str_contains($request->url(), '/cargo-providers'));
+        Http::assertNothingSent();
     }
 
-    public function test_get_cargo_providers_error_is_normalized(): void
+    public function test_get_cargo_providers_searches_documentation_table_without_provider_call(): void
     {
         $account = $this->trendyolAccount();
-        Http::fake(['*' => Http::response($this->fixture('cargo_providers_error.json'), 503)]);
+        Http::fake();
 
-        $this->getJson("/api/marketplaces/{$account->id}/trendyol/cargo-providers")
-            ->assertStatus(503)
-            ->assertJsonPath('message', 'Cargo providers could not be listed')
-            ->assertJsonPath('details.code', 'CARGO_PROVIDER_LIST_ERROR');
+        $this->getJson("/api/marketplaces/{$account->id}/trendyol/cargo-providers?search=aras")
+            ->assertOk()
+            ->assertJsonCount(1, 'providers')
+            ->assertJsonPath('providers.0.code', 'ARASMP')
+            ->assertJsonPath('providers.0.name', 'Aras Kargo Marketplace');
+
+        Http::assertNothingSent();
     }
 
     public function test_update_box_info_is_blocked_when_live_flag_is_false(): void

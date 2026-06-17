@@ -21,6 +21,19 @@ use Illuminate\Support\Str;
 
 class TrendyolService extends AbstractMarketplaceService
 {
+    private const SHIPMENT_PROVIDERS = [
+        ['id' => '38', 'code' => 'SENDEOMP', 'name' => 'Kolay Gelsin Marketplace', 'tax_number' => '2910804196'],
+        ['id' => '30', 'code' => 'CEVATEDARIK', 'name' => 'Ceva Tedarik Marketplace', 'tax_number' => '1800038254'],
+        ['id' => '10', 'code' => 'DHLECOMMP', 'name' => 'DHL eCommerce Marketplace', 'tax_number' => '6080712084'],
+        ['id' => '19', 'code' => 'PTTMP', 'name' => 'PTT Kargo Marketplace', 'tax_number' => '7320068060'],
+        ['id' => '9', 'code' => 'SURATMP', 'name' => 'Surat Kargo Marketplace', 'tax_number' => '7870233582'],
+        ['id' => '17', 'code' => 'TEXMP', 'name' => 'Trendyol Express Marketplace', 'tax_number' => '8590921777'],
+        ['id' => '6', 'code' => 'HOROZMP', 'name' => 'Horoz Kargo Marketplace', 'tax_number' => '4630097122'],
+        ['id' => '20', 'code' => 'CEVAMP', 'name' => 'CEVA Marketplace', 'tax_number' => '8450298557'],
+        ['id' => '4', 'code' => 'YKMP', 'name' => 'Yurtici Kargo Marketplace', 'tax_number' => '3130557669'],
+        ['id' => '7', 'code' => 'ARASMP', 'name' => 'Aras Kargo Marketplace', 'tax_number' => '720039666'],
+    ];
+
     public function testConnection(MarketplaceAccount $account): array
     {
         $this->assertTrendyolAccount($account);
@@ -695,24 +708,26 @@ class TrendyolService extends AbstractMarketplaceService
     {
         $this->assertTrendyolAccount($account);
 
-        $response = $this->request($account, 'GET', "/integration/order/sellers/{$account->supplier_id}/cargo-providers", $query);
-        $raw = $response->json();
-        $providers = collect($raw['content'] ?? $raw['providers'] ?? $raw['cargoProviders'] ?? $raw)
-            ->filter(fn ($provider) => is_array($provider))
+        $search = Str::lower((string) ($query['search'] ?? $query['q'] ?? ''));
+        $providers = collect(self::SHIPMENT_PROVIDERS)
+            ->filter(fn (array $provider) => $search === ''
+                || Str::contains(Str::lower($provider['name']), $search)
+                || Str::contains(Str::lower($provider['code']), $search)
+                || Str::contains(Str::lower($provider['id']), $search))
             ->map(fn (array $provider) => [
-                'id' => (string) ($provider['id'] ?? $provider['cargoProviderId'] ?? $provider['providerId'] ?? $provider['code'] ?? ''),
-                'name' => (string) ($provider['name'] ?? $provider['cargoProviderName'] ?? $provider['providerName'] ?? $provider['title'] ?? ''),
-                'code' => (string) ($provider['code'] ?? $provider['cargoCode'] ?? ''),
-                'raw' => $this->maskProviderPayload($provider),
+                'id' => $provider['id'],
+                'name' => $provider['name'],
+                'code' => $provider['code'],
+                'raw' => $provider,
             ])
             ->filter(fn (array $provider) => $provider['id'] !== '' || $provider['name'] !== '')
             ->values()
             ->all();
 
         return [
-            'message' => 'Trendyol kargo firmalari cekildi.',
+            'message' => 'Trendyol kargo firmalari dokuman tablosundan listelendi.',
             'providers' => $providers,
-            'raw' => $this->maskProviderPayload(is_array($raw) ? $raw : []),
+            'source' => 'trendyol_shipment_providers_table',
             'fetched_at' => now()->toISOString(),
         ];
     }
