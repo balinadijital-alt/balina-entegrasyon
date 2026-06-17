@@ -90,6 +90,27 @@ class TrendyolReturnOpsTest extends TestCase
         ]);
     }
 
+    public function test_live_empty_claim_sync_fixture_is_safe_and_idempotent(): void
+    {
+        $account = $this->trendyolAccount();
+        Http::fakeSequence()
+            ->push($this->fixture('live_return_claims_empty.json'))
+            ->push($this->fixture('live_return_claims_empty.json'));
+
+        app(TrendyolService::class)->syncReturnClaims($account, ['size' => 10]);
+        $result = app(TrendyolService::class)->syncReturnClaims($account, ['size' => 10]);
+
+        $this->assertSame(0, $result['count']);
+        $this->assertDatabaseCount('marketplace_return_claims', 0);
+        $this->assertDatabaseCount('marketplace_return_claim_items', 0);
+        $this->assertDatabaseHas('marketplace_return_operations', [
+            'marketplace_account_id' => $account->id,
+            'operation_type' => 'return_claim_sync',
+            'status' => 'success',
+        ]);
+        Http::assertSentCount(2);
+    }
+
     public function test_claim_sync_is_account_isolated(): void
     {
         $accountA = $this->trendyolAccount(['name' => 'Magaza A']);
@@ -304,6 +325,7 @@ class TrendyolReturnOpsTest extends TestCase
         $files = [
             'return_claims_list.json',
             'return_claims_empty.json',
+            'live_return_claims_empty.json',
             'return_issue_reasons.json',
             'create_claim_issue_success.json',
             'create_claim_issue_error.json',
