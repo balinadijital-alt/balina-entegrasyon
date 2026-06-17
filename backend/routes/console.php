@@ -38,7 +38,10 @@ Schedule::command('marketplace:dispatch-due-publish-drafts')
     ->withoutOverlapping()
     ->onOneServer();
 
-Schedule::command('horizon:snapshot')->everyFiveMinutes();
+if ((bool) env('HORIZON_ENABLED', false)) {
+    Schedule::command('horizon:snapshot')->everyFiveMinutes();
+}
+
 Schedule::call(fn () => Cache::put('scheduler:last_run_at', now()->toISOString(), now()->addMinutes(10)))->everyMinute();
 Schedule::command('queue:prune-failed --hours=168')->daily();
 Schedule::command('balina:prune-logs --days=30')->daily();
