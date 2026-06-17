@@ -15,6 +15,26 @@ class MarketplaceOrderOperationService
     {
     }
 
+    public function orderForPackage(MarketplaceAccount $account, string $shipmentPackageId): Order
+    {
+        $order = Order::query()
+            ->where('company_id', $account->company_id)
+            ->where('marketplace_code', 'trendyol')
+            ->where('provider_shipment_package_id', $shipmentPackageId)
+            ->when($account->id, fn ($query) => $query->where(function ($inner) use ($account) {
+                $inner->whereNull('marketplace_account_id')
+                    ->orWhere('marketplace_account_id', $account->id);
+            }))
+            ->latest('id')
+            ->first();
+
+        if (! $order) {
+            throw new MarketplaceApiException('Bu paket ID icin Trendyol siparisi bulunamadi.', 404);
+        }
+
+        return $order;
+    }
+
     public function updatePackageStatus(MarketplaceAccount $account, Order $order, array $payload): MarketplaceOrderOperation
     {
         $this->assertAccountOrder($account, $order);
@@ -93,6 +113,102 @@ class MarketplaceOrderOperationService
         });
     }
 
+    public function sendInvoiceLink(MarketplaceAccount $account, Order $order, array $payload): MarketplaceOrderOperation
+    {
+        $this->assertAccountOrder($account, $order);
+        $shipmentPackageId = $this->shipmentPackageId($order, $payload);
+        $invoiceLink = (string) ($payload['invoiceLink'] ?? $payload['invoice_link'] ?? '');
+
+        if (! $shipmentPackageId || ! filter_var($invoiceLink, FILTER_VALIDATE_URL)) {
+            throw new MarketplaceApiException('shipmentPackageId ve gecerli invoiceLink zorunludur.', 422);
+        }
+
+        return DB::transaction(function () use ($account, $order, $shipmentPackageId, $invoiceLink) {
+            $operation = $this->createOperation($account, $order, null, 'invoice_link_send', $shipmentPackageId, [
+                'shipmentPackageId' => $shipmentPackageId,
+                'invoiceLink' => $invoiceLink,
+            ]);
+
+            if (! $this->liveInvoiceWritesEnabled()) {
+                return $this->markBlocked($operation, 'TRENDYOL_LIVE_INVOICE_OPS_CONFIRMED=false oldugu icin canli fatura linki gonderilmedi.', 'live_invoice_ops_disabled');
+            }
+
+            try {
+                $response = $this->trendyol->sendInvoiceLink($account, $shipmentPackageId, $invoiceLink);
+                $operation->update(['status' => 'success', 'response_payload' => $this->maskInvoicePayload($response)]);
+                $order->update(['invoice_status' => 'sent', 'last_synced_at' => now()]);
+
+                return $operation->fresh();
+            } catch (MarketplaceApiException $exception) {
+                return $this->markFailed($operation, $exception);
+            }
+        });
+    }
+
+    public function deleteInvoiceLink(MarketplaceAccount $account, Order $order, array $payload = []): MarketplaceOrderOperation
+    {
+        $this->assertAccountOrder($account, $order);
+        $shipmentPackageId = $this->shipmentPackageId($order, $payload);
+
+        if (! $shipmentPackageId) {
+            throw new MarketplaceApiException('shipmentPackageId zorunludur.', 422);
+        }
+
+        return DB::transaction(function () use ($account, $order, $shipmentPackageId) {
+            $operation = $this->createOperation($account, $order, null, 'invoice_link_delete', $shipmentPackageId, [
+                'shipmentPackageId' => $shipmentPackageId,
+            ]);
+
+            if (! $this->liveInvoiceWritesEnabled()) {
+                return $this->markBlocked($operation, 'TRENDYOL_LIVE_INVOICE_OPS_CONFIRMED=false oldugu icin canli fatura linki silinmedi.', 'live_invoice_ops_disabled');
+            }
+
+            try {
+                $response = $this->trendyol->deleteInvoiceLink($account, $shipmentPackageId);
+                $operation->update(['status' => 'success', 'response_payload' => $this->maskInvoicePayload($response)]);
+                $order->update(['invoice_status' => 'link_deleted', 'last_synced_at' => now()]);
+
+                return $operation->fresh();
+            } catch (MarketplaceApiException $exception) {
+                return $this->markFailed($operation, $exception);
+            }
+        });
+    }
+
+    public function sendInvoiceFile(MarketplaceAccount $account, Order $order, array $payload): MarketplaceOrderOperation
+    {
+        $this->assertAccountOrder($account, $order);
+        $shipmentPackageId = $this->shipmentPackageId($order, $payload);
+        $fileName = (string) ($payload['fileName'] ?? $payload['file_name'] ?? '');
+        $fileContent = (string) ($payload['fileContent'] ?? $payload['file_content_base64'] ?? '');
+
+        if (! $shipmentPackageId || $fileName === '' || $fileContent === '' || base64_decode($fileContent, true) === false) {
+            throw new MarketplaceApiException('shipmentPackageId, fileName ve gecerli base64 fileContent zorunludur.', 422);
+        }
+
+        return DB::transaction(function () use ($account, $order, $shipmentPackageId, $fileName, $fileContent) {
+            $operation = $this->createOperation($account, $order, null, 'invoice_file_upload', $shipmentPackageId, [
+                'shipmentPackageId' => $shipmentPackageId,
+                'fileName' => $fileName,
+                'fileContent' => $fileContent,
+            ]);
+
+            if (! $this->liveInvoiceWritesEnabled()) {
+                return $this->markBlocked($operation, 'TRENDYOL_LIVE_INVOICE_OPS_CONFIRMED=false oldugu icin canli fatura dosyasi yuklenmedi.', 'live_invoice_ops_disabled');
+            }
+
+            try {
+                $response = $this->trendyol->sendInvoiceFile($account, $shipmentPackageId, $fileName, $fileContent);
+                $operation->update(['status' => 'success', 'response_payload' => $this->maskInvoicePayload($response)]);
+                $order->update(['invoice_status' => 'sent', 'last_synced_at' => now()]);
+
+                return $operation->fresh();
+            } catch (MarketplaceApiException $exception) {
+                return $this->markFailed($operation, $exception);
+            }
+        });
+    }
+
     private function assertAccountOrder(MarketplaceAccount $account, Order $order): void
     {
         if ($account->code !== 'trendyol') {
@@ -113,16 +229,16 @@ class MarketplaceOrderOperationService
             'order_item_id' => $item?->id,
             'provider_shipment_package_id' => $shipmentPackageId,
             'operation_type' => $type,
-            'request_payload' => $payload,
+            'request_payload' => $this->maskInvoicePayload($payload),
             'status' => 'pending',
         ]);
     }
 
-    private function markBlocked(MarketplaceOrderOperation $operation, string $message): MarketplaceOrderOperation
+    private function markBlocked(MarketplaceOrderOperation $operation, string $message, string $errorCode = 'live_order_ops_disabled'): MarketplaceOrderOperation
     {
         $operation->update([
             'status' => 'blocked',
-            'error_code' => 'live_order_ops_disabled',
+            'error_code' => $errorCode,
             'error_message' => $message,
             'response_payload' => ['dry_run' => true, 'message' => $message],
         ]);
@@ -136,7 +252,7 @@ class MarketplaceOrderOperationService
             'status' => 'failed',
             'error_code' => (string) ($exception->details['code'] ?? $exception->statusCode ?? 'provider_error'),
             'error_message' => $exception->getMessage(),
-            'response_payload' => $exception->details,
+            'response_payload' => is_array($exception->details) ? $this->maskInvoicePayload($exception->details) : $exception->details,
         ]);
 
         return $operation->fresh();
@@ -145,6 +261,33 @@ class MarketplaceOrderOperationService
     private function liveWritesEnabled(): bool
     {
         return filter_var(env('TRENDYOL_LIVE_ORDER_OPS_CONFIRMED', false), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function liveInvoiceWritesEnabled(): bool
+    {
+        return filter_var(config('marketplaces.trendyol.live_invoice_ops_confirmed', env('TRENDYOL_LIVE_INVOICE_OPS_CONFIRMED', false)), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function shipmentPackageId(Order $order, array $payload): string
+    {
+        return (string) ($payload['shipmentPackageId'] ?? $payload['shipment_package_id'] ?? $order->provider_shipment_package_id);
+    }
+
+    private function maskInvoicePayload(array $payload): array
+    {
+        foreach ($payload as $key => $value) {
+            if (is_array($value)) {
+                $payload[$key] = $this->maskInvoicePayload($value);
+                continue;
+            }
+
+            $normalized = strtolower((string) $key);
+            if (str_contains($normalized, 'invoicelink') || str_contains($normalized, 'invoice_link') || str_contains($normalized, 'filecontent') || str_contains($normalized, 'file_content')) {
+                $payload[$key] = '[masked]';
+            }
+        }
+
+        return $payload;
     }
 
     private function defaultLines(Order $order): array

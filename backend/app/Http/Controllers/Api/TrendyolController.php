@@ -376,37 +376,136 @@ class TrendyolController extends Controller
         return $this->respond(fn () => $service->answerQuestion($marketplace, $questionId, $data['answer']));
     }
 
-    public function sendInvoiceLink(MarketplaceAccount $marketplace, TrendyolService $service, string $packageId, Request $request, AuditLogger $audit): JsonResponse
+    public function sendInvoiceLink(MarketplaceAccount $marketplace, MarketplaceOrderOperationService $service, string $packageId, Request $request, AuditLogger $audit): JsonResponse
     {
         $this->abortIfNotTenant($request, $marketplace);
 
-        $data = $request->validate(['invoice_link' => ['required', 'url', 'max:2000']]);
+        $data = $request->validate([
+            'invoiceLink' => ['required_without:invoice_link', 'url', 'max:2000'],
+            'invoice_link' => ['nullable', 'url', 'max:2000'],
+        ]);
         $audit->logAction($request, 'marketplace', 'invoice.send', $marketplace, [
             'marketplace_code' => $marketplace->code,
             'marketplace_account_id' => $marketplace->id,
             'package_id' => $packageId,
             'type' => 'link',
-        ], null, ['invoice_link' => $data['invoice_link']]);
+        ], null, ['invoice_link' => '[masked]']);
+        $order = $service->orderForPackage($marketplace, $packageId);
 
-        return $this->respond(fn () => $service->sendInvoiceLink($marketplace, $packageId, $data['invoice_link']));
+        return $this->respond(fn () => response()->json([
+            'message' => 'Trendyol fatura link operasyonu kaydedildi.',
+            'operation' => $service->sendInvoiceLink($marketplace, $order, ['invoiceLink' => $data['invoiceLink'] ?? $data['invoice_link'], 'shipmentPackageId' => $packageId]),
+        ], 201));
     }
 
-    public function sendInvoiceFile(MarketplaceAccount $marketplace, TrendyolService $service, string $packageId, Request $request, AuditLogger $audit): JsonResponse
+    public function deleteInvoiceLink(MarketplaceAccount $marketplace, Order $order, MarketplaceOrderOperationService $service, Request $request, AuditLogger $audit): JsonResponse
+    {
+        $this->abortIfNotTenant($request, $marketplace);
+        $this->abortIfNotTenant($request, $order);
+        $audit->logAction($request, 'marketplace', 'invoice.delete', $marketplace, [
+            'marketplace_code' => $marketplace->code,
+            'marketplace_account_id' => $marketplace->id,
+            'order_id' => $order->id,
+        ]);
+
+        return $this->respond(fn () => response()->json([
+            'message' => 'Trendyol fatura link silme operasyonu kaydedildi.',
+            'operation' => $service->deleteInvoiceLink($marketplace, $order, $request->query()),
+        ], 201));
+    }
+
+    public function deleteInvoiceLinkByPackage(MarketplaceAccount $marketplace, MarketplaceOrderOperationService $service, string $packageId, Request $request, AuditLogger $audit): JsonResponse
+    {
+        $this->abortIfNotTenant($request, $marketplace);
+        $audit->logAction($request, 'marketplace', 'invoice.delete', $marketplace, [
+            'marketplace_code' => $marketplace->code,
+            'marketplace_account_id' => $marketplace->id,
+            'package_id' => $packageId,
+        ]);
+        $order = $service->orderForPackage($marketplace, $packageId);
+
+        return $this->respond(fn () => response()->json([
+            'message' => 'Trendyol fatura link silme operasyonu kaydedildi.',
+            'operation' => $service->deleteInvoiceLink($marketplace, $order, ['shipmentPackageId' => $packageId]),
+        ], 201));
+    }
+
+    public function sendOrderInvoiceLink(MarketplaceAccount $marketplace, Order $order, MarketplaceOrderOperationService $service, Request $request, AuditLogger $audit): JsonResponse
+    {
+        $this->abortIfNotTenant($request, $marketplace);
+        $this->abortIfNotTenant($request, $order);
+
+        $data = $request->validate([
+            'shipmentPackageId' => ['nullable', 'string', 'max:128'],
+            'shipment_package_id' => ['nullable', 'string', 'max:128'],
+            'invoiceLink' => ['required_without:invoice_link', 'url', 'max:2000'],
+            'invoice_link' => ['nullable', 'url', 'max:2000'],
+        ]);
+        $audit->logAction($request, 'marketplace', 'invoice.send', $marketplace, [
+            'marketplace_code' => $marketplace->code,
+            'marketplace_account_id' => $marketplace->id,
+            'order_id' => $order->id,
+            'type' => 'link',
+        ], null, ['invoice_link' => '[masked]']);
+
+        return $this->respond(fn () => response()->json([
+            'message' => 'Trendyol fatura link operasyonu kaydedildi.',
+            'operation' => $service->sendInvoiceLink($marketplace, $order, $data),
+        ], 201));
+    }
+
+    public function sendInvoiceFile(MarketplaceAccount $marketplace, MarketplaceOrderOperationService $service, string $packageId, Request $request, AuditLogger $audit): JsonResponse
     {
         $this->abortIfNotTenant($request, $marketplace);
 
         $data = $request->validate([
-            'file_name' => ['required', 'string', 'max:255'],
-            'file_content_base64' => ['required', 'string'],
+            'fileName' => ['required_without:file_name', 'string', 'max:255'],
+            'file_name' => ['nullable', 'string', 'max:255'],
+            'fileContent' => ['required_without:file_content_base64', 'string'],
+            'file_content_base64' => ['nullable', 'string'],
         ]);
         $audit->logAction($request, 'marketplace', 'invoice.send', $marketplace, [
             'marketplace_code' => $marketplace->code,
             'marketplace_account_id' => $marketplace->id,
             'package_id' => $packageId,
             'type' => 'file',
-        ], null, ['file_name' => $data['file_name'], 'file_content_base64' => $data['file_content_base64']]);
+        ], null, ['file_name' => $data['fileName'] ?? $data['file_name'], 'file_content_base64' => '[masked]']);
+        $order = $service->orderForPackage($marketplace, $packageId);
 
-        return $this->respond(fn () => $service->sendInvoiceFile($marketplace, $packageId, $data['file_name'], $data['file_content_base64']));
+        return $this->respond(fn () => response()->json([
+            'message' => 'Trendyol fatura dosyasi operasyonu kaydedildi.',
+            'operation' => $service->sendInvoiceFile($marketplace, $order, [
+                'shipmentPackageId' => $packageId,
+                'fileName' => $data['fileName'] ?? $data['file_name'],
+                'fileContent' => $data['fileContent'] ?? $data['file_content_base64'],
+            ]),
+        ], 201));
+    }
+
+    public function sendOrderInvoiceFile(MarketplaceAccount $marketplace, Order $order, MarketplaceOrderOperationService $service, Request $request, AuditLogger $audit): JsonResponse
+    {
+        $this->abortIfNotTenant($request, $marketplace);
+        $this->abortIfNotTenant($request, $order);
+
+        $data = $request->validate([
+            'shipmentPackageId' => ['nullable', 'string', 'max:128'],
+            'shipment_package_id' => ['nullable', 'string', 'max:128'],
+            'fileName' => ['required_without:file_name', 'string', 'max:255'],
+            'file_name' => ['nullable', 'string', 'max:255'],
+            'fileContent' => ['required_without:file_content_base64', 'string'],
+            'file_content_base64' => ['nullable', 'string'],
+        ]);
+        $audit->logAction($request, 'marketplace', 'invoice.send', $marketplace, [
+            'marketplace_code' => $marketplace->code,
+            'marketplace_account_id' => $marketplace->id,
+            'order_id' => $order->id,
+            'type' => 'file',
+        ], null, ['file_name' => $data['fileName'] ?? $data['file_name'], 'file_content_base64' => '[masked]']);
+
+        return $this->respond(fn () => response()->json([
+            'message' => 'Trendyol fatura dosyasi operasyonu kaydedildi.',
+            'operation' => $service->sendInvoiceFile($marketplace, $order, $data),
+        ], 201));
     }
 
     public function commonLabelBarcode(MarketplaceAccount $marketplace, TrendyolService $service, Request $request): JsonResponse

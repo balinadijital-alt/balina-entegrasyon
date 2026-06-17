@@ -199,6 +199,9 @@ Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(fun
         Route::post('/test-orders/{packageId}/status', [TrendyolController::class, 'updateTestOrderStatus'])->middleware('permission:marketplaces.manage');
         Route::post('/orders/{order}/package-status', [TrendyolController::class, 'updatePackageStatus'])->middleware('permission:marketplaces.send');
         Route::post('/orders/{order}/cancel-item', [TrendyolController::class, 'cancelPackageItem'])->middleware('permission:marketplaces.send');
+        Route::post('/orders/{order}/invoice-link', [TrendyolController::class, 'sendOrderInvoiceLink'])->middleware('permission:marketplaces.send');
+        Route::delete('/orders/{order}/invoice-link', [TrendyolController::class, 'deleteInvoiceLink'])->middleware('permission:marketplaces.send');
+        Route::post('/orders/{order}/invoice-file', [TrendyolController::class, 'sendOrderInvoiceFile'])->middleware('permission:marketplaces.send');
         Route::post('/webhook/packages', [TrendyolController::class, 'webhookPackages'])->middleware('permission:marketplaces.send');
         Route::get('/returns/claims', [TrendyolController::class, 'returnClaims']);
         Route::post('/returns/claims/sync', [TrendyolController::class, 'syncReturnClaims'])->middleware('permission:marketplaces.send');
@@ -211,6 +214,7 @@ Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(fun
         Route::get('/questions', [TrendyolController::class, 'questions']);
         Route::post('/questions/{questionId}/answer', [TrendyolController::class, 'answerQuestion'])->middleware('permission:marketplaces.send');
         Route::post('/shipment-packages/{packageId}/invoice-link', [TrendyolController::class, 'sendInvoiceLink'])->middleware('permission:marketplaces.send');
+        Route::delete('/shipment-packages/{packageId}/invoice-link', [TrendyolController::class, 'deleteInvoiceLinkByPackage'])->middleware('permission:marketplaces.send');
         Route::post('/shipment-packages/{packageId}/invoice-file', [TrendyolController::class, 'sendInvoiceFile'])->middleware('permission:marketplaces.send');
         Route::get('/common-label-barcodes', [TrendyolController::class, 'commonLabelBarcode']);
     });

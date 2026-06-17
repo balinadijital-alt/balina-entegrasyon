@@ -62,6 +62,9 @@ export function OrderDetailPage() {
   const [cancelLineId, setCancelLineId] = useState('');
   const [cancelReasonId, setCancelReasonId] = useState('');
   const [cancelDescription, setCancelDescription] = useState('Tedarik edilemedi');
+  const [trendyolInvoiceLink, setTrendyolInvoiceLink] = useState('');
+  const [trendyolInvoiceFileName, setTrendyolInvoiceFileName] = useState('fatura.pdf');
+  const [trendyolInvoiceFileContent, setTrendyolInvoiceFileContent] = useState('');
 
   const items = useMemo(() => payloadItems(order), [order]);
   const latestShipment = order?.shipments?.[0];
@@ -70,6 +73,7 @@ export function OrderDetailPage() {
   const marketplaceAccountId = order?.marketplace_account_id || order?.marketplaceAccount?.id;
   const providerPackageId = order?.provider_shipment_package_id || order?.marketplace_order_id;
   const marketplaceOps = asArray(order?.marketplace_operations || order?.marketplaceOperations);
+  const invoiceOps = marketplaceOps.filter((operation) => String(operation.operation_type || '').startsWith('invoice_'));
 
   const load = async () => {
     await run(async () => {
@@ -270,6 +274,52 @@ export function OrderDetailPage() {
     }, { onError: (message) => notify('error', message) });
   };
 
+  const sendTrendyolInvoiceLink = async () => {
+    if (!marketplaceAccountId || !providerPackageId || !trendyolInvoiceLink.trim()) {
+      notify('error', 'Trendyol magazasi, paket ID ve fatura linki zorunludur.');
+      return;
+    }
+
+    await run(async () => {
+      const response = await api.marketplaces.trendyolSendOrderInvoiceLink(marketplaceAccountId, order.id, {
+        shipmentPackageId: providerPackageId,
+        invoiceLink: trendyolInvoiceLink,
+      });
+      notify('success', response.operation?.error_message || response.message);
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
+  const deleteTrendyolInvoiceLink = async () => {
+    if (!marketplaceAccountId || !providerPackageId) {
+      notify('error', 'Trendyol magazasi veya paket ID bulunamadi.');
+      return;
+    }
+
+    await run(async () => {
+      const response = await api.marketplaces.trendyolDeleteOrderInvoiceLink(marketplaceAccountId, order.id);
+      notify('success', response.operation?.error_message || response.message);
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
+  const sendTrendyolInvoiceFile = async () => {
+    if (!marketplaceAccountId || !providerPackageId || !trendyolInvoiceFileName.trim() || !trendyolInvoiceFileContent.trim()) {
+      notify('error', 'Trendyol magazasi, paket ID, dosya adi ve base64 dosya icerigi zorunludur.');
+      return;
+    }
+
+    await run(async () => {
+      const response = await api.marketplaces.trendyolSendOrderInvoiceFile(marketplaceAccountId, order.id, {
+        shipmentPackageId: providerPackageId,
+        fileName: trendyolInvoiceFileName,
+        fileContent: trendyolInvoiceFileContent,
+      });
+      notify('success', response.operation?.error_message || response.message);
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
   if (loading && !order) return <LoadingState />;
 
   return (
@@ -447,6 +497,66 @@ export function OrderDetailPage() {
                     <small>{operation.created_at}</small>
                   </div>
                 )) : <div><strong>Operasyon kaydi yok</strong><span>Paket status ve tedarik aksiyonlari burada izlenir.</span></div>}
+              </div>
+            </section>
+          )}
+
+          {order.marketplace_code === 'trendyol' && (
+            <section className="panel trendyol-order-ops">
+              <div className="panel-heading">
+                <div>
+                  <span>Trendyol Fatura Operasyonu</span>
+                  <h2>Fatura linki ve dosyasi</h2>
+                </div>
+                <ReceiptText size={18} />
+              </div>
+              <div className="ops-warning">
+                <AlertTriangle size={18} />
+                <span>Canli fatura link/dosya islemleri guvenlik flag'i kapaliyken provider'a gonderilmez; islem dry-run olarak loglanir.</span>
+              </div>
+              <div className="trendyol-ops-grid">
+                <div>
+                  <span>Magaza</span>
+                  <strong>{order.marketplaceAccount?.name || marketplaceAccountId || '-'}</strong>
+                </div>
+                <div>
+                  <span>Shipment Package ID</span>
+                  <strong>{providerPackageId || '-'}</strong>
+                </div>
+                <div>
+                  <span>Son fatura operasyonu</span>
+                  <strong>{invoiceOps[0]?.operation_type || 'Kayit yok'}</strong>
+                </div>
+                <div>
+                  <span>Durum</span>
+                  <strong>{invoiceOps[0]?.status || order.invoice_status || '-'}</strong>
+                </div>
+              </div>
+              <div className="trendyol-ops-actions">
+                <label>
+                  Fatura PDF linki
+                  <input value={trendyolInvoiceLink} onChange={(event) => setTrendyolInvoiceLink(event.target.value)} placeholder="https://..." />
+                </label>
+                <button type="button" disabled={loading || !marketplaceAccountId || !providerPackageId} onClick={sendTrendyolInvoiceLink}>Fatura Linki Gonder</button>
+                <button type="button" className="secondary-button" disabled={loading || !marketplaceAccountId || !providerPackageId} onClick={deleteTrendyolInvoiceLink}>Fatura Linki Sil</button>
+                <label>
+                  Dosya adi
+                  <input value={trendyolInvoiceFileName} onChange={(event) => setTrendyolInvoiceFileName(event.target.value)} placeholder="fatura.pdf" />
+                </label>
+                <label>
+                  Base64 dosya
+                  <input value={trendyolInvoiceFileContent} onChange={(event) => setTrendyolInvoiceFileContent(event.target.value)} placeholder="Base64 PDF icerigi" />
+                </label>
+                <button type="button" disabled={loading || !marketplaceAccountId || !providerPackageId} onClick={sendTrendyolInvoiceFile}>Fatura Dosyasi Yukle</button>
+              </div>
+              <div className="orders-history-list">
+                {invoiceOps.length ? invoiceOps.slice(0, 6).map((operation) => (
+                  <div key={operation.id}>
+                    <strong>{operation.operation_type} - {operation.status}</strong>
+                    <span>{operation.error_message || operation.provider_shipment_package_id || '-'}</span>
+                    <small>{operation.created_at}</small>
+                  </div>
+                )) : <div><strong>Fatura operasyon kaydi yok</strong><span>Link, silme ve dosya yukleme aksiyonlari burada izlenir.</span></div>}
               </div>
             </section>
           )}

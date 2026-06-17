@@ -656,14 +656,30 @@ class TrendyolService extends AbstractMarketplaceService
 
     public function sendInvoiceLink(MarketplaceAccount $account, string $packageId, string $invoiceLink): array
     {
+        if (! filter_var($invoiceLink, FILTER_VALIDATE_URL)) {
+            throw new MarketplaceApiException('Gecerli fatura linki zorunludur.', 422);
+        }
+
         $endpoint = "/integration/sellers/{$account->supplier_id}/shipment-packages/{$packageId}/invoice-link";
         $response = $this->request($account, 'POST', $endpoint, ['invoiceLink' => $invoiceLink]);
 
         return ['message' => 'Fatura linki Trendyol paketine gonderildi.', 'result' => $response->json()];
     }
 
+    public function deleteInvoiceLink(MarketplaceAccount $account, string $packageId): array
+    {
+        $endpoint = "/integration/sellers/{$account->supplier_id}/shipment-packages/{$packageId}/invoice-link";
+        $response = $this->request($account, 'DELETE', $endpoint);
+
+        return ['message' => 'Fatura linki Trendyol paketinden silindi.', 'result' => $response->json()];
+    }
+
     public function sendInvoiceFile(MarketplaceAccount $account, string $packageId, string $fileName, string $fileContentBase64): array
     {
+        if ($fileName === '' || base64_decode($fileContentBase64, true) === false) {
+            throw new MarketplaceApiException('fileName ve gecerli base64 fileContent zorunludur.', 422);
+        }
+
         $endpoint = "/integration/sellers/{$account->supplier_id}/shipment-packages/{$packageId}/invoice-file";
         $response = $this->request($account, 'POST', $endpoint, ['fileName' => $fileName, 'fileContent' => $fileContentBase64]);
 
