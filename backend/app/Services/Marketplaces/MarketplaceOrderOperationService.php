@@ -209,6 +209,102 @@ class MarketplaceOrderOperationService
         });
     }
 
+    public function updateBoxInfo(MarketplaceAccount $account, Order $order, array $payload): MarketplaceOrderOperation
+    {
+        $this->assertAccountOrder($account, $order);
+        $shipmentPackageId = $this->shipmentPackageId($order, $payload);
+        $boxPayload = $this->boxInfoPayload($payload);
+
+        if (! $shipmentPackageId || $boxPayload === []) {
+            throw new MarketplaceApiException('shipmentPackageId ve en az bir desi/koli/agirluk bilgisi zorunludur.', 422);
+        }
+
+        return DB::transaction(function () use ($account, $order, $shipmentPackageId, $boxPayload) {
+            $operation = $this->createOperation($account, $order, null, 'cargo_box_info_update', $shipmentPackageId, [
+                'shipmentPackageId' => $shipmentPackageId,
+                'boxInfo' => $boxPayload,
+            ]);
+
+            if (! $this->liveCargoWritesEnabled()) {
+                return $this->markBlocked($operation, 'TRENDYOL_LIVE_CARGO_OPS_CONFIRMED=false oldugu icin canli desi/koli bilgisi gonderilmedi.', 'live_cargo_ops_disabled');
+            }
+
+            try {
+                $response = $this->trendyol->updateBoxInfo($account, $shipmentPackageId, $boxPayload);
+                $operation->update(['status' => 'success', 'response_payload' => $response]);
+                $order->update([
+                    'operation_flags' => array_merge($order->operation_flags ?? [], ['trendyol_box_info' => $boxPayload]),
+                    'last_synced_at' => now(),
+                ]);
+
+                return $operation->fresh();
+            } catch (MarketplaceApiException $exception) {
+                return $this->markFailed($operation, $exception);
+            }
+        });
+    }
+
+    public function changeCargoProvider(MarketplaceAccount $account, Order $order, array $payload): MarketplaceOrderOperation
+    {
+        $this->assertAccountOrder($account, $order);
+        $shipmentPackageId = $this->shipmentPackageId($order, $payload);
+        $cargoProviderId = (string) ($payload['cargoProviderId'] ?? $payload['cargo_provider_id'] ?? '');
+        $cargoProviderName = $payload['cargoProviderName'] ?? $payload['cargo_provider_name'] ?? null;
+
+        if (! $shipmentPackageId || $cargoProviderId === '') {
+            throw new MarketplaceApiException('shipmentPackageId ve cargoProviderId zorunludur.', 422);
+        }
+
+        return DB::transaction(function () use ($account, $order, $shipmentPackageId, $cargoProviderId, $cargoProviderName) {
+            $operation = $this->createOperation($account, $order, null, 'cargo_provider_change', $shipmentPackageId, [
+                'shipmentPackageId' => $shipmentPackageId,
+                'cargoProviderId' => $cargoProviderId,
+                'cargoProviderName' => $cargoProviderName,
+            ]);
+
+            if (! $this->liveCargoWritesEnabled()) {
+                return $this->markBlocked($operation, 'TRENDYOL_LIVE_CARGO_OPS_CONFIRMED=false oldugu icin canli kargo firmasi degisikligi gonderilmedi.', 'live_cargo_ops_disabled');
+            }
+
+            try {
+                $response = $this->trendyol->changeCargoProvider($account, $shipmentPackageId, $cargoProviderId);
+                $operation->update(['status' => 'success', 'response_payload' => $response]);
+                $order->update([
+                    'cargo_provider_id' => $cargoProviderId,
+                    'cargo_provider_name' => $cargoProviderName ?: $order->cargo_provider_name,
+                    'last_synced_at' => now(),
+                ]);
+
+                return $operation->fresh();
+            } catch (MarketplaceApiException $exception) {
+                return $this->markFailed($operation, $exception);
+            }
+        });
+    }
+
+    public function deliveredByService(MarketplaceAccount $account, Order $order, array $payload): MarketplaceOrderOperation
+    {
+        $this->assertAccountOrder($account, $order);
+        $shipmentPackageId = $this->shipmentPackageId($order, $payload);
+
+        if (! $shipmentPackageId) {
+            throw new MarketplaceApiException('shipmentPackageId zorunludur.', 422);
+        }
+
+        return DB::transaction(function () use ($account, $order, $shipmentPackageId, $payload) {
+            $operation = $this->createOperation($account, $order, null, 'cargo_delivered_by_service', $shipmentPackageId, [
+                'shipmentPackageId' => $shipmentPackageId,
+                'serviceDelivery' => array_filter([
+                    'serviceProvider' => $payload['serviceProvider'] ?? $payload['service_provider'] ?? null,
+                    'deliveryDate' => $payload['deliveryDate'] ?? $payload['delivery_date'] ?? null,
+                    'note' => $payload['note'] ?? null,
+                ], fn ($value) => $value !== null && $value !== ''),
+            ]);
+
+            return $this->markBlocked($operation, 'Yetkili servis teslimat bildirimi bu sprintte sadece dry-run olarak loglanir; canli provider cagrisi kapali.', 'cargo_delivered_by_service_deferred');
+        });
+    }
+
     private function assertAccountOrder(MarketplaceAccount $account, Order $order): void
     {
         if ($account->code !== 'trendyol') {
@@ -268,9 +364,25 @@ class MarketplaceOrderOperationService
         return filter_var(config('marketplaces.trendyol.live_invoice_ops_confirmed', env('TRENDYOL_LIVE_INVOICE_OPS_CONFIRMED', false)), FILTER_VALIDATE_BOOLEAN);
     }
 
+    private function liveCargoWritesEnabled(): bool
+    {
+        return filter_var(config('marketplaces.trendyol.live_cargo_ops_confirmed', env('TRENDYOL_LIVE_CARGO_OPS_CONFIRMED', false)), FILTER_VALIDATE_BOOLEAN);
+    }
+
     private function shipmentPackageId(Order $order, array $payload): string
     {
         return (string) ($payload['shipmentPackageId'] ?? $payload['shipment_package_id'] ?? $order->provider_shipment_package_id);
+    }
+
+    private function boxInfoPayload(array $payload): array
+    {
+        return array_filter([
+            'desi' => isset($payload['desi']) ? (float) $payload['desi'] : null,
+            'boxQuantity' => isset($payload['boxQuantity']) || isset($payload['box_quantity'])
+                ? (int) ($payload['boxQuantity'] ?? $payload['box_quantity'])
+                : null,
+            'weight' => isset($payload['weight']) ? (float) $payload['weight'] : null,
+        ], fn ($value) => $value !== null && $value > 0);
     }
 
     private function maskInvoicePayload(array $payload): array

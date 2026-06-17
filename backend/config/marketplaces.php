@@ -7,6 +7,7 @@ return [
         'live_test_order_confirmed' => env('TRENDYOL_LIVE_TEST_ORDER_CONFIRMED', false),
         'live_return_ops_confirmed' => env('TRENDYOL_LIVE_RETURN_OPS_CONFIRMED', false),
         'live_invoice_ops_confirmed' => env('TRENDYOL_LIVE_INVOICE_OPS_CONFIRMED', false),
+        'live_cargo_ops_confirmed' => env('TRENDYOL_LIVE_CARGO_OPS_CONFIRMED', false),
         'timeout' => env('TRENDYOL_TIMEOUT', 20),
         'rate_limit_attempts' => env('TRENDYOL_RATE_LIMIT_ATTEMPTS', 50),
         'rate_limit_decay' => env('TRENDYOL_RATE_LIMIT_DECAY', 10),

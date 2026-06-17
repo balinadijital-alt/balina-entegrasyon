@@ -65,6 +65,13 @@ export function OrderDetailPage() {
   const [trendyolInvoiceLink, setTrendyolInvoiceLink] = useState('');
   const [trendyolInvoiceFileName, setTrendyolInvoiceFileName] = useState('fatura.pdf');
   const [trendyolInvoiceFileContent, setTrendyolInvoiceFileContent] = useState('');
+  const [trendyolCargoProviders, setTrendyolCargoProviders] = useState([]);
+  const [cargoProviderId, setCargoProviderId] = useState('');
+  const [cargoProviderName, setCargoProviderName] = useState('');
+  const [cargoDesi, setCargoDesi] = useState('');
+  const [cargoBoxQuantity, setCargoBoxQuantity] = useState('1');
+  const [cargoWeight, setCargoWeight] = useState('');
+  const [cargoServiceProvider, setCargoServiceProvider] = useState('');
 
   const items = useMemo(() => payloadItems(order), [order]);
   const latestShipment = order?.shipments?.[0];
@@ -74,6 +81,7 @@ export function OrderDetailPage() {
   const providerPackageId = order?.provider_shipment_package_id || order?.marketplace_order_id;
   const marketplaceOps = asArray(order?.marketplace_operations || order?.marketplaceOperations);
   const invoiceOps = marketplaceOps.filter((operation) => String(operation.operation_type || '').startsWith('invoice_'));
+  const cargoOps = marketplaceOps.filter((operation) => String(operation.operation_type || '').startsWith('cargo_'));
 
   const load = async () => {
     await run(async () => {
@@ -90,6 +98,18 @@ export function OrderDetailPage() {
       setNextStatus(orderResponse.status || 'preparing');
       setPackageStatus(orderResponse.provider_package_status || 'Picking');
       setCancelLineId(asArray(orderResponse.items)[0]?.provider_line_id || '');
+      setCargoProviderId(orderResponse.cargo_provider_id || '');
+      setCargoProviderName(orderResponse.cargo_provider_name || '');
+      if (orderResponse.marketplace_code === 'trendyol' && (orderResponse.marketplace_account_id || orderResponse.marketplaceAccount?.id)) {
+        try {
+          const cargoResponse = await api.marketplaces.trendyolCargoProviders(orderResponse.marketplace_account_id || orderResponse.marketplaceAccount?.id);
+          setTrendyolCargoProviders(asArray(cargoResponse.providers));
+        } catch {
+          setTrendyolCargoProviders([]);
+        }
+      } else {
+        setTrendyolCargoProviders([]);
+      }
     });
   };
 
@@ -320,6 +340,58 @@ export function OrderDetailPage() {
     }, { onError: (message) => notify('error', message) });
   };
 
+  const updateTrendyolBoxInfo = async () => {
+    if (!marketplaceAccountId || !providerPackageId || (!cargoDesi && !cargoBoxQuantity && !cargoWeight)) {
+      notify('error', 'Trendyol magazasi, paket ID ve en az bir desi/koli/agirluk alani zorunludur.');
+      return;
+    }
+
+    await run(async () => {
+      const response = await api.marketplaces.trendyolUpdateBoxInfo(marketplaceAccountId, order.id, {
+        shipmentPackageId: providerPackageId,
+        desi: cargoDesi,
+        boxQuantity: cargoBoxQuantity,
+        weight: cargoWeight,
+      });
+      notify('success', response.operation?.error_message || response.message);
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
+  const changeTrendyolCargoProvider = async () => {
+    if (!marketplaceAccountId || !providerPackageId || !cargoProviderId.trim()) {
+      notify('error', 'Trendyol magazasi, paket ID ve kargo firmasi zorunludur.');
+      return;
+    }
+
+    await run(async () => {
+      const selected = trendyolCargoProviders.find((provider) => String(provider.id) === String(cargoProviderId));
+      const response = await api.marketplaces.trendyolChangeCargoProvider(marketplaceAccountId, order.id, {
+        shipmentPackageId: providerPackageId,
+        cargoProviderId,
+        cargoProviderName: selected?.name || cargoProviderName,
+      });
+      notify('success', response.operation?.error_message || response.message);
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
+  const markTrendyolDeliveredByService = async () => {
+    if (!marketplaceAccountId || !providerPackageId) {
+      notify('error', 'Trendyol magazasi veya paket ID bulunamadi.');
+      return;
+    }
+
+    await run(async () => {
+      const response = await api.marketplaces.trendyolDeliveredByService(marketplaceAccountId, order.id, {
+        shipmentPackageId: providerPackageId,
+        serviceProvider: cargoServiceProvider,
+      });
+      notify('success', response.operation?.error_message || response.message);
+      await load();
+    }, { onError: (message) => notify('error', message) });
+  };
+
   if (loading && !order) return <LoadingState />;
 
   return (
@@ -497,6 +569,80 @@ export function OrderDetailPage() {
                     <small>{operation.created_at}</small>
                   </div>
                 )) : <div><strong>Operasyon kaydi yok</strong><span>Paket status ve tedarik aksiyonlari burada izlenir.</span></div>}
+              </div>
+            </section>
+          )}
+
+          {order.marketplace_code === 'trendyol' && (
+            <section className="panel trendyol-order-ops">
+              <div className="panel-heading">
+                <div>
+                  <span>Trendyol Kargo Operasyonlari</span>
+                  <h2>Desi, koli ve kargo firmasi</h2>
+                </div>
+                <Truck size={18} />
+              </div>
+              <div className="ops-warning">
+                <AlertTriangle size={18} />
+                <span>Canli desi/koli, kargo firmasi ve yetkili servis teslimat islemleri guvenlik flag'i kapaliyken provider'a gonderilmez; islem dry-run olarak loglanir.</span>
+              </div>
+              <div className="trendyol-ops-grid">
+                <div>
+                  <span>Mevcut kargo</span>
+                  <strong>{order.cargo_provider_name || order.cargo_provider_id || '-'}</strong>
+                </div>
+                <div>
+                  <span>Takip no</span>
+                  <strong>{order.cargo_tracking_number || '-'}</strong>
+                </div>
+                <div>
+                  <span>Kargo firmasi listesi</span>
+                  <strong>{trendyolCargoProviders.length ? `${trendyolCargoProviders.length} firma` : 'Liste bekleniyor'}</strong>
+                </div>
+                <div>
+                  <span>Son kargo operasyonu</span>
+                  <strong>{cargoOps[0]?.operation_type || 'Kayit yok'}</strong>
+                </div>
+              </div>
+              <div className="trendyol-ops-actions">
+                <label>
+                  Desi
+                  <input value={cargoDesi} onChange={(event) => setCargoDesi(event.target.value)} placeholder="Orn. 3.5" inputMode="decimal" />
+                </label>
+                <label>
+                  Koli adedi
+                  <input value={cargoBoxQuantity} onChange={(event) => setCargoBoxQuantity(event.target.value)} placeholder="1" inputMode="numeric" />
+                </label>
+                <label>
+                  Agirlik
+                  <input value={cargoWeight} onChange={(event) => setCargoWeight(event.target.value)} placeholder="kg" inputMode="decimal" />
+                </label>
+                <button type="button" disabled={loading || !marketplaceAccountId || !providerPackageId} onClick={updateTrendyolBoxInfo}>Desi/Koli Kaydet</button>
+                <label>
+                  Kargo firmasi
+                  <select value={cargoProviderId} onChange={(event) => {
+                    setCargoProviderId(event.target.value);
+                    setCargoProviderName(trendyolCargoProviders.find((provider) => String(provider.id) === String(event.target.value))?.name || '');
+                  }}>
+                    <option value="">Firma sec</option>
+                    {trendyolCargoProviders.map((provider) => <option key={`${provider.id}-${provider.name}`} value={provider.id}>{provider.name || provider.id}</option>)}
+                  </select>
+                </label>
+                <button type="button" className="secondary-button" disabled={loading || !marketplaceAccountId || !providerPackageId} onClick={changeTrendyolCargoProvider}>Kargo Firmasini Degistir</button>
+                <label>
+                  Yetkili servis
+                  <input value={cargoServiceProvider} onChange={(event) => setCargoServiceProvider(event.target.value)} placeholder="Servis adi" />
+                </label>
+                <button type="button" className="secondary-button" disabled={loading || !marketplaceAccountId || !providerPackageId} onClick={markTrendyolDeliveredByService}>Servis Teslimati Dry-run</button>
+              </div>
+              <div className="orders-history-list">
+                {cargoOps.length ? cargoOps.slice(0, 6).map((operation) => (
+                  <div key={operation.id}>
+                    <strong>{operation.operation_type} - {operation.status}</strong>
+                    <span>{operation.error_message || operation.provider_shipment_package_id || '-'}</span>
+                    <small>{operation.created_at}</small>
+                  </div>
+                )) : <div><strong>Kargo operasyon kaydi yok</strong><span>Desi/koli ve firma degisikligi aksiyonlari burada izlenir.</span></div>}
               </div>
             </section>
           )}

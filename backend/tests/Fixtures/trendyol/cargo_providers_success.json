@@ -1,0 +1,14 @@
+{
+  "providers": [
+    {
+      "id": 10,
+      "name": "Masked Cargo",
+      "code": "MASKED"
+    },
+    {
+      "cargoProviderId": 20,
+      "cargoProviderName": "Masked Express",
+      "cargoCode": "MEXP"
+    }
+  ]
+}

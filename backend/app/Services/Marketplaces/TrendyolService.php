@@ -691,6 +691,62 @@ class TrendyolService extends AbstractMarketplaceService
         return $this->genericSellerGet($account, 'common-label-barcode', '/integration/order/sellers/%s/common-label/barcodes', $query);
     }
 
+    public function cargoProviders(MarketplaceAccount $account, array $query = []): array
+    {
+        $this->assertTrendyolAccount($account);
+
+        $response = $this->request($account, 'GET', "/integration/order/sellers/{$account->supplier_id}/cargo-providers", $query);
+        $raw = $response->json();
+        $providers = collect($raw['content'] ?? $raw['providers'] ?? $raw['cargoProviders'] ?? $raw)
+            ->filter(fn ($provider) => is_array($provider))
+            ->map(fn (array $provider) => [
+                'id' => (string) ($provider['id'] ?? $provider['cargoProviderId'] ?? $provider['providerId'] ?? $provider['code'] ?? ''),
+                'name' => (string) ($provider['name'] ?? $provider['cargoProviderName'] ?? $provider['providerName'] ?? $provider['title'] ?? ''),
+                'code' => (string) ($provider['code'] ?? $provider['cargoCode'] ?? ''),
+                'raw' => $this->maskProviderPayload($provider),
+            ])
+            ->filter(fn (array $provider) => $provider['id'] !== '' || $provider['name'] !== '')
+            ->values()
+            ->all();
+
+        return [
+            'message' => 'Trendyol kargo firmalari cekildi.',
+            'providers' => $providers,
+            'raw' => $this->maskProviderPayload(is_array($raw) ? $raw : []),
+            'fetched_at' => now()->toISOString(),
+        ];
+    }
+
+    public function updateBoxInfo(MarketplaceAccount $account, string $shipmentPackageId, array $payload): array
+    {
+        $this->assertTrendyolAccount($account);
+
+        $endpoint = "/integration/order/sellers/{$account->supplier_id}/shipment-packages/{$shipmentPackageId}/box-info";
+        $response = $this->request($account, 'PUT', $endpoint, $payload);
+
+        return ['message' => 'Trendyol desi/koli bilgisi guncellendi.', 'result' => $response->json()];
+    }
+
+    public function changeCargoProvider(MarketplaceAccount $account, string $shipmentPackageId, string $cargoProviderId): array
+    {
+        $this->assertTrendyolAccount($account);
+
+        $endpoint = "/integration/order/sellers/{$account->supplier_id}/shipment-packages/{$shipmentPackageId}/cargo-provider";
+        $response = $this->request($account, 'PUT', $endpoint, ['cargoProviderId' => $cargoProviderId]);
+
+        return ['message' => 'Trendyol kargo firmasi guncellendi.', 'cargo_provider_id' => $cargoProviderId, 'result' => $response->json()];
+    }
+
+    public function deliveredByService(MarketplaceAccount $account, string $shipmentPackageId, array $payload): array
+    {
+        $this->assertTrendyolAccount($account);
+
+        $endpoint = "/integration/order/sellers/{$account->supplier_id}/shipment-packages/{$shipmentPackageId}/delivered-by-service";
+        $response = $this->request($account, 'PUT', $endpoint, $payload);
+
+        return ['message' => 'Trendyol yetkili servis teslimat bilgisi guncellendi.', 'result' => $response->json()];
+    }
+
     public function webhookPackages(MarketplaceAccount $account, array $payload): array
     {
         $orders = collect($payload['packages'] ?? $payload['content'] ?? [$payload])->filter(fn ($item) => is_array($item));

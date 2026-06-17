@@ -1,0 +1,4 @@
+{
+  "code": "CARGO_PROVIDER_INVALID",
+  "message": "Cargo provider is not available for this package"
+}

@@ -197,8 +197,12 @@ Route::middleware(['auth:sanctum', 'throttle:api', 'tenant.company'])->group(fun
         Route::get('/orders/stream', [TrendyolController::class, 'pullOrdersStream']);
         Route::post('/test-orders', [TrendyolController::class, 'createTestOrder'])->middleware('permission:marketplaces.manage');
         Route::post('/test-orders/{packageId}/status', [TrendyolController::class, 'updateTestOrderStatus'])->middleware('permission:marketplaces.manage');
+        Route::get('/cargo-providers', [TrendyolController::class, 'cargoProviders']);
         Route::post('/orders/{order}/package-status', [TrendyolController::class, 'updatePackageStatus'])->middleware('permission:marketplaces.send');
         Route::post('/orders/{order}/cancel-item', [TrendyolController::class, 'cancelPackageItem'])->middleware('permission:marketplaces.send');
+        Route::post('/orders/{order}/box-info', [TrendyolController::class, 'updateBoxInfo'])->middleware('permission:marketplaces.send');
+        Route::post('/orders/{order}/cargo-provider', [TrendyolController::class, 'changeCargoProvider'])->middleware('permission:marketplaces.send');
+        Route::post('/orders/{order}/delivered-by-service', [TrendyolController::class, 'deliveredByService'])->middleware('permission:marketplaces.send');
         Route::post('/orders/{order}/invoice-link', [TrendyolController::class, 'sendOrderInvoiceLink'])->middleware('permission:marketplaces.send');
         Route::delete('/orders/{order}/invoice-link', [TrendyolController::class, 'deleteInvoiceLink'])->middleware('permission:marketplaces.send');
         Route::post('/orders/{order}/invoice-file', [TrendyolController::class, 'sendOrderInvoiceFile'])->middleware('permission:marketplaces.send');
