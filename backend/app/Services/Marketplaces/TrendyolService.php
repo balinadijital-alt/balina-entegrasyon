@@ -541,7 +541,7 @@ class TrendyolService extends AbstractMarketplaceService
     public function getClaimIssueReasons(MarketplaceAccount $account, array $query = []): array
     {
         $this->assertTrendyolAccount($account);
-        $endpoint = "/integration/order/sellers/{$account->supplier_id}/claims/issue-reasons";
+        $endpoint = '/integration/order/claim-issue-reasons';
         $response = $this->request($account, 'GET', $endpoint, $query);
         $raw = $response->json();
         $reasons = collect($raw['reasons'] ?? $raw['content'] ?? $raw)
@@ -1013,10 +1013,12 @@ class TrendyolService extends AbstractMarketplaceService
                 ?? $response->json('error')
                 ?? $response->json('errors.0.message')
                 ?? 'Trendyol API istegi basarisiz oldu.';
+            $markConnectionFailed = $response->status() === 401
+                && ! Str::contains($endpoint, '/claim-issue-reasons');
 
             $account->update([
-                'connection_status' => $response->status() === 401 ? 'failed' : $account->connection_status,
-                'connection_checked_at' => $response->status() === 401 ? now() : $account->connection_checked_at,
+                'connection_status' => $markConnectionFailed ? 'failed' : $account->connection_status,
+                'connection_checked_at' => $markConnectionFailed ? now() : $account->connection_checked_at,
                 'last_error' => $message,
             ]);
 

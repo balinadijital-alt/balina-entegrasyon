@@ -8,6 +8,7 @@ use App\Models\MarketplaceReturnClaim;
 use App\Models\MarketplaceReturnClaimItem;
 use App\Models\MarketplaceReturnOperation;
 use App\Models\User;
+use App\Exceptions\MarketplaceApiException;
 use App\Services\Marketplaces\TrendyolService;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -168,6 +169,25 @@ class TrendyolReturnOpsTest extends TestCase
             'operation_type' => 'return_reason_sync',
             'status' => 'success',
         ]);
+        Http::assertSent(fn ($request) => $request->method() === 'GET'
+            && str_contains($request->url(), '/integration/order/claim-issue-reasons')
+            && ! str_contains($request->url(), '/claims/issue-reasons'));
+    }
+
+    public function test_issue_reasons_unauthorized_does_not_mark_connected_account_failed(): void
+    {
+        $account = $this->trendyolAccount(['connection_status' => 'connected']);
+        Http::fake(['*' => Http::response([], 401)]);
+
+        $this->expectException(MarketplaceApiException::class);
+
+        try {
+            app(TrendyolService::class)->getClaimIssueReasons($account);
+        } finally {
+            $this->assertSame('connected', $account->fresh()->connection_status);
+            Http::assertSent(fn ($request) => $request->method() === 'GET'
+                && str_contains($request->url(), '/integration/order/claim-issue-reasons'));
+        }
     }
 
     public function test_create_claim_issue_requires_reason(): void
