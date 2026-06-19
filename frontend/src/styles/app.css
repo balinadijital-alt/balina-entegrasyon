@@ -1837,6 +1837,661 @@ a {
   color: #dbeafe;
 }
 
+/* Trendyol publish pool UX */
+.trendyol-pool-hero,
+.trendyol-history-panel,
+.trendyol-product-panel,
+.trendyol-pool-sticky {
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.07);
+}
+
+.trendyol-pool-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px;
+  margin-bottom: 18px;
+}
+
+.trendyol-pool-hero span,
+.trendyol-history-panel header span,
+.trendyol-pool-sticky header span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.trendyol-pool-hero h2,
+.trendyol-history-panel h2 {
+  margin: 8px 0;
+  color: #0f172a;
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.trendyol-pool-hero p {
+  margin: 0;
+  max-width: 720px;
+  color: #64748b;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.trendyol-pool-account {
+  display: grid;
+  gap: 10px;
+  min-width: 280px;
+}
+
+.trendyol-pool-account label,
+.trendyol-pool-panel label {
+  display: grid;
+  gap: 7px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.trendyol-pool-account select,
+.trendyol-pool-panel select,
+.trendyol-pool-panel input,
+.trendyol-filter-bar select,
+.trendyol-filter-bar input {
+  width: 100%;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.trendyol-pool-account small {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-weight: 800;
+}
+
+.pool-disabled-reason {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.trendyol-pool-account small.ready {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.trendyol-pool-account small.blocked {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.trendyol-status-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.trendyol-status-grid button {
+  border: 1px solid #dbe3ef;
+  border-radius: 16px;
+  background: #fff;
+  color: #334155;
+  padding: 16px;
+  text-align: left;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+}
+
+.trendyol-status-grid button span {
+  display: block;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.trendyol-status-grid button strong {
+  display: block;
+  margin-top: 8px;
+  color: #0f172a;
+  font-size: 30px;
+}
+
+.trendyol-status-grid button.active {
+  outline: 2px solid #2563eb;
+}
+
+.trendyol-status-grid button.ready {
+  border-color: #bbf7d0;
+}
+
+.trendyol-status-grid button.blocked {
+  border-color: #fed7aa;
+}
+
+.trendyol-status-grid button.progress {
+  border-color: #bfdbfe;
+}
+
+.trendyol-publish-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  align-items: start;
+  gap: 18px;
+}
+
+.trendyol-product-panel {
+  overflow: hidden;
+}
+
+.trendyol-filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.trendyol-filter-bar .resource-search {
+  flex: 1 1 260px;
+  margin: 0;
+}
+
+.trendyol-filter-bar select {
+  max-width: 180px;
+}
+
+.toggle-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.trendyol-mobile-summary {
+  display: none;
+}
+
+.trendyol-product-table,
+.trendyol-history-table {
+  overflow-x: auto;
+}
+
+.trendyol-product-table table,
+.trendyol-history-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.trendyol-product-table th,
+.trendyol-product-table td,
+.trendyol-history-table th,
+.trendyol-history-table td {
+  border-bottom: 1px solid #edf2f7;
+  padding: 14px 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.trendyol-product-table th,
+.trendyol-history-table th {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.trendyol-product-table td {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.trendyol-product-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 230px;
+}
+
+.trendyol-product-cell strong,
+.trendyol-pool-list strong {
+  display: block;
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.trendyol-product-cell small {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.trendyol-product-thumb {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.trendyol-product-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pool-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.pool-badge.ready {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.pool-badge.blocked {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.pool-badge.progress {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.trendyol-pool-panel {
+  position: relative;
+}
+
+.trendyol-pool-sticky {
+  position: sticky;
+  top: 18px;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.trendyol-pool-sticky header strong {
+  display: block;
+  margin-top: 5px;
+  color: #0f172a;
+  font-size: 22px;
+}
+
+.trendyol-pool-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.trendyol-pool-metrics div {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 10px;
+}
+
+.trendyol-pool-metrics span,
+.trendyol-pool-panel label span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.trendyol-pool-metrics strong {
+  display: block;
+  margin-top: 4px;
+  color: #0f172a;
+  font-size: 20px;
+}
+
+.pool-warning,
+.pool-success {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  border-radius: 14px;
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.pool-warning {
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fed7aa;
+}
+
+.pool-success {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #bbf7d0;
+}
+
+.trendyol-pool-list {
+  display: grid;
+  gap: 8px;
+}
+
+.trendyol-pool-list > div:not(.soft-empty) {
+  display: grid;
+  grid-template-columns: minmax(0, 72px) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 9px;
+}
+
+.trendyol-pool-list span {
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.trendyol-pool-list strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trendyol-pool-list button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  padding: 0;
+}
+
+.trendyol-history-panel {
+  margin-top: 18px;
+  overflow: hidden;
+}
+
+.trendyol-history-panel > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 18px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.trendyol-history-panel h2 {
+  margin: 4px 0 0;
+  font-size: 22px;
+}
+
+.pool-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.pool-drawer {
+  width: min(520px, 100%);
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 16px;
+  overflow-y: auto;
+  background: #fff;
+  box-shadow: -20px 0 60px rgba(15, 23, 42, 0.18);
+  padding: 22px;
+}
+
+.pool-drawer header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.pool-drawer header span {
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.pool-drawer header h2 {
+  margin: 6px 0;
+  color: #0f172a;
+  font-size: 24px;
+}
+
+.pool-drawer header p {
+  margin: 0;
+  color: #64748b;
+}
+
+.pool-drawer-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pool-drawer-summary div {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 12px;
+}
+
+.pool-drawer-summary span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pool-drawer-summary strong {
+  display: block;
+  margin-top: 5px;
+  color: #0f172a;
+}
+
+.pool-missing-list {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.pool-missing-list > div {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+  padding: 12px;
+}
+
+.pool-missing-list strong,
+.pool-missing-list span {
+  display: block;
+}
+
+.pool-missing-list strong {
+  color: #0f172a;
+}
+
+.pool-missing-list span {
+  margin-top: 4px;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.pool-missing-list details {
+  margin-top: 8px;
+  color: #475569;
+}
+
+.pool-missing-list code {
+  display: block;
+  margin-top: 6px;
+  padding: 8px;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #e2e8f0;
+  white-space: pre-wrap;
+}
+
+.pool-drawer footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 14px;
+}
+
+.pool-confirm-modal {
+  max-width: 620px;
+}
+
+@media (max-width: 1180px) {
+  .trendyol-publish-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .trendyol-pool-sticky {
+    position: static;
+  }
+}
+
+@media (max-width: 820px) {
+  .trendyol-pool-hero,
+  .trendyol-history-panel > header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .trendyol-pool-account {
+    min-width: 0;
+  }
+
+  .trendyol-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .trendyol-filter-bar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .trendyol-filter-bar select {
+    max-width: none;
+  }
+
+  .trendyol-mobile-summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    color: #64748b;
+  }
+
+  .trendyol-product-table table,
+  .trendyol-product-table thead,
+  .trendyol-product-table tbody,
+  .trendyol-product-table tr,
+  .trendyol-product-table td {
+    display: block;
+  }
+
+  .trendyol-product-table thead {
+    display: none;
+  }
+
+  .trendyol-product-table tr {
+    margin: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .trendyol-product-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    border-bottom: 1px solid #f1f5f9;
+    padding: 12px;
+  }
+
+  .trendyol-product-table td::before {
+    content: attr(data-label);
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  .trendyol-product-table td[data-label="Ürün"],
+  .trendyol-product-table td[data-label="Aksiyon"] {
+    display: block;
+  }
+
+  .trendyol-product-table td[data-label="Ürün"]::before,
+  .trendyol-product-table td[data-label="Aksiyon"]::before {
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .pool-drawer-summary,
+  .trendyol-pool-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .pool-drawer footer {
+    display: grid;
+  }
+
+  .pool-drawer footer button,
+  .pool-drawer footer .button-link {
+    width: 100%;
+  }
+}
+
 /* Mobile shell hardening: the sidebar must behave as a full drawer, never as a compact desktop rail. */
 @media (max-width: 1024px) {
   html,

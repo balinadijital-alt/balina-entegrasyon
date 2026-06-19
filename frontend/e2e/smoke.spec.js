@@ -10,7 +10,7 @@ const smokeRoutes = [
   { path: '/marketplace-mapping/brands', title: 'Marka Eslestirme' },
   { path: '/marketplace-mapping/attributes', title: 'Ozellik / Nitelik Eslestirme' },
   { path: '/marketplace-mapping/variants', title: 'Varyant Eslestirme' },
-  { path: '/products/publish-wizard', title: 'Toplu Pazaryeri Islemleri' },
+  { path: '/products/publish-wizard', title: 'Trendyol Ürün Gönderimi' },
   { path: '/products/publish-queue', title: 'Pazaryeri Monitoru' },
   { path: '/imports', title: 'XML / Excel Import Merkezi' },
   { path: '/orders', title: 'Siparisler' },

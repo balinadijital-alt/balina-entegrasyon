@@ -75,7 +75,7 @@ export const appNavigationGroups = [
     items: [
       { to: '/marketplaces', label: 'Pazaryeri Entegrasyonlari', icon: Link2, end: true, permissions: ['marketplaces.manage'] },
       { to: '/marketplace-mapping', label: 'Pazaryeri Eslestirmeleri', icon: Tags, permissions: ['marketplaces.manage'] },
-      { to: '/products/publish-wizard', label: 'Toplu Pazaryeri Islemleri', icon: Send, permissions: ['marketplaces.send'] },
+      { to: '/products/publish-wizard', label: 'Trendyol Urun Gonderimi', icon: Send, permissions: ['marketplaces.send'] },
       { to: '/products/publish-queue', label: 'Pazaryeri Monitoru', icon: ClipboardList, permissions: ['marketplaces.send'] },
       { to: '/marketplaces/onboarding', label: 'Kurulum Sihirbazi', icon: Rocket, permissions: ['marketplaces.manage'] },
       { to: '/marketplaces/trendyol', label: 'Trendyol', icon: ShoppingBag, permissions: ['marketplaces.manage'] },
