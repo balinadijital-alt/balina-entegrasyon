@@ -11,7 +11,12 @@ return new class extends Migration
     {
         if (Schema::hasTable('marketplace_accounts')) {
             Schema::table('marketplace_accounts', function (Blueprint $table) {
-                $this->dropIndexIfExists($table->getTable(), 'marketplace_accounts_company_id_code_unique', 'unique');
+                try {
+                    $this->dropIndexIfExists($table->getTable(), 'marketplace_accounts_company_id_code_unique', 'unique');
+                } catch (\Throwable) {
+                    // Some production MySQL variants require this index for existing FK constraints.
+                }
+
                 $this->addIndexIfMissing($table->getTable(), 'marketplace_accounts_company_id_code_index', fn () => $table->index(['company_id', 'code'], 'marketplace_accounts_company_id_code_index'));
             });
         }

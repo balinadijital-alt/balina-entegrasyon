@@ -41,46 +41,50 @@ return new class extends Migration
             }
         });
 
-        Schema::create('order_items', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('order_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('marketplace_account_id')->nullable()->constrained('marketplace_accounts')->nullOnDelete();
-            $table->string('marketplace_code')->default('trendyol');
-            $table->string('provider_line_id')->nullable();
-            $table->string('barcode')->nullable();
-            $table->string('sku')->nullable();
-            $table->string('name')->nullable();
-            $table->unsignedInteger('quantity')->default(1);
-            $table->decimal('unit_price', 12, 2)->nullable();
-            $table->string('provider_status')->nullable();
-            $table->string('cancel_reason_id')->nullable();
-            $table->json('provider_payload')->nullable();
-            $table->timestamps();
+        if (! Schema::hasTable('order_items')) {
+            Schema::create('order_items', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('order_id')->constrained()->cascadeOnDelete();
+                $table->foreignId('marketplace_account_id')->nullable()->constrained('marketplace_accounts')->nullOnDelete();
+                $table->string('marketplace_code', 80)->default('trendyol');
+                $table->string('provider_line_id', 120)->nullable();
+                $table->string('barcode', 120)->nullable();
+                $table->string('sku', 120)->nullable();
+                $table->string('name')->nullable();
+                $table->unsignedInteger('quantity')->default(1);
+                $table->decimal('unit_price', 12, 2)->nullable();
+                $table->string('provider_status', 80)->nullable();
+                $table->string('cancel_reason_id', 120)->nullable();
+                $table->json('provider_payload')->nullable();
+                $table->timestamps();
 
-            $table->unique(['order_id', 'provider_line_id'], 'order_items_order_provider_line_unique');
-            $table->index(['marketplace_account_id', 'marketplace_code'], 'order_items_account_marketplace_index');
-            $table->index('barcode');
-            $table->index('sku');
-        });
+                $table->unique(['order_id', 'provider_line_id'], 'order_items_order_provider_line_unique');
+                $table->index(['marketplace_account_id', 'marketplace_code'], 'order_items_account_marketplace_index');
+                $table->index('barcode');
+                $table->index('sku');
+            });
+        }
 
-        Schema::create('marketplace_order_operations', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('marketplace_account_id')->constrained('marketplace_accounts')->cascadeOnDelete();
-            $table->string('marketplace_code')->default('trendyol');
-            $table->foreignId('order_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('order_item_id')->nullable()->constrained('order_items')->nullOnDelete();
-            $table->string('provider_shipment_package_id')->nullable();
-            $table->string('operation_type');
-            $table->json('request_payload')->nullable();
-            $table->json('response_payload')->nullable();
-            $table->string('status')->default('pending');
-            $table->string('error_code')->nullable();
-            $table->text('error_message')->nullable();
-            $table->timestamps();
+        if (! Schema::hasTable('marketplace_order_operations')) {
+            Schema::create('marketplace_order_operations', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('marketplace_account_id')->constrained('marketplace_accounts')->cascadeOnDelete();
+                $table->string('marketplace_code', 80)->default('trendyol');
+                $table->foreignId('order_id')->constrained()->cascadeOnDelete();
+                $table->foreignId('order_item_id')->nullable()->constrained('order_items')->nullOnDelete();
+                $table->string('provider_shipment_package_id', 120)->nullable();
+                $table->string('operation_type', 80);
+                $table->json('request_payload')->nullable();
+                $table->json('response_payload')->nullable();
+                $table->string('status', 80)->default('pending');
+                $table->string('error_code', 120)->nullable();
+                $table->text('error_message')->nullable();
+                $table->timestamps();
 
-            $table->index(['marketplace_account_id', 'operation_type', 'status'], 'marketplace_order_ops_account_type_status_index');
-            $table->index(['order_id', 'created_at'], 'marketplace_order_ops_order_created_index');
-        });
+                $table->index(['marketplace_account_id', 'operation_type', 'status'], 'marketplace_order_ops_account_type_status_index');
+                $table->index(['order_id', 'created_at'], 'marketplace_order_ops_order_created_index');
+            });
+        }
     }
 
     public function down(): void
