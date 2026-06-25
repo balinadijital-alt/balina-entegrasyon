@@ -111,7 +111,7 @@ export const api = {
     show: (id) => http.get(`/products/${id}`).then((response) => response.data),
     create: (payload) => http.post('/products', payload).then((response) => response.data),
     update: (id, payload) => http.put(`/products/${id}`, payload).then((response) => response.data),
-    readiness: (id) => http.get(`/products/${id}/readiness`).then((response) => response.data),
+    readiness: (id, params) => http.get(`/products/${id}/readiness`, { params }).then((response) => response.data),
     import: (payload) => http.post('/products/import', payload).then((response) => response.data),
     uploadImage: (productId, payload) => http.post(`/products/${productId}/images`, payload).then((response) => response.data),
   },

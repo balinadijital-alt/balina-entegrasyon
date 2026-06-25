@@ -92,10 +92,13 @@ class ProductReadinessService
             'cargo' => filled($resolver->value($product, 'shipping_type')) || (float) $resolver->value($product, 'dimensional_weight') > 0 || (float) $resolver->value($product, 'weight') > 0,
         ];
 
+        $missingDetails = [];
+
         if ($marketplace === 'trendyol') {
             $checks['marketplace_category'] = filled($resolver->value($product, 'trendyol_category_id'));
             $checks['category_mapping'] = $this->hasCategoryMapping($product, $marketplace, $resolver, $account);
             $checks['required_attributes'] = $this->hasRequiredCatalogAttributes($product, $resolver);
+            $missingDetails['required_attributes'] = $this->requiredCatalogAttributeDiagnostics($product, $resolver);
             $this->appendMappingCenterChecks($checks, $product, $marketplace, $account);
         }
 
@@ -120,6 +123,7 @@ class ProductReadinessService
             'ready' => count($missing) === 0,
             'score' => (int) round(($passed / max(count($checks), 1)) * 100),
             'missing_fields' => $missing,
+            'missing_details' => $missingDetails,
             'checks' => $checks,
             'checked_at' => now()->toISOString(),
         ];
@@ -294,6 +298,75 @@ class ProductReadinessService
         });
     }
 
+    private function requiredCatalogAttributeDiagnostics(Product $product, ProductVariantPayloadResolver $resolver): array
+    {
+        $categoryId = $resolver->value($product, 'trendyol_category_id');
+
+        if (! filled($categoryId)) {
+            return [[
+                'field' => 'marketplace_category',
+                'label' => 'Trendyol kategori',
+                'message' => 'Trendyol kategorisi seçilmediği için zorunlu nitelikler kontrol edilemiyor.',
+                'technical' => 'trendyol_category_id missing',
+            ]];
+        }
+
+        $requiredAttributes = MarketplaceCatalogAttribute::query()
+            ->where('marketplace_code', 'trendyol')
+            ->where('category_external_id', (string) $categoryId)
+            ->where('required', true)
+            ->get();
+
+        if ($requiredAttributes->isEmpty()) {
+            return count($resolver->marketplaceAttributes($product, 'trendyol')) > 0 ? [] : [[
+                'field' => 'required_attributes',
+                'label' => 'Zorunlu nitelikler',
+                'message' => 'Bu kategori için zorunlu nitelik cache verisi yok ve üründe Trendyol niteliği bulunmuyor.',
+                'technical' => 'required catalog attributes empty; product attributes empty',
+            ]];
+        }
+
+        $payloadAttributes = collect($resolver->marketplaceAttributes($product, 'trendyol'));
+
+        return $requiredAttributes
+            ->map(function (MarketplaceCatalogAttribute $attribute) use ($product, $payloadAttributes) {
+                $payloadAttribute = $this->payloadAttributeFor($payloadAttributes, $attribute);
+                $valueState = $this->payloadAttributeValueState($payloadAttribute, $attribute);
+                $variantMissing = $this->isVariantAttribute($attribute)
+                    && ($product->product_type === 'variant' || $product->parent_product_id)
+                    && ! $this->hasVariantMappingForAttribute($product, $attribute);
+
+                if ($valueState['valid'] && ! $variantMissing) {
+                    return null;
+                }
+
+                $technical = [];
+                if (! $payloadAttribute) {
+                    $technical[] = 'required attribute payload missing';
+                }
+                if (! $valueState['valid']) {
+                    $technical[] = $valueState['technical'];
+                }
+                if ($variantMissing) {
+                    $technical[] = 'variant mapping missing';
+                }
+
+                return [
+                    'field' => 'required_attributes',
+                    'attribute_id' => (string) $attribute->external_id,
+                    'label' => (string) $attribute->name,
+                    'message' => $this->attributeUserMessage($attribute, $payloadAttribute, $variantMissing),
+                    'technical' => implode('; ', array_filter($technical)),
+                    'required' => (bool) $attribute->required,
+                    'allow_custom' => (bool) $attribute->allow_custom,
+                    'value_type' => $attribute->value_type,
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
     private function payloadAttributeFor(Collection $payloadAttributes, MarketplaceCatalogAttribute $attribute): ?array
     {
         return $payloadAttributes->first(function (array $payloadAttribute) use ($attribute) {
@@ -307,8 +380,13 @@ class ProductReadinessService
 
     private function payloadAttributeHasValidValue(?array $payloadAttribute, MarketplaceCatalogAttribute $attribute): bool
     {
+        return $this->payloadAttributeValueState($payloadAttribute, $attribute)['valid'];
+    }
+
+    private function payloadAttributeValueState(?array $payloadAttribute, MarketplaceCatalogAttribute $attribute): array
+    {
         if (! $payloadAttribute) {
-            return false;
+            return ['valid' => false, 'technical' => 'required_attributes=false'];
         }
 
         $valueId = data_get($payloadAttribute, 'attributeValueId')
@@ -326,14 +404,42 @@ class ProductReadinessService
             ->map(fn ($id) => (string) $id);
 
         if ($allowedValues->isNotEmpty()) {
-            return filled($valueId) && $allowedValues->contains((string) $valueId);
+            return [
+                'valid' => filled($valueId) && $allowedValues->contains((string) $valueId),
+                'technical' => filled($valueId) ? 'attribute value ID not allowed' : 'value ID missing',
+            ];
         }
 
         if ($attribute->allow_custom) {
-            return filled($customValue) || filled($valueId);
+            return [
+                'valid' => filled($customValue) || filled($valueId),
+                'technical' => 'custom value missing',
+            ];
         }
 
-        return filled($valueId);
+        return [
+            'valid' => filled($valueId),
+            'technical' => 'value ID missing',
+        ];
+    }
+
+    private function attributeUserMessage(MarketplaceCatalogAttribute $attribute, ?array $payloadAttribute, bool $variantMissing): string
+    {
+        $name = (string) $attribute->name;
+
+        if (! $payloadAttribute) {
+            return "{$name} eksik.";
+        }
+
+        if ($variantMissing) {
+            return "{$name} için SKU bazlı varyant eşleşmesi eksik.";
+        }
+
+        if (! $attribute->allow_custom) {
+            return "{$name} için Trendyol değer eşleşmesi eksik.";
+        }
+
+        return "{$name} değeri eksik.";
     }
 
     private function isVariantAttribute(MarketplaceCatalogAttribute $attribute): bool

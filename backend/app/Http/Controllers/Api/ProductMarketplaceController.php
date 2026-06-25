@@ -14,11 +14,27 @@ use Illuminate\Http\Request;
 
 class ProductMarketplaceController extends Controller
 {
-    public function readiness(Product $product, ProductReadinessService $service): JsonResponse
+    public function readiness(Request $request, Product $product, ProductReadinessService $service): JsonResponse
     {
-        $this->abortIfNotTenant(request(), $product);
+        $this->abortIfNotTenant($request, $product);
 
-        return response()->json($service->check($product));
+        $data = $request->validate([
+            'marketplace_code' => ['nullable', 'string', 'max:50'],
+            'marketplace_account_id' => ['nullable', 'integer', 'exists:marketplace_accounts,id'],
+        ]);
+
+        $account = null;
+        $marketplaceCode = $data['marketplace_code'] ?? null;
+
+        if (! empty($data['marketplace_account_id'])) {
+            $account = MarketplaceAccount::findOrFail($data['marketplace_account_id']);
+            $this->abortIfNotTenant($request, $account);
+            $marketplaceCode = $marketplaceCode ?: $account->code;
+
+            abort_if($marketplaceCode !== $account->code, 422, 'Pazaryeri hesabı ile hazırlık pazaryeri eşleşmiyor.');
+        }
+
+        return response()->json($service->check($product, $marketplaceCode, $account));
     }
 
     public function drafts(Request $request): JsonResponse

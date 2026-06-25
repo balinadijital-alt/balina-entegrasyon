@@ -15,7 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api } from '../../api/client.js';
+import { api, apiErrorMessage } from '../../api/client.js';
 import { hasPermission } from '../../auth/permissions.js';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { LoadingState } from '../../components/LoadingState.jsx';
@@ -70,7 +70,6 @@ function draftMissingText(draft) {
 function normalizeStatus(status) {
   if (status === 'ready') return 'queued';
   if (status === 'completed') return 'success';
-  if (status === 'blocked') return 'rejected';
   return status || '-';
 }
 
@@ -86,6 +85,8 @@ function friendlyDraftStatus(status) {
     success: 'Başarılı',
     failed: 'Hatalı',
     rejected: 'Tekrar denenebilir',
+    blocked: 'Gönderim durduruldu',
+    not_ready: 'Gönderime hazır değil',
     canceled: 'İptal edildi',
   };
 
@@ -151,7 +152,7 @@ function sendStatus(product) {
     return { key: 'processing', label: friendlyDraftStatus(normalized), tone: 'progress' };
   }
   if (normalized === 'success') return { key: 'success', label: 'Başarılı', tone: 'ready' };
-  if (['failed', 'rejected', 'partial_success'].includes(normalized)) {
+  if (['failed', 'rejected', 'partial_success', 'blocked', 'not_ready'].includes(normalized)) {
     return { key: 'error', label: friendlyDraftStatus(normalized), tone: 'blocked' };
   }
 
@@ -197,6 +198,28 @@ function missingAdvice(field) {
   };
 
   return advice[field] || `${missingLabel(field)} tamamlanmalı.`;
+}
+
+function accountReadinessParams(accountId) {
+  return accountId ? { marketplace_code: TRENDYOL, marketplace_account_id: accountId } : { marketplace_code: TRENDYOL };
+}
+
+function mergeProductReadiness(product, response) {
+  const report = response?.marketplaces?.[TRENDYOL];
+  if (!report) return product;
+
+  return {
+    ...product,
+    marketplace_ready: Boolean(report.ready),
+    marketplace_readiness: {
+      ...(product.marketplace_readiness || {}),
+      [TRENDYOL]: report,
+    },
+  };
+}
+
+function requiredAttributeDetails(product) {
+  return product.marketplace_readiness?.[TRENDYOL]?.missing_details?.required_attributes || [];
 }
 
 function productMatchesQuery(product, query) {
@@ -309,12 +332,13 @@ export function ProductPublishWizardPage() {
       ]);
       const productItems = productResponse.data || [];
       const marketplaceItems = marketplaceResponse.data || [];
+      const firstTrendyol = marketplaceItems.find((item) => item.code === TRENDYOL);
+      const selectedAccountId = marketplaceId || firstTrendyol?.id || '';
+      const hydratedProducts = await hydrateProductReadiness(productItems, selectedAccountId);
 
-      setProducts(productItems);
+      setProducts(hydratedProducts);
       setMarketplaces(marketplaceItems);
       setDrafts(draftResponse.data || []);
-
-      const firstTrendyol = marketplaceItems.find((item) => item.code === TRENDYOL);
       setMarketplaceId((current) => current || firstTrendyol?.id || '');
 
       const productId = Number(searchParams.get('product'));
@@ -323,6 +347,22 @@ export function ProductPublishWizardPage() {
         setPoolIds([productId]);
       }
     });
+  };
+
+  const hydrateProductReadiness = async (items, accountId) => {
+    if (!accountId) return items;
+
+    const targets = items.filter((product) => product.product_type !== 'parent');
+    const checks = await Promise.allSettled(targets.map((product) => api.products.readiness(product.id, accountReadinessParams(accountId))));
+    const readinessByProductId = new Map();
+
+    checks.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        readinessByProductId.set(targets[index].id, result.value);
+      }
+    });
+
+    return items.map((product) => mergeProductReadiness(product, readinessByProductId.get(product.id)));
   };
 
   useEffect(() => {
@@ -361,9 +401,22 @@ export function ProductPublishWizardPage() {
 
   const refreshProductReadiness = async (productId) => {
     await run(async () => {
-      await api.products.readiness(productId);
-      await load();
+      const response = await api.products.readiness(productId, accountReadinessParams(marketplaceId));
+      setProducts((current) => current.map((product) => (
+        Number(product.id) === Number(productId) ? mergeProductReadiness(product, response) : product
+      )));
+      setDrawerProduct((current) => (current && Number(current.id) === Number(productId) ? mergeProductReadiness(current, response) : current));
       notify('success', 'Hazırlık kontrolü yenilendi.');
+    }, { onError: (message) => notify('error', message) });
+  };
+
+  const handleMarketplaceChange = async (value) => {
+    setMarketplaceId(value);
+    if (!value) return;
+
+    await run(async () => {
+      const hydratedProducts = await hydrateProductReadiness(products, value);
+      setProducts(hydratedProducts);
     }, { onError: (message) => notify('error', message) });
   };
 
@@ -488,7 +541,7 @@ export function ProductPublishWizardPage() {
         <div className="trendyol-pool-account">
           <label>
             <span>Trendyol mağazası</span>
-            <select value={marketplaceId} onChange={(event) => setMarketplaceId(event.target.value)}>
+            <select value={marketplaceId} onChange={(event) => handleMarketplaceChange(event.target.value)}>
               <option value="">Mağaza seçin</option>
               {trendyolAccounts.map((account) => (
                 <option value={account.id} key={account.id}>{account.name}</option>
@@ -670,7 +723,7 @@ export function ProductPublishWizardPage() {
             </div>
             <label>
               <span>Marketplace account</span>
-              <select value={marketplaceId} onChange={(event) => setMarketplaceId(event.target.value)}>
+              <select value={marketplaceId} onChange={(event) => handleMarketplaceChange(event.target.value)}>
                 <option value="">Trendyol mağazası seçin</option>
                 {trendyolAccounts.map((account) => <option value={account.id} key={account.id}>{account.name}</option>)}
               </select>
@@ -787,16 +840,38 @@ export function ProductPublishWizardPage() {
             <section className="pool-missing-list">
               {missingFields(drawerProduct, TRENDYOL).length === 0 ? (
                 <div className="pool-success"><CheckCircle2 size={17} /> <span>Bu ürün gönderime hazır görünüyor.</span></div>
-              ) : missingFields(drawerProduct, TRENDYOL).map((field) => (
-                <div key={field}>
-                  <AlertTriangle size={17} />
-                  <div>
-                    <strong>{missingLabel(field)}</strong>
-                    <span>{missingAdvice(field)}</span>
-                    <Link className="table-action-link" to={fixTarget(drawerProduct, field)}>İlgili alana git <ArrowRight size={13} /></Link>
-                  </div>
-                </div>
-              ))}
+              ) : (
+                <>
+                  {requiredAttributeDetails(drawerProduct).map((detail) => (
+                    <div key={`${detail.attribute_id || detail.label}-attribute`}>
+                      <AlertTriangle size={17} />
+                      <div>
+                        <strong>{detail.label}</strong>
+                        <span>{detail.message}</span>
+                        {detail.technical && (
+                          <details>
+                            <summary>Teknik detay</summary>
+                            <code>{detail.technical}</code>
+                          </details>
+                        )}
+                        <Link className="table-action-link" to={fixTarget(drawerProduct, 'attribute_mappings')}>Nitelik eşleştirmeye git <ArrowRight size={13} /></Link>
+                      </div>
+                    </div>
+                  ))}
+                  {missingFields(drawerProduct, TRENDYOL)
+                    .filter((field) => !(field === 'required_attributes' && requiredAttributeDetails(drawerProduct).length > 0))
+                    .map((field) => (
+                      <div key={field}>
+                        <AlertTriangle size={17} />
+                        <div>
+                          <strong>{missingLabel(field)}</strong>
+                          <span>{missingAdvice(field)}</span>
+                          <Link className="table-action-link" to={fixTarget(drawerProduct, field)}>İlgili alana git <ArrowRight size={13} /></Link>
+                        </div>
+                      </div>
+                    ))}
+                </>
+              )}
             </section>
             <footer>
               <button type="button" className="secondary-button" onClick={() => setDrawerProduct(null)}>Vazgeç</button>
@@ -875,7 +950,7 @@ export function ProductPublishWizardPage() {
             </section>
             <footer>
               <button type="button" className="secondary-button" onClick={() => setHistoryDraft(null)}>Kapat</button>
-              <button type="button" onClick={() => api.productPublish.batchResult(historyDraft.id).then((response) => { setHistoryDraft(response); load(); notify('success', 'Batch sonucu güncellendi.'); }).catch((err) => notify('error', friendlyProviderError(err.message)))}>
+              <button type="button" onClick={() => api.productPublish.batchResult(historyDraft.id).then((response) => { setHistoryDraft(response); load(); notify('success', response.result_summary?.message || 'Batch sonucu güncellendi.'); }).catch((err) => notify('error', friendlyProviderError(apiErrorMessage(err))))}>
                 <RefreshCw size={16} /> Batch sonucunu güncelle
               </button>
             </footer>

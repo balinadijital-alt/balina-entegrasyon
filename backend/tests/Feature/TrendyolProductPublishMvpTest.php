@@ -84,6 +84,55 @@ class TrendyolProductPublishMvpTest extends TestCase
             ->json();
 
         $this->assertContains('required_attributes', $response['readiness_report'][$product->id]['missing_fields']);
+        $this->assertSame('Renk', $response['readiness_report'][$product->id]['missing_details']['required_attributes'][0]['label']);
+        $this->assertSame('Renk için Trendyol değer eşleşmesi eksik.', $response['readiness_report'][$product->id]['missing_details']['required_attributes'][0]['message']);
+    }
+
+    public function test_not_ready_job_blocks_draft_and_product_status_without_batch_request(): void
+    {
+        Http::fake();
+        $account = $this->trendyolAccount();
+        $product = $this->readyProduct([
+            'trendyol_attributes' => [['attributeId' => 338, 'attributeValueId' => 999]],
+        ]);
+        $this->categoryMapping();
+
+        MarketplaceCatalogAttribute::create([
+            'marketplace_code' => 'trendyol',
+            'category_external_id' => '11',
+            'external_id' => '338',
+            'name' => 'Renk',
+            'required' => true,
+            'allow_custom' => false,
+        ]);
+        MarketplaceCatalogAttributeValue::create([
+            'marketplace_code' => 'trendyol',
+            'category_external_id' => '11',
+            'attribute_external_id' => '338',
+            'external_id' => '1',
+            'name' => 'Siyah',
+        ]);
+
+        $draft = $this->readyDraft($account, [$product->id], ['status' => 'running']);
+
+        $result = app(MarketplacePublishService::class)->runDraft($draft);
+
+        Http::assertNothingSent();
+        $this->assertSame('blocked', $result->status);
+        $this->assertNull($result->batch_request_id);
+        $this->assertSame('Ürün gönderime hazır değil. Trendyol’a gönderim başlatılmadı.', $result->error_message);
+        $this->assertContains('required_attributes', $result->result_summary['missing_fields']);
+
+        $this->assertDatabaseHas('product_marketplace_statuses', [
+            'product_id' => $product->id,
+            'marketplace_account_id' => $account->id,
+            'marketplace_code' => 'trendyol',
+            'status' => 'blocked',
+            'readiness_status' => 'not_ready',
+            'batch_request_id' => null,
+            'provider_state' => null,
+            'error_message' => 'Ürün gönderime hazır değil. Trendyol’a gönderim başlatılmadı.',
+        ]);
     }
 
     public function test_batch_result_updates_product_marketplace_status_by_barcode(): void
@@ -239,6 +288,48 @@ class TrendyolProductPublishMvpTest extends TestCase
             ->assertOk()
             ->assertJsonPath('status', 'processing')
             ->assertJsonPath('result_summary.summary.processing_count', 1);
+    }
+
+    public function test_batch_result_without_batch_id_returns_soft_blocked_message(): void
+    {
+        $account = $this->trendyolAccount();
+        $product = $this->readyProduct();
+        $draft = $this->readyDraft($account, [$product->id], [
+            'status' => 'blocked',
+            'batch_request_id' => null,
+        ]);
+
+        Http::fake();
+
+        $this->postJson("/api/marketplace-publish-drafts/{$draft->id}/batch-result")
+            ->assertOk()
+            ->assertJsonPath('status', 'blocked')
+            ->assertJsonPath('result_summary.batch_request_id', null)
+            ->assertJsonPath('result_summary.retryable', false)
+            ->assertJsonPath('result_summary.message', 'Ürün gönderime hazır değil. Trendyol’a gönderim başlatılmadı.');
+
+        Http::assertNothingSent();
+    }
+
+    public function test_batch_result_without_batch_id_returns_soft_queued_message(): void
+    {
+        $account = $this->trendyolAccount();
+        $product = $this->readyProduct();
+        $draft = $this->readyDraft($account, [$product->id], [
+            'status' => 'queued',
+            'batch_request_id' => null,
+        ]);
+
+        Http::fake();
+
+        $this->postJson("/api/marketplace-publish-drafts/{$draft->id}/batch-result")
+            ->assertOk()
+            ->assertJsonPath('status', 'queued')
+            ->assertJsonPath('result_summary.batch_request_id', null)
+            ->assertJsonPath('result_summary.retryable', true)
+            ->assertJsonPath('result_summary.message', 'Trendyol gönderimi henüz kuyrukta, batch sonucu oluşmadı.');
+
+        Http::assertNothingSent();
     }
 
     public function test_batch_general_error_is_reported_without_item_match(): void
@@ -541,6 +632,20 @@ class TrendyolProductPublishMvpTest extends TestCase
         $this->assertTrue($reportA['checks']['category_mapping']);
         $this->assertFalse($reportB['checks']['category_mapping']);
         $this->assertContains('category_mapping', $reportB['missing_fields']);
+    }
+
+    public function test_product_readiness_endpoint_uses_requested_marketplace_account(): void
+    {
+        $accountA = $this->trendyolAccount(['name' => 'Magaza A']);
+        $accountB = $this->trendyolAccount(['name' => 'Magaza B']);
+        $product = $this->readyProduct();
+        $this->categoryMapping(['metadata' => ['marketplace_account_id' => $accountA->id]]);
+
+        $this->getJson("/api/products/{$product->id}/readiness?marketplace_code=trendyol&marketplace_account_id={$accountB->id}")
+            ->assertOk()
+            ->assertJsonPath('marketplaces.trendyol.marketplace_account_id', $accountB->id)
+            ->assertJsonPath('marketplaces.trendyol.checks.category_mapping', false)
+            ->assertJsonPath('marketplaces.trendyol.ready', false);
     }
 
     public function test_publish_draft_uses_account_specific_readiness(): void

@@ -138,11 +138,50 @@ class MarketplacePublishService
             ]);
 
         if ($reports->contains(fn (array $report) => ! $report['ready'])) {
+            $message = 'Ürün gönderime hazır değil. Trendyol’a gönderim başlatılmadı.';
+            $missingFields = $reports
+                ->flatMap(fn (array $report) => $report['missing_fields'] ?? [])
+                ->unique()
+                ->values()
+                ->all();
+
             $draft->update([
                 'status' => 'blocked',
                 'readiness_report' => $reports->all(),
-                'error_message' => 'Hazir olmayan urunler Trendyol gonderimine alinmadi.',
+                'error_message' => $message,
+                'result_summary' => array_merge($draft->result_summary ?? [], [
+                    'draft_id' => $draft->id,
+                    'status' => 'blocked',
+                    'message' => $message,
+                    'missing_fields' => $missingFields,
+                    'blocked_product_count' => $reports->filter(fn (array $report) => ! $report['ready'])->count(),
+                    'checked_at' => now()->toISOString(),
+                ]),
             ]);
+
+            $products->each(function (Product $product) use ($draft, $reports, $message) {
+                $report = $reports->get($product->id, []);
+
+                $product->marketplaceStatuses()->updateOrCreate(
+                    ['marketplace_code' => $draft->marketplace_code, 'marketplace_account_id' => $draft->marketplace_account_id],
+                    [
+                        'status' => 'blocked',
+                        'readiness_status' => 'not_ready',
+                        'missing_fields' => $report['missing_fields'] ?? [],
+                        'batch_request_id' => null,
+                        'provider_state' => null,
+                        'last_response' => [
+                            'draft_id' => $draft->id,
+                            'status' => 'blocked',
+                            'message' => $message,
+                            'missing_fields' => $report['missing_fields'] ?? [],
+                            'missing_details' => $report['missing_details'] ?? [],
+                        ],
+                        'error_message' => $message,
+                        'last_checked_at' => now(),
+                    ]
+                );
+            });
 
             return $draft->refresh();
         }
@@ -190,10 +229,29 @@ class MarketplacePublishService
     {
         $draft->loadMissing('marketplaceAccount');
 
-        if ($draft->marketplace_code !== 'trendyol' || ! filled($draft->batch_request_id)) {
+        if ($draft->marketplace_code !== 'trendyol') {
             throw ValidationException::withMessages([
                 'batch_request_id' => 'Batch sonucu sorgulanacak Trendyol batch ID bulunmuyor.',
             ]);
+        }
+
+        if (! filled($draft->batch_request_id)) {
+            $blocked = in_array($draft->status, ['blocked', 'not_ready'], true);
+            $message = $blocked
+                ? 'Ürün gönderime hazır değil. Trendyol’a gönderim başlatılmadı.'
+                : 'Trendyol gönderimi henüz kuyrukta, batch sonucu oluşmadı.';
+
+            $draft->update([
+                'error_message' => $blocked ? $message : $draft->error_message,
+                'result_summary' => array_merge($draft->result_summary ?? [], [
+                    'batch_request_id' => null,
+                    'message' => $message,
+                    'retryable' => ! $blocked,
+                    'checked_at' => now()->toISOString(),
+                ]),
+            ]);
+
+            return $draft->refresh();
         }
 
         $result = $this->trendyol->batchResult($draft->marketplaceAccount, $draft->batch_request_id, $draft);
